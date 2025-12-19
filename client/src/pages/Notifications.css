@@ -1,0 +1,99 @@
+.notifications-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.unread-count {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--bg-primary);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-light);
+}
+
+.notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.notification-card {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    transition: all var(--transition-fast);
+}
+
+.notification-card:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+.notification-card.unread {
+    background-color: var(--primary-50);
+    border-color: var(--primary-100);
+}
+
+.notification-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-title {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.notification-message {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.notification-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.notification-actions {
+    display: flex;
+    gap: var(--space-1);
+}
+
+@media (max-width: 768px) {
+    .notification-card {
+        flex-wrap: wrap;
+    }
+
+    .notification-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: var(--space-2);
+    }
+}
