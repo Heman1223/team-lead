@@ -19,8 +19,22 @@ const ProtectedRoute = ({ children, requiredRole }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    if (requiredRole && user?.role !== requiredRole) {
-        return <Navigate to="/dashboard" replace />;
+    // Role-based access control
+    if (requiredRole) {
+        if (requiredRole === 'admin' && user?.role !== 'admin') {
+            // Non-admin trying to access admin routes
+            return <Navigate to="/dashboard" replace />;
+        }
+        
+        if (requiredRole === 'non-admin' && user?.role === 'admin') {
+            // Admin trying to access regular dashboard
+            return <Navigate to="/admin/dashboard" replace />;
+        }
+        
+        if (requiredRole === 'team_lead' && user?.role !== 'team_lead' && user?.role !== 'admin') {
+            // Non-team-lead trying to access team lead routes
+            return <Navigate to="/dashboard" replace />;
+        }
     }
 
     return children;

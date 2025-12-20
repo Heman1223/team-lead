@@ -31,17 +31,7 @@ const register = async (req, res) => {
             role: role || 'team_member'
         });
 
-        // If team lead, create a default team
-        if (user.role === 'team_lead') {
-            const team = await Team.create({
-                name: `${user.name}'s Team`,
-                description: 'Default team',
-                leadId: user._id,
-                members: [user._id]
-            });
-            user.teamId = team._id;
-            await user.save();
-        }
+        // Note: Teams should be created by admin, not automatically
 
         // Log activity
         await ActivityLog.create({
@@ -66,7 +56,7 @@ const register = async (req, res) => {
         });
     } catch (error) {
         console.error('Register error:', error);
-        res.status(500).json({ success: false, message: 'Server error during registration' });
+        res.status(500).json({ success: false, message: 'Server error during registration', error: error.message });
     }
 };
 
@@ -75,29 +65,36 @@ const register = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
     try {
+        console.log('Login attempt received:', { email: req.body.email });
         const { email, password } = req.body;
 
         // Validate input
         if (!email || !password) {
+            console.log('Missing email or password');
             return res.status(400).json({ success: false, message: 'Please provide email and password' });
         }
 
         // Check for user (include password for comparison)
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
+            console.log('User not found:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         // Check password
         const isMatch = await user.matchPassword(password);
         if (!isMatch) {
+            console.log('Password mismatch for user:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        // Update user status to online
-        user.status = 'online';
-        user.lastActive = new Date();
-        await user.save();
+        console.log('Login successful for user:', email);
+
+        // Update user status to online (without triggering pre-save hooks)
+        await User.findByIdAndUpdate(user._id, {
+            status: 'online',
+            lastActive: new Date()
+        });
 
         // Log activity
         await ActivityLog.create({
@@ -116,15 +113,15 @@ const login = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                status: user.status,
+                status: 'online',
                 teamId: user.teamId,
                 avatar: user.avatar,
                 token
             }
         });
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ success: false, message: 'Server error during login' });
+        console.error('Login error:', error.message, error.stack);
+        res.status(500).json({ success: false, message: 'Server error during login', error: error.message });
     }
 };
 

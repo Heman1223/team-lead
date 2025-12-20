@@ -1,8 +1,14 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleBasedRedirect from './components/RoleBasedRedirect';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminUserManagement from './pages/AdminUserManagement';
+import AdminTeamManagement from './pages/AdminTeamManagement';
+import AdminTaskAssignment from './pages/AdminTaskAssignment';
+import AdminActivityLogs from './pages/AdminActivityLogs';
 import TeamManagement from './pages/TeamManagement';
 import TaskManagement from './pages/TaskManagement';
 import Notifications from './pages/Notifications';
@@ -18,10 +24,35 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
 
-          {/* Protected Routes */}
+          {/* Protected Routes - Role-Based Dashboards */}
           <Route path="/dashboard" element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole="non-admin">
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminUserManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/teams" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminTeamManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/tasks" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminTaskAssignment />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/activities" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminActivityLogs />
             </ProtectedRoute>
           } />
           <Route path="/team" element={
@@ -50,9 +81,17 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Default Redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Default Redirect - Role Based */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <RoleBasedRedirect />
+            </ProtectedRoute>
+          } />
+          <Route path="*" element={
+            <ProtectedRoute>
+              <RoleBasedRedirect />
+            </ProtectedRoute>
+          } />
         </Routes>
       </Router>
     </AuthProvider>

@@ -23,13 +23,17 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['team_lead', 'team_member'],
+        enum: ['admin', 'team_lead', 'team_member'],
         default: 'team_member'
     },
     status: {
         type: String,
         enum: ['online', 'offline', 'busy'],
         default: 'offline'
+    },
+    isActive: {
+        type: Boolean,
+        default: true
     },
     avatar: {
         type: String,
@@ -47,6 +51,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    coreField: {
+        type: String,
+        default: '',
+        trim: true
+    },
     skills: [{
         type: String
     }],
@@ -59,10 +68,12 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
+    // Only hash if password is modified
     if (!this.isModified('password')) {
-        next();
+        return;
     }
+    
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
 });

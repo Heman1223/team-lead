@@ -95,7 +95,9 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateStatus,
         isAuthenticated: !!user,
-        isTeamLead: user?.role === 'team_lead'
+        isAdmin: user?.role === 'admin',
+        isTeamLead: user?.role === 'team_lead',
+        isTeamMember: user?.role === 'team_member'
     };
 
     return (

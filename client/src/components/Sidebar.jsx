@@ -1,133 +1,128 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import './Sidebar.css';
+import { 
+  LayoutDashboard, 
+  Users, 
+  CheckSquare, 
+  Bell, 
+  MessageSquare, 
+  BarChart3, 
+  UserCog, 
+  UsersRound, 
+  ClipboardList, 
+  Activity,
+  LogOut,
+  Settings
+} from 'lucide-react';
 
-const Sidebar = ({ isOpen, onClose }) => {
-    const { user, isTeamLead } = useAuth();
-    const location = useLocation();
+const Sidebar = () => {
+  const { user, isTeamLead, isAdmin, logout } = useAuth();
 
-    const menuItems = [
-        {
-            path: '/dashboard',
-            label: 'Dashboard',
-            icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                </svg>
-            )
-        },
-        {
-            path: '/team',
-            label: 'Team',
-            icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-            )
-        },
-        {
-            path: '/tasks',
-            label: 'Tasks',
-            icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 11l3 3L22 4" />
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                </svg>
-            )
-        },
-        {
-            path: '/notifications',
-            label: 'Notifications',
-            icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-            )
-        },
-        {
-            path: '/communication',
-            label: 'Communication',
-            icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
-            )
-        },
-        {
-            path: '/reports',
-            label: 'Reports',
-            icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 20V10" />
-                    <path d="M12 20V4" />
-                    <path d="M6 20v-6" />
-                </svg>
-            ),
-            teamLeadOnly: true
-        }
-    ];
+  const adminMenuItems = [
+    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/users', label: 'User Management', icon: UserCog },
+    { path: '/admin/teams', label: 'Team Management', icon: UsersRound },
+    { path: '/admin/tasks', label: 'Task Assignment', icon: ClipboardList },
+    { path: '/admin/activities', label: 'Activity Logs', icon: Activity }
+  ];
 
-    const filteredMenuItems = menuItems.filter(item => !item.teamLeadOnly || isTeamLead);
+  const menuItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/team', label: 'Team', icon: Users },
+    { path: '/tasks', label: 'Tasks', icon: CheckSquare },
+    { path: '/notifications', label: 'Notifications', icon: Bell },
+    { path: '/communication', label: 'Communication', icon: MessageSquare },
+    { path: '/reports', label: 'Reports', icon: BarChart3, teamLeadOnly: true }
+  ];
 
-    return (
-        <>
-            {isOpen && <div className="sidebar-overlay" onClick={onClose} />}
-            <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-                <div className="sidebar-header">
-                    <div className="logo">
-                        <div className="logo-icon">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                <circle cx="9" cy="7" r="4" />
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                            </svg>
-                        </div>
-                        <span className="logo-text">Team Lead</span>
-                    </div>
-                </div>
+  const displayMenuItems = isAdmin 
+    ? adminMenuItems 
+    : menuItems.filter(item => !item.teamLeadOnly || isTeamLead);
 
-                <nav className="sidebar-nav">
-                    <ul className="nav-list">
-                        {filteredMenuItems.map((item) => (
-                            <li key={item.path}>
-                                <NavLink
-                                    to={item.path}
-                                    className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                                    onClick={onClose}
-                                >
-                                    <span className="nav-icon">{item.icon}</span>
-                                    <span className="nav-label">{item.label}</span>
-                                    {location.pathname === item.path && (
-                                        <span className="active-indicator" />
-                                    )}
-                                </NavLink>
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
+  return (
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 shadow-2xl z-40 flex flex-col" style={{ width: '256px' }}>
+      {/* Logo */}
+      <div className="h-20 flex items-center justify-center border-b border-gray-700/50 bg-gradient-to-r from-orange-600/10 to-orange-500/10">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
+            <Users className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xl font-bold text-white">TeamLead</span>
+            <span className="text-xs text-orange-400 font-medium">Management</span>
+          </div>
+        </div>
+      </div>
 
-                <div className="sidebar-footer">
-                    <div className="user-info">
-                        <div className="avatar">
-                            {user?.name?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <div className="user-details">
-                            <span className="user-name">{user?.name || 'User'}</span>
-                            <span className="user-role">{user?.role === 'team_lead' ? 'Team Lead' : 'Team Member'}</span>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-        </>
-    );
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-6 px-3">
+        <div className="space-y-1">
+          {displayMenuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `
+                  w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+                  ${isActive 
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30' 
+                    : 'text-gray-400 hover:bg-gray-800/50 hover:text-orange-400'
+                  }
+                `}
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-orange-400'}`} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                    {isActive && <span className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
+        </div>
+
+        <div className="my-6 border-t border-gray-700/50" />
+
+        <NavLink
+          to="/settings"
+          className={({ isActive }) => `
+            w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+            ${isActive 
+              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30' 
+              : 'text-gray-400 hover:bg-gray-800/50 hover:text-orange-400'
+            }
+          `}
+        >
+          <Settings className="w-5 h-5 flex-shrink-0 group-hover:text-orange-400" />
+          <span className="font-medium text-sm">Settings</span>
+        </NavLink>
+      </nav>
+
+      {/* User Info */}
+      <div className="border-t border-gray-700/50 bg-gradient-to-r from-gray-800/50 to-gray-900/50 p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-orange-500/20">
+            {user?.name?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white truncate">{user?.name || 'User'}</p>
+            <p className="text-xs text-gray-400 truncate">
+              {user?.role === 'admin' ? 'Administrator' : user?.role === 'team_lead' ? 'Team Lead' : 'Team Member'}
+            </p>
+          </div>
+        </div>
+        <button 
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-orange-600 text-gray-300 hover:text-white rounded-lg transition-all duration-200 group"
+        >
+          <LogOut className="w-4 h-4 group-hover:text-white" />
+          <span className="text-sm font-medium">Logout</span>
+        </button>
+      </div>
+    </aside>
+  );
 };
 
 export default Sidebar;

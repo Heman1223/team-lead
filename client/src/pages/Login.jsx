@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import './Login.css';
+import { Users, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -37,154 +38,148 @@ const Login = () => {
         setLoading(false);
 
         if (result.success) {
-            navigate('/dashboard');
+            const userData = JSON.parse(localStorage.getItem('user'));
+            if (userData?.role === 'admin') {
+                navigate('/admin/dashboard');
+            } else {
+                navigate('/dashboard');
+            }
         } else {
             setError(result.message);
         }
     };
 
     return (
-        <div className="login-page">
-            <div className="login-container">
-                <div className="login-header">
-                    <div className="logo-wrapper">
-                        <div className="logo-icon">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                <circle cx="9" cy="7" r="4" />
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                            </svg>
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md mx-auto">
+                {/* Login Form */}
+                <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-10 border border-gray-100">
+                    {/* Logo and Title */}
+                    <div className="text-center mb-8">
+                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg mb-4 mx-auto">
+                            <Users className="w-10 h-10 text-white" />
                         </div>
-                        <h1 className="logo-text">Team Lead</h1>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">TeamLead</h1>
+                        <p className="text-gray-600 text-sm">
+                            {isLogin ? 'Welcome back! Sign in to continue.' : 'Create your account to get started.'}
+                        </p>
                     </div>
-                    <p className="login-subtitle">
-                        {isLogin ? 'Welcome back! Please sign in to continue.' : 'Create your account to get started.'}
-                    </p>
-                </div>
 
-                <form onSubmit={handleSubmit} className="login-form">
+                    {/* Error Message */}
                     {error && (
-                        <div className="error-message">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="15" y1="9" x2="9" y2="15" />
-                                <line x1="9" y1="9" x2="15" y2="15" />
-                            </svg>
-                            <span>{error}</span>
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                            <span className="text-sm text-red-700">{error}</span>
                         </div>
                     )}
 
-                    {!isLogin && (
-                        <div className="form-group">
-                            <label htmlFor="name">Full Name</label>
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        {!isLogin && (
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Full Name
+                                </label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    placeholder="Enter your full name"
+                                    value={formData.name}
+                                    onChange={handleChange}
+                                    required={!isLogin}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                                />
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Email Address
+                            </label>
                             <input
-                                type="text"
-                                id="name"
-                                name="name"
-                                placeholder="Enter your full name"
-                                value={formData.name}
+                                type="email"
+                                name="email"
+                                placeholder="Enter your email"
+                                value={formData.email}
                                 onChange={handleChange}
-                                required={!isLogin}
+                                required
+                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                             />
                         </div>
-                    )}
 
-                    <div className="form-group">
-                        <label htmlFor="email">Email Address</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            placeholder="Enter your email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label htmlFor="password">Password</label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            placeholder="Enter your password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                            minLength={6}
-                        />
-                    </div>
-
-                    {!isLogin && (
-                        <div className="form-group">
-                            <label htmlFor="role">Role</label>
-                            <select
-                                id="role"
-                                name="role"
-                                value={formData.role}
-                                onChange={handleChange}
-                            >
-                                <option value="team_lead">Team Lead</option>
-                                <option value="team_member">Team Member</option>
-                            </select>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Password
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    name="password"
+                                    placeholder="Enter your password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    required
+                                    minLength={6}
+                                    className="w-full px-4 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-700 transition-colors focus:outline-none rounded-lg hover:bg-gray-100"
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
                         </div>
-                    )}
 
-                    <button type="submit" className="btn btn-primary btn-lg w-full" disabled={loading}>
-                        {loading ? (
-                            <span className="loading-spinner" />
-                        ) : (
-                            isLogin ? 'Sign In' : 'Create Account'
+                        {!isLogin && (
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Role
+                                </label>
+                                <select
+                                    name="role"
+                                    value={formData.role}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-white"
+                                >
+                                    <option value="team_lead">Team Lead</option>
+                                    <option value="team_member">Team Member</option>
+                                </select>
+                            </div>
                         )}
-                    </button>
-                </form>
 
-                <div className="login-footer">
-                    <p>
-                        {isLogin ? "Don't have an account?" : 'Already have an account?'}
                         <button
-                            type="button"
-                            className="switch-btn"
-                            onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isLogin ? 'Sign Up' : 'Sign In'}
+                            {loading ? (
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    <span>Please wait...</span>
+                                </div>
+                            ) : (
+                                isLogin ? 'Sign In' : 'Create Account'
+                            )}
                         </button>
-                    </p>
-                </div>
-            </div>
+                    </form>
 
-            <div className="login-decoration">
-                <div className="decoration-content">
-                    <h2>Manage Your Team Effectively</h2>
-                    <p>Track tasks, monitor performance, and lead your team to success with powerful management tools.</p>
-                    <ul className="feature-list">
-                        <li>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            <span>Task Management</span>
-                        </li>
-                        <li>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            <span>Team Collaboration</span>
-                        </li>
-                        <li>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            <span>Performance Analytics</span>
-                        </li>
-                        <li>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            <span>Real-time Notifications</span>
-                        </li>
-                    </ul>
+                    {/* Toggle Login/Register */}
+                    <div className="mt-6 text-center">
+                        <p className="text-sm text-gray-600">
+                            {isLogin ? "Don't have an account?" : 'Already have an account?'}
+                            {' '}
+                            <button
+                                type="button"
+                                onClick={() => { setIsLogin(!isLogin); setError(''); setFormData({ name: '', email: '', password: '', role: 'team_lead' }); }}
+                                className="text-orange-600 font-semibold hover:text-orange-700 transition-colors underline-offset-2 hover:underline"
+                            >
+                                {isLogin ? 'Sign Up' : 'Sign In'}
+                            </button>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

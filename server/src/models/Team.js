@@ -24,6 +24,21 @@ const teamSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    coreField: {
+        type: String,
+        default: '',
+        trim: true
+    },
+    currentProject: {
+        type: String,
+        default: ''
+    },
+    projectProgress: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
+    },
     isActive: {
         type: Boolean,
         default: true

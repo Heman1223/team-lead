@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { reportsAPI } from '../services/api';
-import './Reports.css';
+// import './Reports.css';
 
 const Reports = () => {
     const [loading, setLoading] = useState(true);

@@ -34,8 +34,8 @@ const taskSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['assigned', 'in_progress', 'blocked', 'overdue', 'completed'],
-        default: 'assigned'
+        enum: ['pending', 'assigned', 'in_progress', 'blocked', 'overdue', 'completed'],
+        default: 'pending'
     },
     deadline: {
         type: Date,
@@ -44,17 +44,38 @@ const taskSchema = new mongoose.Schema({
     assignedTo: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, 'Please assign task to a team member']
+        required: [true, 'Please assign task to a user']
     },
-    createdBy: {
+    assignedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
     teamId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Team',
-        required: true
+        ref: 'Team'
+    },
+    // For admin-assigned tasks to team leads
+    isParentTask: {
+        type: Boolean,
+        default: false
+    },
+    parentTaskId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Task'
+    },
+    // Recurring task settings
+    isRecurring: {
+        type: Boolean,
+        default: false
+    },
+    recurrenceType: {
+        type: String,
+        enum: ['daily', 'weekly', 'monthly', 'none'],
+        default: 'none'
+    },
+    recurrenceEndDate: {
+        type: Date
     },
     attachments: [{
         name: String,
@@ -72,6 +93,9 @@ const taskSchema = new mongoose.Schema({
     completedAt: {
         type: Date
     },
+    startedAt: {
+        type: Date
+    },
     estimatedHours: {
         type: Number,
         default: 0
@@ -79,17 +103,22 @@ const taskSchema = new mongoose.Schema({
     actualHours: {
         type: Number,
         default: 0
+    },
+    progressPercentage: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
     }
 }, {
     timestamps: true
 });
 
 // Auto-update overdue status
-taskSchema.pre('save', function (next) {
+taskSchema.pre('save', function () {
     if (this.status !== 'completed' && this.deadline < new Date()) {
         this.status = 'overdue';
     }
-    next();
 });
 
 module.exports = mongoose.model('Task', taskSchema);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { notificationsAPI, usersAPI, tasksAPI } from '../services/api';
-import './Notifications.css';
+// import './Notifications.css';
 
 const Notifications = () => {
     const { isTeamLead } = useAuth();

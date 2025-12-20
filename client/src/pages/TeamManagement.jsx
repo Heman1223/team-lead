@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { usersAPI, teamsAPI } from '../services/api';
-import './TeamManagement.css';
+// import './TeamManagement.css';
 
 const TeamManagement = () => {
     const { isTeamLead, user } = useAuth();
