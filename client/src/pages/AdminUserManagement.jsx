@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Users, UserPlus, Edit2, Trash2, Lock, Power, Search, X, Mail, User, KeyRound, Briefcase, Phone, Award, Target } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Users, UserPlus, Edit2, Trash2, Lock, Power, Search, X, Mail, User, KeyRound, Briefcase, Phone, Award, Target, Eye, Activity, Clock, CheckCircle, AlertCircle, TrendingUp, MoreVertical } from 'lucide-react';
 import { adminUsersAPI, adminTeamsAPI } from '../services/adminApi';
 import Layout from '../components/Layout';
 
@@ -12,6 +12,12 @@ const AdminUserManagement = () => {
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('create');
     const [selectedUser, setSelectedUser] = useState(null);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [userDetails, setUserDetails] = useState(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [forcePasswordChange, setForcePasswordChange] = useState(false);
+    const [openMenuId, setOpenMenuId] = useState(null);
+    const menuRef = useRef(null);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -26,6 +32,18 @@ const AdminUserManagement = () => {
     useEffect(() => {
         fetchUsers();
         fetchTeams();
+    }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setOpenMenuId(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const fetchUsers = async () => {
@@ -86,7 +104,23 @@ const AdminUserManagement = () => {
         setModalMode('reset');
         setSelectedUser(user);
         setFormData({ ...formData, password: '' });
+        setForcePasswordChange(false);
         setShowModal(true);
+    };
+
+    const handleViewDetails = async (user) => {
+        setSelectedUser(user);
+        setShowDetailsModal(true);
+        setLoadingDetails(true);
+        try {
+            const response = await adminUsersAPI.getDetails(user._id);
+            setUserDetails(response.data.data);
+        } catch (error) {
+            console.error('Error fetching user details:', error);
+            alert('Failed to load user details');
+        } finally {
+            setLoadingDetails(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -117,7 +151,7 @@ const AdminUserManagement = () => {
                     alert('Password must be at least 6 characters');
                     return;
                 }
-                await adminUsersAPI.resetPassword(selectedUser._id, formData.password);
+                await adminUsersAPI.resetPassword(selectedUser._id, formData.password, forcePasswordChange);
                 alert('✅ Password reset successfully!');
             }
             
@@ -141,9 +175,18 @@ const AdminUserManagement = () => {
     };
 
     const handleDeleteUser = async (userId) => {
-        if (window.confirm('⚠️ Delete this user? This cannot be undone.')) {
+        const deleteType = window.confirm('⚠️ Choose delete type:\n\nOK = Soft Delete (can be restored)\nCancel = Abort');
+        if (deleteType === null) return;
+        
+        const confirmDelete = window.confirm(
+            deleteType 
+                ? '⚠️ Soft delete this user? User will be deactivated but data will be preserved.' 
+                : '⚠️ PERMANENTLY delete this user? This CANNOT be undone!'
+        );
+        
+        if (confirmDelete) {
             try {
-                await adminUsersAPI.delete(userId);
+                await adminUsersAPI.delete(userId, !deleteType);
                 alert('✅ User deleted successfully!');
                 fetchUsers();
             } catch (error) {
@@ -364,35 +407,86 @@ const AdminUserManagement = () => {
                                             {user.teamId?.name || '-'}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-2">
+                                            <div className="flex items-center justify-end relative">
                                                 <button
-                                                    onClick={() => handleEditUser(user)}
-                                                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                                                    title="Edit User"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleResetPassword(user)}
+                                                    onClick={() => setOpenMenuId(openMenuId === user._id ? null : user._id)}
                                                     className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                                    title="Reset Password"
+                                                    title="Actions"
                                                 >
-                                                    <Lock className="w-4 h-4" />
+                                                    <MoreVertical className="w-5 h-5" />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleToggleActive(user._id)}
-                                                    className={`p-2 ${user.isActive ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'} rounded-lg transition-colors`}
-                                                    title={user.isActive ? 'Deactivate' : 'Activate'}
-                                                >
-                                                    <Power className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteUser(user._id)}
-                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Delete User"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+
+                                                {/* Dropdown Menu */}
+                                                {openMenuId === user._id && (
+                                                    <div 
+                                                        ref={menuRef}
+                                                        className="absolute right-0 top-10 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 py-2"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <button
+                                                            onClick={() => {
+                                                                handleViewDetails(user);
+                                                                setOpenMenuId(null);
+                                                            }}
+                                                            className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 flex items-center gap-3 transition-colors"
+                                                        >
+                                                            <Eye className="w-4 h-4 text-blue-600" />
+                                                            <span className="font-medium">View Details</span>
+                                                        </button>
+                                                        
+                                                        <button
+                                                            onClick={() => {
+                                                                handleEditUser(user);
+                                                                setOpenMenuId(null);
+                                                            }}
+                                                            className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-orange-50 flex items-center gap-3 transition-colors"
+                                                        >
+                                                            <Edit2 className="w-4 h-4 text-orange-600" />
+                                                            <span className="font-medium">Edit User</span>
+                                                        </button>
+                                                        
+                                                        <button
+                                                            onClick={() => {
+                                                                handleResetPassword(user);
+                                                                setOpenMenuId(null);
+                                                            }}
+                                                            className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
+                                                        >
+                                                            <Lock className="w-4 h-4 text-gray-600" />
+                                                            <span className="font-medium">Reset Password</span>
+                                                        </button>
+                                                        
+                                                        <div className="border-t border-gray-200 my-1"></div>
+                                                        
+                                                        <button
+                                                            onClick={() => {
+                                                                handleToggleActive(user._id);
+                                                                setOpenMenuId(null);
+                                                            }}
+                                                            className={`w-full px-4 py-2.5 text-left text-sm text-gray-700 ${
+                                                                user.isActive ? 'hover:bg-orange-50' : 'hover:bg-green-50'
+                                                            } flex items-center gap-3 transition-colors`}
+                                                        >
+                                                            <Power className={`w-4 h-4 ${user.isActive ? 'text-orange-600' : 'text-green-600'}`} />
+                                                            <span className="font-medium">
+                                                                {user.isActive ? 'Deactivate' : 'Activate'}
+                                                            </span>
+                                                        </button>
+                                                        
+                                                        <div className="border-t border-gray-200 my-1"></div>
+                                                        
+                                                        <button
+                                                            onClick={() => {
+                                                                handleDeleteUser(user._id);
+                                                                setOpenMenuId(null);
+                                                            }}
+                                                            className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                            <span className="font-medium">Delete User</span>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -564,6 +658,20 @@ const AdminUserManagement = () => {
                                         ? 'User will login with this password' 
                                         : 'User will need to use this new password to login'}
                                 </p>
+                                {modalMode === 'reset' && (
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="forceChange"
+                                            checked={forcePasswordChange}
+                                            onChange={(e) => setForcePasswordChange(e.target.checked)}
+                                            className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                        />
+                                        <label htmlFor="forceChange" className="text-sm text-gray-700 font-medium">
+                                            Force password change on next login
+                                        </label>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -583,6 +691,252 @@ const AdminUserManagement = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        )}
+
+        {/* User Details Modal */}
+        {showDetailsModal && selectedUser && (
+            <div 
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 backdrop-blur-sm z-[9999]"
+                onClick={(e) => e.target === e.currentTarget && setShowDetailsModal(false)}
+            >
+                <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 rounded-t-2xl">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Eye className="w-6 h-6" /> User Details
+                            </h3>
+                            <button 
+                                onClick={() => setShowDetailsModal(false)} 
+                                className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-1 transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+                        {loadingDetails ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-orange-600"></div>
+                            </div>
+                        ) : userDetails ? (
+                            <div className="space-y-6">
+                                {/* User Info Card */}
+                                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border border-orange-200">
+                                    <div className="flex items-start gap-6">
+                                        <div className="flex-shrink-0 h-20 w-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg">
+                                            {userDetails.user.name?.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="text-2xl font-bold text-gray-900">{userDetails.user.name}</h4>
+                                            <p className="text-gray-600 flex items-center gap-2 mt-1">
+                                                <Mail className="w-4 h-4" />
+                                                {userDetails.user.email}
+                                            </p>
+                                            <div className="flex items-center gap-4 mt-3">
+                                                <span className={`px-3 py-1.5 inline-flex text-xs font-semibold rounded-lg ${getRoleBadgeColor(userDetails.user.role)}`}>
+                                                    {getRoleLabel(userDetails.user.role)}
+                                                </span>
+                                                <span className={`px-3 py-1.5 inline-flex text-xs font-semibold rounded-lg ${
+                                                    userDetails.user.isActive 
+                                                        ? 'bg-green-100 text-green-700 border border-green-200' 
+                                                        : 'bg-red-100 text-red-700 border border-red-200'
+                                                }`}>
+                                                    {userDetails.user.isActive ? '● Active' : '○ Inactive'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-blue-100 rounded-lg">
+                                                <CheckCircle className="w-6 h-6 text-blue-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-600 font-medium">Total Tasks</p>
+                                                <p className="text-2xl font-bold text-gray-900">{userDetails.taskStats.total}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-green-100 rounded-lg">
+                                                <CheckCircle className="w-6 h-6 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-600 font-medium">Completed</p>
+                                                <p className="text-2xl font-bold text-green-600">{userDetails.taskStats.completed}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-orange-100 rounded-lg">
+                                                <Activity className="w-6 h-6 text-orange-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-600 font-medium">In Progress</p>
+                                                <p className="text-2xl font-bold text-orange-600">{userDetails.taskStats.inProgress}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-red-100 rounded-lg">
+                                                <AlertCircle className="w-6 h-6 text-red-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-600 font-medium">Overdue</p>
+                                                <p className="text-2xl font-bold text-red-600">{userDetails.taskStats.overdue}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Additional Info */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                                        <h5 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                            <User className="w-5 h-5 text-orange-600" />
+                                            Contact Information
+                                        </h5>
+                                        <div className="space-y-2 text-sm">
+                                            {userDetails.user.phone && (
+                                                <div className="flex items-center gap-2 text-gray-700">
+                                                    <Phone className="w-4 h-4 text-gray-500" />
+                                                    <span>{userDetails.user.phone}</span>
+                                                </div>
+                                            )}
+                                            {userDetails.user.designation && (
+                                                <div className="flex items-center gap-2 text-gray-700">
+                                                    <Briefcase className="w-4 h-4 text-gray-500" />
+                                                    <span>{userDetails.user.designation}</span>
+                                                </div>
+                                            )}
+                                            {userDetails.user.coreField && (
+                                                <div className="flex items-center gap-2 text-gray-700">
+                                                    <Target className="w-4 h-4 text-gray-500" />
+                                                    <span>{userDetails.user.coreField}</span>
+                                                </div>
+                                            )}
+                                            {userDetails.user.teamId && (
+                                                <div className="flex items-center gap-2 text-gray-700">
+                                                    <Users className="w-4 h-4 text-gray-500" />
+                                                    <span>Team: {userDetails.user.teamId.name}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                                        <h5 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                            <TrendingUp className="w-5 h-5 text-orange-600" />
+                                            Activity Level
+                                        </h5>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-sm font-medium text-gray-700">Activity Level</span>
+                                                    <span className={`text-sm font-bold ${
+                                                        userDetails.activityLevel === 'Very High' ? 'text-green-600' :
+                                                        userDetails.activityLevel === 'High' ? 'text-blue-600' :
+                                                        userDetails.activityLevel === 'Medium' ? 'text-orange-600' :
+                                                        'text-gray-600'
+                                                    }`}>
+                                                        {userDetails.activityLevel}
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                                    <div 
+                                                        className={`h-2 rounded-full ${
+                                                            userDetails.activityLevel === 'Very High' ? 'bg-green-600 w-full' :
+                                                            userDetails.activityLevel === 'High' ? 'bg-blue-600 w-3/4' :
+                                                            userDetails.activityLevel === 'Medium' ? 'bg-orange-600 w-1/2' :
+                                                            'bg-gray-600 w-1/4'
+                                                        }`}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                            <div className="text-sm text-gray-600">
+                                                <Clock className="w-4 h-4 inline mr-2" />
+                                                {userDetails.recentActivityCount} activities in last 7 days
+                                            </div>
+                                            {userDetails.user.lastLogin && (
+                                                <div className="text-sm text-gray-600">
+                                                    <Clock className="w-4 h-4 inline mr-2" />
+                                                    Last login: {new Date(userDetails.user.lastLogin).toLocaleString()}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Recent Tasks */}
+                                <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                                    <h5 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <CheckCircle className="w-5 h-5 text-orange-600" />
+                                        Recent Tasks ({userDetails.tasks.length})
+                                    </h5>
+                                    {userDetails.tasks.length > 0 ? (
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {userDetails.tasks.map((task) => (
+                                                <div key={task._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-gray-900 text-sm">{task.title}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            Due: {new Date(task.deadline).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`px-3 py-1 text-xs font-semibold rounded-lg ${
+                                                        task.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-gray-100 text-gray-700'
+                                                    }`}>
+                                                        {task.status.replace('_', ' ')}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-500 text-center py-4">No tasks assigned yet</p>
+                                    )}
+                                </div>
+
+                                {/* Recent Activities */}
+                                <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                                    <h5 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <Activity className="w-5 h-5 text-orange-600" />
+                                        Recent Activity ({userDetails.activities.length})
+                                    </h5>
+                                    {userDetails.activities.length > 0 ? (
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {userDetails.activities.slice(0, 10).map((activity) => (
+                                                <div key={activity._id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                                                    <div className="flex-shrink-0 w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
+                                                    <div className="flex-1">
+                                                        <p className="text-sm text-gray-900">{activity.details}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            {new Date(activity.createdAt).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-500 text-center py-4">No recent activity</p>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 py-8">Failed to load user details</p>
+                        )}
+                    </div>
                 </div>
             </div>
         )}

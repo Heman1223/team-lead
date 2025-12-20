@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Users, Briefcase, CheckCircle, TrendingUp, Award, BarChart3, RefreshCw, Clock, AlertCircle, Target, Activity } from 'lucide-react';
+import { Users, Briefcase, CheckCircle, TrendingUp, Award, BarChart3, RefreshCw, Clock, AlertCircle, Target, Activity, Calendar, Zap, Trophy } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import Layout from '../components/Layout';
-import { adminAnalyticsAPI } from '../services/adminApi';
+import { adminAnalyticsAPI, adminTasksAPI } from '../services/adminApi';
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
     const [teamPerformance, setTeamPerformance] = useState([]);
     const [bestTeams, setBestTeams] = useState([]);
+    const [taskStats, setTaskStats] = useState({
+        assignedToday: 0,
+        dueToday: 0,
+        overdue: 0,
+        bestTeamLead: null
+    });
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -21,15 +27,49 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
         try {
             setRefreshing(true);
-            const [statsRes, performanceRes, bestTeamsRes] = await Promise.all([
+            const [statsRes, performanceRes, bestTeamsRes, tasksRes] = await Promise.all([
                 adminAnalyticsAPI.getDashboardStats(),
                 adminAnalyticsAPI.getTeamPerformance(),
-                adminAnalyticsAPI.getBestTeams()
+                adminAnalyticsAPI.getBestTeams(),
+                adminTasksAPI.getAll()
             ]);
 
             setStats(statsRes.data.data);
             setTeamPerformance(performanceRes.data.data);
             setBestTeams(bestTeamsRes.data.data);
+            
+            // Calculate today's task statistics
+            const tasks = tasksRes.data.data || [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const assignedToday = tasks.filter(t => {
+                const assignedDate = new Date(t.assignedAt || t.createdAt);
+                assignedDate.setHours(0, 0, 0, 0);
+                return assignedDate.getTime() === today.getTime();
+            }).length;
+
+            const dueToday = tasks.filter(t => {
+                const dueDate = new Date(t.dueDate || t.deadline);
+                dueDate.setHours(0, 0, 0, 0);
+                return dueDate.getTime() === today.getTime() && t.status !== 'completed' && t.status !== 'cancelled';
+            }).length;
+
+            const overdue = tasks.filter(t => t.isOverdue && t.status !== 'completed' && t.status !== 'cancelled').length;
+
+            // Find best responding team lead (highest completion rate)
+            const bestTeamLead = bestTeamsRes.data.data && bestTeamsRes.data.data.length > 0 
+                ? bestTeamsRes.data.data[0] 
+                : null;
+
+            setTaskStats({
+                assignedToday,
+                dueToday,
+                overdue,
+                bestTeamLead
+            });
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
         } finally {
@@ -176,6 +216,79 @@ const AdminDashboard = () => {
                             </div>
                             <div className="p-4 bg-green-200 rounded-xl ml-4">
                                 <TrendingUp className="w-8 h-8 text-green-700" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Today's Task Statistics - NEW */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-2xl p-6 border border-cyan-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 mb-1">Tasks Assigned Today</p>
+                                <p className="text-3xl font-bold text-gray-900 mb-1">{taskStats.assignedToday}</p>
+                                <div className="mt-3 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-cyan-600" />
+                                    <span className="text-xs text-cyan-600 font-medium">Today's Activity</span>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-cyan-200 rounded-xl">
+                                <Zap className="w-8 h-8 text-cyan-700" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-6 border border-amber-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 mb-1">Tasks Due Today</p>
+                                <p className="text-3xl font-bold text-gray-900 mb-1">{taskStats.dueToday}</p>
+                                <div className="mt-3 flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-amber-600" />
+                                    <span className="text-xs text-amber-600 font-medium">Needs Attention</span>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-amber-200 rounded-xl">
+                                <Calendar className="w-8 h-8 text-amber-700" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-6 border border-red-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 mb-1">Overdue Tasks</p>
+                                <p className="text-3xl font-bold text-gray-900 mb-1">{taskStats.overdue}</p>
+                                <div className="mt-3 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3 text-red-600" />
+                                    <span className="text-xs text-red-600 font-medium">Urgent Action</span>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-red-200 rounded-xl">
+                                <AlertCircle className="w-8 h-8 text-red-700" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-6 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 mb-1">Best Team Lead</p>
+                                {taskStats.bestTeamLead ? (
+                                    <>
+                                        <p className="text-lg font-bold text-gray-900 mb-1 truncate">{taskStats.bestTeamLead.teamLead}</p>
+                                        <div className="mt-2 flex items-center gap-1">
+                                            <Trophy className="w-3 h-3 text-emerald-600" />
+                                            <span className="text-xs text-emerald-600 font-medium">{taskStats.bestTeamLead.completionRate}% completion</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <p className="text-lg font-bold text-gray-500">No data yet</p>
+                                )}
+                            </div>
+                            <div className="p-4 bg-emerald-200 rounded-xl">
+                                <Award className="w-8 h-8 text-emerald-700" />
                             </div>
                         </div>
                     </div>

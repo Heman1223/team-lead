@@ -7,7 +7,12 @@ const User = require('../models/User');
 // @access  Private/Admin
 const getTeamPerformance = async (req, res) => {
     try {
-        const teams = await Team.find({ isActive: true })
+        const teams = await Team.find({ 
+            $or: [
+                { isActive: true },
+                { isActive: { $exists: false } }
+            ]
+        })
             .populate('leadId', 'name email')
             .populate('members', 'name email role');
 
@@ -114,7 +119,12 @@ const getTeamPerformance = async (req, res) => {
 // @access  Private/Admin
 const getBestPerformingTeams = async (req, res) => {
     try {
-        const teams = await Team.find({ isActive: true })
+        const teams = await Team.find({ 
+            $or: [
+                { isActive: true },
+                { isActive: { $exists: false } }
+            ]
+        })
             .populate('leadId', 'name email');
 
         const teamScores = await Promise.all(teams.map(async (team) => {
@@ -269,7 +279,13 @@ const getTeamLeadEffectiveness = async (req, res) => {
 // @access  Private/Admin
 const getDashboardStats = async (req, res) => {
     try {
-        const totalTeams = await Team.countDocuments({ isActive: true });
+        // Count all teams (isActive defaults to true, so count all non-archived teams)
+        const totalTeams = await Team.countDocuments({ 
+            $or: [
+                { isActive: true },
+                { isActive: { $exists: false } }
+            ]
+        });
         const totalUsers = await User.countDocuments({ isActive: true });
         const totalTeamLeads = await User.countDocuments({ role: 'team_lead', isActive: true });
         const totalMembers = await User.countDocuments({ role: 'team_member', isActive: true });

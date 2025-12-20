@@ -30,7 +30,7 @@ const getTasks = async (req, res) => {
 
         const tasks = await Task.find(query)
             .populate('assignedTo', 'name email avatar status')
-            .populate('createdBy', 'name email')
+            .populate('assignedBy', 'name email')
             .sort({ deadline: 1 });
 
         // Update overdue tasks
@@ -338,6 +338,223 @@ const getTaskStats = async (req, res) => {
     }
 };
 
+// @desc    Get my tasks (tasks assigned to me)
+// @route   GET /api/tasks/my-tasks
+// @access  Private
+const getMyTasks = async (req, res) => {
+    try {
+        const tasks = await Task.find({ assignedTo: req.user._id })
+            .populate('assignedBy', 'name email')
+            .populate('assignedTo', 'name email')
+            .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email')
+            .sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            count: tasks.length,
+            data: tasks
+        });
+    } catch (error) {
+        console.error('Get my tasks error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// @desc    Add subtask to parent task
+// @route   POST /api/tasks/:id/subtasks
+// @access  Private (Team Lead only)
+const addSubtask = async (req, res) => {
+    try {
+        const { title, description, assignedTo } = req.body;
+
+        if (!title || !assignedTo) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Please provide title and assignedTo' 
+            });
+        }
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        // Verify the task is assigned to the current user (team lead)
+        if (task.assignedTo.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'You can only add subtasks to your own tasks' 
+            });
+        }
+
+        // Add subtask
+        task.subtasks.push({
+            title,
+            description: description || '',
+            assignedTo,
+            status: 'not_started',
+            createdAt: new Date()
+        });
+
+        // Recalculate progress
+        task.calculateProgress();
+        await task.save();
+
+        // Create notification for assigned member
+        await Notification.create({
+            type: 'task_assigned',
+            title: 'New Subtask Assigned',
+            message: `You have been assigned a subtask: ${title}`,
+            userId: assignedTo,
+            taskId: task._id,
+            senderId: req.user._id
+        });
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'subtask_created',
+            userId: req.user._id,
+            targetUserId: assignedTo,
+            taskId: task._id,
+            teamId: task.teamId,
+            details: `Subtask created: ${title} for task: ${task.title}`
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email')
+            .populate('assignedBy', 'name email')
+            .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email');
+
+        res.status(201).json({
+            success: true,
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Add subtask error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Update subtask status
+// @route   PUT /api/tasks/:id/subtasks/:subtaskId
+// @access  Private
+const updateSubtask = async (req, res) => {
+    try {
+        const { status } = req.body;
+
+        if (!status) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Please provide status' 
+            });
+        }
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        const subtask = task.subtasks.id(req.params.subtaskId);
+        if (!subtask) {
+            return res.status(404).json({ success: false, message: 'Subtask not found' });
+        }
+
+        // Update subtask status
+        const oldStatus = subtask.status;
+        subtask.status = status;
+        
+        if (status === 'completed') {
+            subtask.completedAt = new Date();
+        }
+
+        // Recalculate parent task progress
+        task.calculateProgress();
+        await task.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'subtask_updated',
+            userId: req.user._id,
+            taskId: task._id,
+            teamId: task.teamId,
+            details: `Subtask "${subtask.title}" status changed from ${oldStatus} to ${status}`
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email')
+            .populate('assignedBy', 'name email')
+            .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email');
+
+        res.json({
+            success: true,
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Update subtask error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Delete subtask
+// @route   DELETE /api/tasks/:id/subtasks/:subtaskId
+// @access  Private (Team Lead only)
+const deleteSubtask = async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        // Verify the task is assigned to the current user (team lead)
+        if (task.assignedTo.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'You can only delete subtasks from your own tasks' 
+            });
+        }
+
+        const subtask = task.subtasks.id(req.params.subtaskId);
+        if (!subtask) {
+            return res.status(404).json({ success: false, message: 'Subtask not found' });
+        }
+
+        const subtaskTitle = subtask.title;
+        
+        // Remove subtask
+        task.subtasks.pull(req.params.subtaskId);
+
+        // Recalculate progress
+        task.calculateProgress();
+        await task.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'subtask_deleted',
+            userId: req.user._id,
+            taskId: task._id,
+            teamId: task.teamId,
+            details: `Subtask deleted: ${subtaskTitle} from task: ${task.title}`
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email')
+            .populate('assignedBy', 'name email')
+            .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email');
+
+        res.json({
+            success: true,
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Delete subtask error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
 module.exports = {
     getTasks,
     getTask,
@@ -345,5 +562,9 @@ module.exports = {
     updateTask,
     deleteTask,
     addComment,
-    getTaskStats
+    getTaskStats,
+    getMyTasks,
+    addSubtask,
+    updateSubtask,
+    deleteSubtask
 };

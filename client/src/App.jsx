@@ -7,10 +7,14 @@ import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUserManagement from './pages/AdminUserManagement';
 import AdminTeamManagement from './pages/AdminTeamManagement';
+import TeamDetailsPage from './pages/TeamDetailsPage';
+import MemberDetailsPage from './pages/MemberDetailsPage';
 import AdminTaskAssignment from './pages/AdminTaskAssignment';
 import AdminActivityLogs from './pages/AdminActivityLogs';
 import TeamManagement from './pages/TeamManagement';
 import TaskManagement from './pages/TaskManagement';
+import TeamLeadTaskBreakdown from './pages/TeamLeadTaskBreakdown';
+import MemberSubtasks from './pages/MemberSubtasks';
 import Notifications from './pages/Notifications';
 import Communication from './pages/Communication';
 import Reports from './pages/Reports';
@@ -45,6 +49,16 @@ function App() {
               <AdminTeamManagement />
             </ProtectedRoute>
           } />
+          <Route path="/admin/team/:teamId" element={
+            <ProtectedRoute requiredRole="admin">
+              <TeamDetailsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/member/:memberId" element={
+            <ProtectedRoute requiredRole="admin">
+              <MemberDetailsPage />
+            </ProtectedRoute>
+          } />
           <Route path="/admin/tasks" element={
             <ProtectedRoute requiredRole="admin">
               <AdminTaskAssignment />
@@ -63,6 +77,16 @@ function App() {
           <Route path="/tasks" element={
             <ProtectedRoute>
               <TaskManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/task-breakdown" element={
+            <ProtectedRoute requiredRole="team_lead">
+              <TeamLeadTaskBreakdown />
+            </ProtectedRoute>
+          } />
+          <Route path="/my-subtasks" element={
+            <ProtectedRoute>
+              <MemberSubtasks />
             </ProtectedRoute>
           } />
           <Route path="/notifications" element={

@@ -2,22 +2,31 @@ const express = require('express');
 const router = express.Router();
 const {
     getAllUsers,
+    getUserDetails,
     createUser,
     updateUser,
     deleteUser,
     toggleUserActive,
     resetUserPassword,
     getAllTeams,
+    getTeamDetails,
     createTeam,
+    updateTeam,
+    deleteTeam,
     assignMembersToTeam,
+    removeMemberFromTeam,
+    getTeamPerformance: getAdminTeamPerformance,
     getAllTasks,
     getAllActivities,
     getDashboardStats,
     assignTaskToTeamLead,
-    getAllTeamLeads
+    getAllTeamLeads,
+    updateTask,
+    reassignTask,
+    cancelTask
 } = require('../controllers/adminController');
 const {
-    getTeamPerformance,
+    getTeamPerformance: getAnalyticsTeamPerformance,
     getBestPerformingTeams,
     getTeamLeadEffectiveness,
     getDashboardStats: getAnalyticsDashboardStats
@@ -33,6 +42,8 @@ router.route('/users')
     .get(getAllUsers)
     .post(createUser);
 
+router.get('/users/:id/details', getUserDetails);
+
 router.route('/users/:id')
     .put(updateUser)
     .delete(deleteUser);
@@ -45,7 +56,15 @@ router.route('/teams')
     .get(getAllTeams)
     .post(createTeam);
 
+router.get('/teams/:id/details', getTeamDetails);
+router.get('/teams/:id/performance', getAdminTeamPerformance);
+
+router.route('/teams/:id')
+    .put(updateTeam)
+    .delete(deleteTeam);
+
 router.put('/teams/:id/assign-members', assignMembersToTeam);
+router.put('/teams/:id/remove-member', removeMemberFromTeam);
 
 // View all data routes
 router.get('/tasks', getAllTasks);
@@ -55,9 +74,12 @@ router.get('/stats', getDashboardStats);
 // Task assignment routes
 router.post('/assign-task', assignTaskToTeamLead);
 router.get('/team-leads', getAllTeamLeads);
+router.put('/tasks/:id', updateTask);
+router.put('/tasks/:id/reassign', reassignTask);
+router.put('/tasks/:id/cancel', cancelTask);
 
 // Analytics routes
-router.get('/analytics/team-performance', getTeamPerformance);
+router.get('/analytics/team-performance', getAnalyticsTeamPerformance);
 router.get('/analytics/best-teams', getBestPerformingTeams);
 router.get('/analytics/team-lead-effectiveness/:leadId', getTeamLeadEffectiveness);
 router.get('/analytics/dashboard-stats', getAnalyticsDashboardStats);

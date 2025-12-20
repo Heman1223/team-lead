@@ -1,288 +1,634 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { 
+    Users, Phone, Mail, MapPin, Calendar, TrendingUp, 
+    CheckCircle, Clock, AlertCircle, X, Search, Filter,
+    PhoneCall, PhoneOff, PhoneMissed, BarChart3
+} from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { usersAPI, teamsAPI } from '../services/api';
-// import './TeamManagement.css';
+import { usersAPI, teamsAPI, tasksAPI, callsAPI } from '../services/api';
 
 const TeamManagement = () => {
     const { isTeamLead, user } = useAuth();
     const [searchParams] = useSearchParams();
     const [members, setMembers] = useState([]);
+    const [teamTasks, setTeamTasks] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [editMember, setEditMember] = useState(null);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        designation: '',
-        phone: '',
-        role: 'team_member'
-    });
-    const [error, setError] = useState('');
-    const [filter, setFilter] = useState(searchParams.get('status') || 'all');
+    const [selectedMember, setSelectedMember] = useState(null);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [showCallModal, setShowCallModal] = useState(false);
+    const [callStatus, setCallStatus] = useState(null); // 'checking' | 'ringing' | 'oncall' | 'ended' | 'missed'
+    const [callDuration, setCallDuration] = useState(0);
+    const [callTimer, setCallTimer] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
 
     useEffect(() => {
-        fetchMembers();
+        fetchData();
+        // Refresh every 30 seconds
+        const interval = setInterval(fetchData, 30000);
+        return () => clearInterval(interval);
     }, []);
 
-    const fetchMembers = async () => {
+    useEffect(() => {
+        // Cleanup call timer on unmount
+        return () => {
+            if (callTimer) clearInterval(callTimer);
+        };
+    }, [callTimer]);
+
+    const fetchData = async () => {
         try {
             setLoading(true);
-            const response = await usersAPI.getAll();
-            setMembers(response.data.data);
+            
+            if (isTeamLead && user.teamId) {
+                // Get team members
+                const teamRes = await teamsAPI.getMyTeam();
+                const teamData = teamRes.data.data;
+                setMembers(teamData.members || []);
+
+                // Get all tasks for the team
+                const tasksRes = await tasksAPI.getAll({ teamId: user.teamId._id || user.teamId });
+                setTeamTasks(tasksRes.data.data || []);
+            } else {
+                // Regular member - get all users
+                const usersRes = await usersAPI.getAll();
+                setMembers(usersRes.data.data || []);
+            }
         } catch (err) {
-            console.error('Failed to fetch members:', err);
+            console.error('Failed to fetch data:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-
-        try {
-            if (editMember) {
-                await usersAPI.update(editMember._id, formData);
-            } else {
-                await usersAPI.create(formData);
+    const getMemberTasks = (memberId) => {
+        return teamTasks.filter(task => {
+            // Check if task is assigned to member or has subtasks assigned to member
+            if (task.assignedTo?._id === memberId || task.assignedTo === memberId) return true;
+            if (task.subtasks && task.subtasks.length > 0) {
+                return task.subtasks.some(st => st.assignedTo?._id === memberId || st.assignedTo === memberId);
             }
-            setShowModal(false);
-            setEditMember(null);
-            setFormData({ name: '', email: '', password: '', designation: '', phone: '', role: 'team_member' });
-            fetchMembers();
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to save member');
-        }
-    };
-
-    const handleEdit = (member) => {
-        setEditMember(member);
-        setFormData({
-            name: member.name,
-            email: member.email,
-            password: '',
-            designation: member.designation || '',
-            phone: member.phone || '',
-            role: member.role
+            return false;
         });
-        setShowModal(true);
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm('Are you sure you want to remove this member?')) return;
+    const getMemberStats = (memberId) => {
+        const memberTasks = getMemberTasks(memberId);
+        const subtasks = memberTasks.flatMap(t => t.subtasks || []).filter(st => st.assignedTo?._id === memberId || st.assignedTo === memberId);
+        
+        const completed = subtasks.filter(st => st.status === 'completed').length;
+        const inProgress = subtasks.filter(st => st.status === 'in_progress').length;
+        const total = subtasks.length;
+        const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        return {
+            totalTasks: total,
+            completed,
+            inProgress,
+            pending: total - completed - inProgress,
+            completionRate
+        };
+    };
+
+    const handleViewDetails = (member) => {
+        setSelectedMember(member);
+        setShowDetailsModal(true);
+    };
+
+    const handleInitiateCall = async (member) => {
+        setSelectedMember(member);
+        setShowCallModal(true);
+        setCallStatus('checking');
 
         try {
-            await usersAPI.delete(id);
-            fetchMembers();
-        } catch (err) {
-            alert(err.response?.data?.message || 'Failed to remove member');
+            // Check availability
+            const availRes = await callsAPI.checkAvailability(member._id);
+            const isAvailable = availRes.data.data.available;
+
+            if (!isAvailable) {
+                setCallStatus('unavailable');
+                setTimeout(() => {
+                    setShowCallModal(false);
+                    setCallStatus(null);
+                }, 3000);
+                return;
+            }
+
+            // Initiate call
+            setCallStatus('ringing');
+            const callRes = await callsAPI.initiate({
+                receiverId: member._id,
+                callType: 'voice'
+            });
+
+            // Simulate call answer after 3 seconds (in real app, this would be socket-based)
+            setTimeout(() => {
+                const answered = Math.random() > 0.3; // 70% chance of answer
+                if (answered) {
+                    setCallStatus('oncall');
+                    setCallDuration(0);
+                    // Start timer
+                    const timer = setInterval(() => {
+                        setCallDuration(prev => prev + 1);
+                    }, 1000);
+                    setCallTimer(timer);
+                } else {
+                    setCallStatus('missed');
+                    callsAPI.update(callRes.data.data._id, { status: 'missed' });
+                    setTimeout(() => {
+                        setShowCallModal(false);
+                        setCallStatus(null);
+                    }, 2000);
+                }
+            }, 3000);
+        } catch (error) {
+            console.error('Call error:', error);
+            setCallStatus('error');
+            setTimeout(() => {
+                setShowCallModal(false);
+                setCallStatus(null);
+            }, 2000);
         }
     };
 
-    const filteredMembers = members.filter(m =>
-        filter === 'all' || m.status === filter
-    );
-
-    const getStatusBadge = (status) => {
-        const badges = {
-            online: 'badge-success',
-            busy: 'badge-warning',
-            offline: 'badge-neutral'
-        };
-        return badges[status] || 'badge-neutral';
+    const handleEndCall = async () => {
+        if (callTimer) clearInterval(callTimer);
+        setCallStatus('ended');
+        
+        // In real app, update call record with duration
+        setTimeout(() => {
+            setShowCallModal(false);
+            setCallStatus(null);
+            setCallDuration(0);
+            setCallTimer(null);
+        }, 2000);
     };
+
+    const formatDuration = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'online': return 'bg-green-500';
+            case 'busy': return 'bg-yellow-500';
+            case 'offline': return 'bg-gray-400';
+            default: return 'bg-gray-400';
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'online': return 'Online';
+            case 'busy': return 'Busy';
+            case 'offline': return 'Offline';
+            default: return 'Unknown';
+        }
+    };
+
+    const filteredMembers = members.filter(m => {
+        const matchesSearch = m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            m.designation?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+
+    if (loading) {
+        return (
+            <Layout title="Team Management">
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+                        <p className="mt-4 text-gray-700 font-semibold">Loading team members...</p>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
 
     return (
+        <>
         <Layout title="Team Management">
-            <div className="team-page">
-                {/* Header Actions */}
-                <div className="page-header">
-                    <div className="filter-tabs">
-                        {['all', 'online', 'busy', 'offline'].map(status => (
-                            <button
-                                key={status}
-                                className={`filter-tab ${filter === status ? 'active' : ''}`}
-                                onClick={() => setFilter(status)}
-                            >
-                                {status === 'all' ? 'All Members' : status.charAt(0).toUpperCase() + status.slice(1)}
-                                <span className="tab-count">
-                                    {status === 'all' ? members.length : members.filter(m => m.status === status).length}
-                                </span>
-                            </button>
-                        ))}
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-gray-600 mt-1">View and manage your team members</p>
                     </div>
-                    {isTeamLead && (
-                        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                            Add Member
-                        </button>
-                    )}
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-semibold text-gray-600">Total Members</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{members.length}</p>
+                            </div>
+                            <div className="p-4 bg-blue-100 rounded-xl">
+                                <Users className="w-8 h-8 text-blue-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-semibold text-gray-600">Online</p>
+                                <p className="text-3xl font-bold text-green-600 mt-2">
+                                    {members.filter(m => m.status === 'online').length}
+                                </p>
+                            </div>
+                            <div className="p-4 bg-green-100 rounded-xl">
+                                <div className="w-8 h-8 bg-green-500 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-semibold text-gray-600">Busy</p>
+                                <p className="text-3xl font-bold text-yellow-600 mt-2">
+                                    {members.filter(m => m.status === 'busy').length}
+                                </p>
+                            </div>
+                            <div className="p-4 bg-yellow-100 rounded-xl">
+                                <div className="w-8 h-8 bg-yellow-500 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-semibold text-gray-600">Offline</p>
+                                <p className="text-3xl font-bold text-gray-600 mt-2">
+                                    {members.filter(m => m.status === 'offline').length}
+                                </p>
+                            </div>
+                            <div className="p-4 bg-gray-100 rounded-xl">
+                                <div className="w-8 h-8 bg-gray-400 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Search and Filter */}
+                <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Search members by name, email, or designation..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            {['all', 'online', 'busy', 'offline'].map(status => (
+                                <button
+                                    key={status}
+                                    onClick={() => setStatusFilter(status)}
+                                    className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
+                                        statusFilter === status
+                                            ? 'bg-orange-500 text-white'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                    <span className="ml-2 px-2 py-0.5 bg-white bg-opacity-20 rounded-lg text-xs">
+                                        {status === 'all' ? members.length : members.filter(m => m.status === status).length}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Members Grid */}
-                {loading ? (
-                    <div className="loading-container">
-                        <div className="loading-spinner" />
-                    </div>
-                ) : filteredMembers.length === 0 ? (
-                    <div className="empty-state">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
-                        <h3>No team members found</h3>
-                        <p>Add members to your team to get started.</p>
+                {filteredMembers.length === 0 ? (
+                    <div className="bg-white rounded-2xl shadow-sm p-16 text-center border border-gray-200">
+                        <Users className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">No members found</h3>
+                        <p className="text-gray-600">Try adjusting your search or filters.</p>
                     </div>
                 ) : (
-                    <div className="members-grid">
-                        {filteredMembers.map(member => (
-                            <div key={member._id} className="member-card">
-                                <div className="member-header">
-                                    <div className="member-avatar">
-                                        {member.avatar ? (
-                                            <img src={member.avatar} alt={member.name} />
-                                        ) : (
-                                            member.name.charAt(0).toUpperCase()
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredMembers.map(member => {
+                            const stats = isTeamLead ? getMemberStats(member._id) : null;
+                            
+                            return (
+                                <div key={member._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-all">
+                                    <div className="p-6">
+                                        {/* Member Header */}
+                                        <div className="flex items-start gap-4 mb-4">
+                                            <div className="relative">
+                                                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                                                    {member.name?.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor(member.status)} rounded-full border-2 border-white`}></div>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-bold text-gray-900 text-lg truncate">{member.name}</h3>
+                                                <p className="text-sm text-gray-600 truncate">{member.designation || 'Team Member'}</p>
+                                                <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded-lg ${
+                                                    member.status === 'online' ? 'bg-green-100 text-green-700' :
+                                                    member.status === 'busy' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                    {getStatusLabel(member.status)}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Contact Info */}
+                                        <div className="space-y-2 mb-4">
+                                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                <Mail className="w-4 h-4" />
+                                                <span className="truncate">{member.email}</span>
+                                            </div>
+                                            {member.phone && (
+                                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                    <Phone className="w-4 h-4" />
+                                                    <span>{member.phone}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Performance Stats (Team Lead Only) */}
+                                        {isTeamLead && stats && (
+                                            <div className="mb-4 p-3 bg-gray-50 rounded-xl">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-xs font-semibold text-gray-600">Performance</span>
+                                                    <span className="text-xs font-bold text-orange-600">{stats.completionRate}%</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                                    <div
+                                                        className="bg-orange-500 h-2 rounded-full transition-all"
+                                                        style={{ width: `${stats.completionRate}%` }}
+                                                    ></div>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                                    <div className="text-center">
+                                                        <p className="font-bold text-gray-900">{stats.totalTasks}</p>
+                                                        <p className="text-gray-600">Tasks</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="font-bold text-green-600">{stats.completed}</p>
+                                                        <p className="text-gray-600">Done</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="font-bold text-blue-600">{stats.inProgress}</p>
+                                                        <p className="text-gray-600">Active</p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         )}
-                                        <span className={`status-indicator ${member.status}`} />
-                                    </div>
-                                    {isTeamLead && member._id !== user._id && (
-                                        <div className="member-actions">
-                                            <button className="btn btn-ghost btn-icon" onClick={() => handleEdit(member)}>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                </svg>
+
+                                        {/* Action Buttons */}
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleViewDetails(member)}
+                                                className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-all font-semibold text-sm flex items-center justify-center gap-2"
+                                            >
+                                                <BarChart3 className="w-4 h-4" />
+                                                Details
                                             </button>
-                                            <button className="btn btn-ghost btn-icon" onClick={() => handleDelete(member._id)}>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <polyline points="3 6 5 6 21 6" />
-                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="member-info">
-                                    <h4 className="member-name">{member.name}</h4>
-                                    <span className="member-designation">{member.designation || 'Team Member'}</span>
-                                    <span className="member-email">{member.email}</span>
-                                </div>
-                                <div className="member-footer">
-                                    <span className={`badge ${getStatusBadge(member.status)}`}>
-                                        <span className={`status-dot ${member.status}`} />
-                                        {member.status}
-                                    </span>
-                                    <span className="badge badge-primary">{member.role === 'team_lead' ? 'Lead' : 'Member'}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Add/Edit Modal */}
-                {showModal && (
-                    <div className="modal-overlay" onClick={() => { setShowModal(false); setEditMember(null); }}>
-                        <div className="modal" onClick={e => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>{editMember ? 'Edit Member' : 'Add Team Member'}</h3>
-                                <button className="btn btn-ghost btn-icon" onClick={() => { setShowModal(false); setEditMember(null); }}>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <line x1="18" y1="6" x2="6" y2="18" />
-                                        <line x1="6" y1="6" x2="18" y2="18" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <form onSubmit={handleSubmit}>
-                                <div className="modal-body">
-                                    {error && <div className="error-message">{error}</div>}
-
-                                    <div className="form-group">
-                                        <label>Full Name</label>
-                                        <input
-                                            type="text"
-                                            value={formData.name}
-                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Email</label>
-                                        <input
-                                            type="email"
-                                            value={formData.email}
-                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-
-                                    {!editMember && (
-                                        <div className="form-group">
-                                            <label>Password</label>
-                                            <input
-                                                type="password"
-                                                value={formData.password}
-                                                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                                required={!editMember}
-                                                placeholder="Minimum 6 characters"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label>Designation</label>
-                                            <input
-                                                type="text"
-                                                value={formData.designation}
-                                                onChange={e => setFormData({ ...formData, designation: e.target.value })}
-                                                placeholder="e.g., Developer"
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Phone</label>
-                                            <input
-                                                type="text"
-                                                value={formData.phone}
-                                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                            />
+                                            {isTeamLead && member._id !== user._id && (
+                                                <button
+                                                    onClick={() => handleInitiateCall(member)}
+                                                    disabled={member.status === 'offline'}
+                                                    className={`flex-1 px-4 py-2 rounded-xl transition-all font-semibold text-sm flex items-center justify-center gap-2 ${
+                                                        member.status === 'offline'
+                                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                            : 'bg-green-50 text-green-700 hover:bg-green-100'
+                                                    }`}
+                                                >
+                                                    <Phone className="w-4 h-4" />
+                                                    Call
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
-
-                                    <div className="form-group">
-                                        <label>Role</label>
-                                        <select
-                                            value={formData.role}
-                                            onChange={e => setFormData({ ...formData, role: e.target.value })}
-                                        >
-                                            <option value="team_member">Team Member</option>
-                                            <option value="team_lead">Team Lead</option>
-                                        </select>
-                                    </div>
                                 </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => { setShowModal(false); setEditMember(null); }}>
-                                        Cancel
-                                    </button>
-                                    <button type="submit" className="btn btn-primary">
-                                        {editMember ? 'Save Changes' : 'Add Member'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
         </Layout>
+
+        {/* Member Details Modal */}
+        {showDetailsModal && selectedMember && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-hidden">
+                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 rounded-t-2xl">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xl font-bold text-white">Member Details</h3>
+                            <button
+                                onClick={() => setShowDetailsModal(false)}
+                                className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-1"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+                        {/* Member Info */}
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white text-3xl font-bold shadow-md">
+                                {selectedMember.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <h4 className="text-2xl font-bold text-gray-900">{selectedMember.name}</h4>
+                                <p className="text-gray-600">{selectedMember.designation || 'Team Member'}</p>
+                                <span className={`inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-lg ${
+                                    selectedMember.status === 'online' ? 'bg-green-100 text-green-700' :
+                                    selectedMember.status === 'busy' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-gray-100 text-gray-700'
+                                }`}>
+                                    {getStatusLabel(selectedMember.status)}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Contact Details */}
+                        <div className="mb-6 p-4 bg-gray-50 rounded-xl">
+                            <h5 className="font-bold text-gray-900 mb-3">Contact Information</h5>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                    <Mail className="w-5 h-5 text-gray-400" />
+                                    <span className="text-gray-700">{selectedMember.email}</span>
+                                </div>
+                                {selectedMember.phone && (
+                                    <div className="flex items-center gap-3">
+                                        <Phone className="w-5 h-5 text-gray-400" />
+                                        <span className="text-gray-700">{selectedMember.phone}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Performance Stats */}
+                        {isTeamLead && (() => {
+                            const stats = getMemberStats(selectedMember._id);
+                            const memberTasks = getMemberTasks(selectedMember._id);
+                            
+                            return (
+                                <>
+                                    <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                        <h5 className="font-bold text-gray-900 mb-3">Performance Metrics</h5>
+                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                            <div className="text-center p-3 bg-white rounded-lg">
+                                                <p className="text-2xl font-bold text-gray-900">{stats.totalTasks}</p>
+                                                <p className="text-sm text-gray-600">Total Tasks</p>
+                                            </div>
+                                            <div className="text-center p-3 bg-white rounded-lg">
+                                                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+                                                <p className="text-sm text-gray-600">Completed</p>
+                                            </div>
+                                            <div className="text-center p-3 bg-white rounded-lg">
+                                                <p className="text-2xl font-bold text-blue-600">{stats.inProgress}</p>
+                                                <p className="text-sm text-gray-600">In Progress</p>
+                                            </div>
+                                            <div className="text-center p-3 bg-white rounded-lg">
+                                                <p className="text-2xl font-bold text-orange-600">{stats.completionRate}%</p>
+                                                <p className="text-sm text-gray-600">Completion Rate</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Assigned Tasks */}
+                                    <div className="mb-4">
+                                        <h5 className="font-bold text-gray-900 mb-3">Assigned Tasks ({memberTasks.length})</h5>
+                                        {memberTasks.length === 0 ? (
+                                            <p className="text-gray-600 text-sm">No tasks assigned yet</p>
+                                        ) : (
+                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                {memberTasks.map(task => (
+                                                    <div key={task._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                        <p className="font-semibold text-gray-900 text-sm">{task.title}</p>
+                                                        <p className="text-xs text-gray-600 mt-1">
+                                                            Status: <span className="font-semibold capitalize">{task.status?.replace('_', ' ')}</span>
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Call Modal */}
+        {showCallModal && selectedMember && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+                    <div className="p-8 text-center">
+                        {/* Member Avatar */}
+                        <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-lg mx-auto mb-4">
+                            {selectedMember.name?.charAt(0).toUpperCase()}
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedMember.name}</h3>
+                        <p className="text-gray-600 mb-6">{selectedMember.designation || 'Team Member'}</p>
+
+                        {/* Call Status */}
+                        {callStatus === 'checking' && (
+                            <div className="mb-6">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-orange-600 mx-auto mb-3"></div>
+                                <p className="text-gray-700 font-semibold">Checking availability...</p>
+                            </div>
+                        )}
+
+                        {callStatus === 'unavailable' && (
+                            <div className="mb-6">
+                                <PhoneOff className="w-12 h-12 text-red-600 mx-auto mb-3" />
+                                <p className="text-red-600 font-semibold">Member is currently unavailable</p>
+                            </div>
+                        )}
+
+                        {callStatus === 'ringing' && (
+                            <div className="mb-6">
+                                <div className="relative">
+                                    <PhoneCall className="w-12 h-12 text-green-600 mx-auto mb-3 animate-pulse" />
+                                </div>
+                                <p className="text-gray-700 font-semibold">Calling...</p>
+                            </div>
+                        )}
+
+                        {callStatus === 'oncall' && (
+                            <div className="mb-6">
+                                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
+                                    <Phone className="w-8 h-8 text-white" />
+                                </div>
+                                <p className="text-green-600 font-semibold text-lg mb-2">Call in progress</p>
+                                <p className="text-3xl font-bold text-gray-900">{formatDuration(callDuration)}</p>
+                            </div>
+                        )}
+
+                        {callStatus === 'missed' && (
+                            <div className="mb-6">
+                                <PhoneMissed className="w-12 h-12 text-red-600 mx-auto mb-3" />
+                                <p className="text-red-600 font-semibold">Call not answered</p>
+                            </div>
+                        )}
+
+                        {callStatus === 'ended' && (
+                            <div className="mb-6">
+                                <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-3" />
+                                <p className="text-green-600 font-semibold">Call ended</p>
+                                <p className="text-gray-600 text-sm mt-2">Duration: {formatDuration(callDuration)}</p>
+                            </div>
+                        )}
+
+                        {callStatus === 'error' && (
+                            <div className="mb-6">
+                                <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-3" />
+                                <p className="text-red-600 font-semibold">Call failed</p>
+                            </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        {callStatus === 'oncall' && (
+                            <button
+                                onClick={handleEndCall}
+                                className="w-full px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold flex items-center justify-center gap-2"
+                            >
+                                <PhoneOff className="w-5 h-5" />
+                                End Call
+                            </button>
+                        )}
+
+                        {(callStatus === 'checking' || callStatus === 'ringing') && (
+                            <button
+                                onClick={() => {
+                                    setShowCallModal(false);
+                                    setCallStatus(null);
+                                }}
+                                className="w-full px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold"
+                            >
+                                Cancel
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 };
 

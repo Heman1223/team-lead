@@ -11,25 +11,33 @@ export const adminAnalyticsAPI = {
 // Admin User Management API
 export const adminUsersAPI = {
     getAll: () => api.get('/admin/users'),
+    getDetails: (id) => api.get(`/admin/users/${id}/details`),
     create: (data) => api.post('/admin/users', data),
     update: (id, data) => api.put(`/admin/users/${id}`, data),
-    delete: (id) => api.delete(`/admin/users/${id}`),
+    delete: (id, permanent = false) => api.delete(`/admin/users/${id}${permanent ? '?permanent=true' : ''}`),
     toggleActive: (id) => api.put(`/admin/users/${id}/toggle-active`),
-    resetPassword: (id, newPassword) => api.put(`/admin/users/${id}/reset-password`, { newPassword })
+    resetPassword: (id, newPassword, forceChange = false) => api.put(`/admin/users/${id}/reset-password`, { newPassword, forceChange })
 };
 
 // Admin Team Management API
 export const adminTeamsAPI = {
     getAll: () => api.get('/admin/teams'),
+    getDetails: (id) => api.get(`/admin/teams/${id}/details`),
     create: (data) => api.post('/admin/teams', data),
-    assignMembers: (teamId, memberIds) => api.put(`/admin/teams/${teamId}/assign-members`, { memberIds })
+    update: (id, data) => api.put(`/admin/teams/${id}`, data),
+    delete: (id) => api.delete(`/admin/teams/${id}`),
+    assignMembers: (teamId, memberIds) => api.put(`/admin/teams/${teamId}/assign-members`, { memberIds }),
+    removeMember: (teamId, memberId) => api.put(`/admin/teams/${teamId}/remove-member`, { memberId }),
+    getPerformance: (teamId) => api.get(`/admin/teams/${teamId}/performance`)
 };
 
 // Admin Task Management API
 export const adminTasksAPI = {
     getAll: () => api.get('/admin/tasks'),
     assignToTeamLead: (data) => api.post('/admin/assign-task', data),
-    getTeamLeads: () => api.get('/admin/team-leads')
+    getTeamLeads: () => api.get('/admin/team-leads'),
+    updateTask: (id, data) => api.put(`/admin/tasks/${id}`, data),
+    deleteTask: (id) => api.delete(`/admin/tasks/${id}`)
 };
 
 // Admin Activities API

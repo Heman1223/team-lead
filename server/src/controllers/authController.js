@@ -1,6 +1,4 @@
 const User = require('../models/User');
-const Team = require('../models/Team');
-const ActivityLog = require('../models/ActivityLog');
 const jwt = require('jsonwebtoken');
 
 // Generate JWT Token
@@ -31,14 +29,7 @@ const register = async (req, res) => {
             role: role || 'team_member'
         });
 
-        // Note: Teams should be created by admin, not automatically
-
-        // Log activity
-        await ActivityLog.create({
-            action: 'user_created',
-            userId: user._id,
-            details: `New user registered: ${user.name} (${user.role})`
-        });
+        console.log('New user registered:', user.email);
 
         // Generate token
         const token = generateToken(user._id);
@@ -81,6 +72,8 @@ const login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
+        console.log('User found, checking password...');
+
         // Check password
         const isMatch = await user.matchPassword(password);
         if (!isMatch) {
@@ -88,19 +81,13 @@ const login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        console.log('Login successful for user:', email);
+        console.log('✓ Login successful for user:', email);
 
-        // Update user status to online (without triggering pre-save hooks)
+        // Update user status to online and last login (without triggering pre-save hooks)
         await User.findByIdAndUpdate(user._id, {
             status: 'online',
-            lastActive: new Date()
-        });
-
-        // Log activity
-        await ActivityLog.create({
-            action: 'user_login',
-            userId: user._id,
-            details: `User logged in: ${user.name}`
+            lastActive: new Date(),
+            lastLogin: new Date()
         });
 
         // Generate token
@@ -120,8 +107,13 @@ const login = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Login error:', error.message, error.stack);
-        res.status(500).json({ success: false, message: 'Server error during login', error: error.message });
+        console.error('❌ Login error:', error.message);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error during login', 
+            error: error.message 
+        });
     }
 };
 
@@ -136,13 +128,7 @@ const logout = async (req, res) => {
             user.status = 'offline';
             user.lastActive = new Date();
             await user.save();
-
-            // Log activity
-            await ActivityLog.create({
-                action: 'user_logout',
-                userId: user._id,
-                details: `User logged out: ${user.name}`
-            });
+            console.log('User logged out:', user.email);
         }
 
         res.json({ success: true, message: 'Logged out successfully' });

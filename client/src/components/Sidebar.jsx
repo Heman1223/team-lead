@@ -17,6 +17,7 @@ import {
 
 const Sidebar = () => {
   const { user, isTeamLead, isAdmin, logout } = useAuth();
+  const isTeamMember = user?.role === 'team_member';
 
   const adminMenuItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -30,6 +31,8 @@ const Sidebar = () => {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/team', label: 'Team', icon: Users },
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },
+    { path: '/task-breakdown', label: 'Task Breakdown', icon: ClipboardList, teamLeadOnly: true },
+    { path: '/my-subtasks', label: 'My Subtasks', icon: CheckSquare, teamMemberOnly: true },
     { path: '/notifications', label: 'Notifications', icon: Bell },
     { path: '/communication', label: 'Communication', icon: MessageSquare },
     { path: '/reports', label: 'Reports', icon: BarChart3, teamLeadOnly: true }
@@ -37,7 +40,11 @@ const Sidebar = () => {
 
   const displayMenuItems = isAdmin 
     ? adminMenuItems 
-    : menuItems.filter(item => !item.teamLeadOnly || isTeamLead);
+    : menuItems.filter(item => {
+        if (item.teamLeadOnly && !isTeamLead) return false;
+        if (item.teamMemberOnly && !isTeamMember) return false;
+        return true;
+      });
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 shadow-2xl z-40 flex flex-col" style={{ width: '256px' }}>

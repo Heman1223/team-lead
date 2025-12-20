@@ -69,11 +69,15 @@ export const teamsAPI = {
 export const tasksAPI = {
     getAll: (params) => api.get('/tasks', { params }),
     getOne: (id) => api.get(`/tasks/${id}`),
+    getMyTasks: () => api.get('/tasks/my-tasks'),
     create: (data) => api.post('/tasks', data),
     update: (id, data) => api.put(`/tasks/${id}`, data),
     delete: (id) => api.delete(`/tasks/${id}`),
     addComment: (id, content) => api.post(`/tasks/${id}/comments`, { content }),
-    getStats: () => api.get('/tasks/stats')
+    getStats: () => api.get('/tasks/stats'),
+    addSubtask: (taskId, data) => api.post(`/tasks/${taskId}/subtasks`, data),
+    updateSubtask: (taskId, subtaskId, data) => api.put(`/tasks/${taskId}/subtasks/${subtaskId}`, data),
+    deleteSubtask: (taskId, subtaskId) => api.delete(`/tasks/${taskId}/subtasks/${subtaskId}`)
 };
 
 // Notifications API
