@@ -163,42 +163,93 @@ const TaskManagement = () => {
 
     return (
         <Layout title="Task Management">
-            <div className="task-page">
-                {/* Filters */}
-                <div className="page-header">
-                    <div className="filters">
-                        <select
-                            value={filter.status}
-                            onChange={e => setFilter({ ...filter, status: e.target.value })}
-                            className="filter-select"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="assigned">Assigned</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="blocked">Blocked</option>
-                            <option value="overdue">Overdue</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                        <select
-                            value={filter.priority}
-                            onChange={e => setFilter({ ...filter, priority: e.target.value })}
-                            className="filter-select"
-                        >
-                            <option value="all">All Priority</option>
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                        </select>
+            <div className="space-y-6">
+                {/* Professional Header */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg">
+                            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">Task Management</h1>
+                            <p className="text-sm text-gray-500">Manage and track all your tasks</p>
+                        </div>
                     </div>
                     {isTeamLead && (
-                        <button className="btn btn-primary" onClick={() => { resetForm(); setShowModal(true); }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <line x1="5" y1="12" x2="19" y2="12" />
+                        <button
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200"
+                            onClick={() => { resetForm(); setShowModal(true); }}
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                             </svg>
                             Create Task
                         </button>
                     )}
+                </div>
+
+                {/* Professional Filters */}
+                <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gray-100 rounded-lg">
+                                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-900">Filters</h3>
+                                <p className="text-xs text-gray-500">Narrow down results</p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-4">
+                            {/* Status Filter */}
+                            <div className="flex flex-wrap gap-1 bg-gray-100 p-1.5 rounded-xl">
+                                {[
+                                    { value: 'all', label: 'All' },
+                                    { value: 'assigned', label: 'Assigned' },
+                                    { value: 'in_progress', label: 'In Progress' },
+                                    { value: 'completed', label: 'Completed' },
+                                    { value: 'overdue', label: 'Overdue' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setFilter({ ...filter, status: opt.value })}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${filter.status === opt.value
+                                            ? 'bg-white text-orange-600 shadow-md'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Priority Filter */}
+                            <div className="flex gap-1 bg-gray-100 p-1.5 rounded-xl">
+                                {[
+                                    { value: 'all', label: 'All Priority' },
+                                    { value: 'high', label: 'High' },
+                                    { value: 'medium', label: 'Medium' },
+                                    { value: 'low', label: 'Low' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setFilter({ ...filter, priority: opt.value })}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${filter.priority === opt.value
+                                            ? 'bg-white shadow-md ' + (opt.value === 'high' ? 'text-red-600' : opt.value === 'medium' ? 'text-yellow-600' : opt.value === 'low' ? 'text-green-600' : 'text-gray-700')
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Task Board */}
@@ -216,38 +267,65 @@ const TaskManagement = () => {
                         <p>Create a new task to get started.</p>
                     </div>
                 ) : (
-                    <div className="tasks-grid">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredTasks.map(task => (
                             <div
                                 key={task._id}
-                                className="task-card"
+                                className="task-card cursor-pointer group"
                                 onClick={() => { setSelectedTask(task); setShowDetailModal(true); }}
                             >
-                                <div className="task-header">
-                                    <div className={`priority-indicator priority-${task.priority}`} />
-                                    <span className={`badge badge-${statusColors[task.status]}`}>
+                                {/* Priority indicator bar */}
+                                <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-2xl ${task.priority === 'high' ? 'bg-red-500' :
+                                        task.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+                                    }`}></div>
+
+                                <div className="flex items-start justify-between mb-4">
+                                    <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${task.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                            task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                                task.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                                                    task.status === 'blocked' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-gray-100 text-gray-700'
+                                        }`}>
                                         {task.status.replace('_', ' ')}
                                     </span>
+                                    <span className={`px-2 py-1 text-xs font-bold uppercase rounded ${task.priority === 'high' ? 'bg-red-50 text-red-600' :
+                                            task.priority === 'medium' ? 'bg-yellow-50 text-yellow-600' :
+                                                'bg-green-50 text-green-600'
+                                        }`}>
+                                        {task.priority}
+                                    </span>
                                 </div>
-                                <h4 className="task-title">{task.title}</h4>
+
+                                <h4 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2">
+                                    {task.title}
+                                </h4>
+
                                 {task.description && (
-                                    <p className="task-description">{task.description.substring(0, 100)}...</p>
+                                    <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+                                        {task.description}
+                                    </p>
                                 )}
-                                <div className="task-meta">
-                                    <div className="task-assignee">
-                                        <div className="avatar avatar-sm">
-                                            {task.assignedTo?.name?.charAt(0) || '?'}
+
+                                <div className="mt-auto pt-4 border-t border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="member-avatar member-avatar-sm">
+                                                {task.assignedTo?.name?.charAt(0) || '?'}
+                                            </div>
+                                            <span className="text-sm text-gray-600 font-medium">
+                                                {task.assignedTo?.name || 'Unassigned'}
+                                            </span>
                                         </div>
-                                        <span>{task.assignedTo?.name || 'Unassigned'}</span>
-                                    </div>
-                                    <div className="task-deadline">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <circle cx="12" cy="12" r="10" />
-                                            <polyline points="12 6 12 12 16 14" />
-                                        </svg>
-                                        <span className={new Date(task.deadline) < new Date() && task.status !== 'completed' ? 'overdue' : ''}>
+                                        <div className={`flex items-center gap-1 text-xs font-medium ${new Date(task.deadline) < new Date() && task.status !== 'completed'
+                                                ? 'text-red-600'
+                                                : 'text-gray-500'
+                                            }`}>
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <polyline points="12 6 12 12 16 14" />
+                                            </svg>
                                             {new Date(task.deadline).toLocaleDateString()}
-                                        </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -12,25 +12,30 @@ const getTasks = async (req, res) => {
 
         let query = {};
 
-        // Filter by team
-        if (teamId) {
-            query.teamId = teamId;
-        } else if (req.user.teamId) {
-            query.teamId = req.user.teamId;
-        }
-
         if (status) query.status = status;
         if (priority) query.priority = priority;
         if (assignedTo) query.assignedTo = assignedTo;
 
-        // For team members, only show their tasks
+        // For team members, show tasks where they have subtasks assigned
+        // Don't filter by teamId since subtasks could be in any parent task
         if (req.user.role === 'team_member') {
-            query.assignedTo = req.user._id;
+            query.$or = [
+                { assignedTo: req.user._id },
+                { 'subtasks.assignedTo': req.user._id }
+            ];
+        } else {
+            // For team leads and admins, filter by team
+            if (teamId) {
+                query.teamId = teamId;
+            } else if (req.user.teamId) {
+                query.teamId = req.user.teamId;
+            }
         }
 
         const tasks = await Task.find(query)
             .populate('assignedTo', 'name email avatar status')
             .populate('assignedBy', 'name email')
+            .populate('subtasks.assignedTo', 'name email')
             .sort({ deadline: 1 });
 
         // Update overdue tasks
@@ -60,7 +65,7 @@ const getTask = async (req, res) => {
     try {
         const task = await Task.findById(req.params.id)
             .populate('assignedTo', 'name email avatar status')
-            .populate('createdBy', 'name email')
+            .populate('assignedBy', 'name email')
             .populate('comments.userId', 'name avatar');
 
         if (!task) {
@@ -82,15 +87,16 @@ const getTask = async (req, res) => {
 // @access  Private (Team Lead only)
 const createTask = async (req, res) => {
     try {
-        const { title, description, priority, deadline, assignedTo, notes, estimatedHours } = req.body;
+        const { title, description, priority, deadline, dueDate, assignedTo, notes, estimatedHours } = req.body;
 
         const task = await Task.create({
             title,
             description,
             priority: priority || 'medium',
-            deadline,
+            deadline: deadline || dueDate,
+            dueDate: dueDate || deadline,
             assignedTo,
-            createdBy: req.user._id,
+            assignedBy: req.user._id,
             teamId: req.user.teamId,
             notes,
             estimatedHours
@@ -117,7 +123,7 @@ const createTask = async (req, res) => {
 
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo', 'name email avatar')
-            .populate('createdBy', 'name email');
+            .populate('assignedBy', 'name email');
 
         res.status(201).json({
             success: true,
@@ -196,7 +202,7 @@ const updateTask = async (req, res) => {
 
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo', 'name email avatar')
-            .populate('createdBy', 'name email');
+            .populate('assignedBy', 'name email');
 
         res.json({
             success: true,
@@ -266,7 +272,7 @@ const addComment = async (req, res) => {
 
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo', 'name email avatar')
-            .populate('createdBy', 'name email')
+            .populate('assignedBy', 'name email')
             .populate('comments.userId', 'name avatar');
 
         res.json({
@@ -369,9 +375,9 @@ const addSubtask = async (req, res) => {
         const { title, description, assignedTo } = req.body;
 
         if (!title || !assignedTo) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide title and assignedTo' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide title and assignedTo'
             });
         }
 
@@ -382,44 +388,58 @@ const addSubtask = async (req, res) => {
 
         // Verify the task is assigned to the current user (team lead)
         if (task.assignedTo.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'You can only add subtasks to your own tasks' 
+            return res.status(403).json({
+                success: false,
+                message: 'You can only add subtasks to your own tasks'
             });
         }
 
-        // Add subtask
-        task.subtasks.push({
+        // Create the new subtask object
+        const newSubtask = {
             title,
             description: description || '',
             assignedTo,
             status: 'not_started',
             createdAt: new Date()
-        });
+        };
 
-        // Recalculate progress
-        task.calculateProgress();
-        await task.save();
+        // Use findByIdAndUpdate with $push to avoid full document validation
+        await Task.findByIdAndUpdate(
+            req.params.id,
+            {
+                $push: { subtasks: newSubtask },
+                $set: { status: task.status === 'not_started' ? 'in_progress' : task.status }
+            },
+            { new: true, runValidators: false }
+        );
 
-        // Create notification for assigned member
-        await Notification.create({
-            type: 'task_assigned',
-            title: 'New Subtask Assigned',
-            message: `You have been assigned a subtask: ${title}`,
-            userId: assignedTo,
-            taskId: task._id,
-            senderId: req.user._id
-        });
+        // Create notification for assigned member (don't let this fail the response)
+        try {
+            await Notification.create({
+                type: 'task_assigned',
+                title: 'New Subtask Assigned',
+                message: `You have been assigned a subtask: ${title}`,
+                userId: assignedTo,
+                taskId: task._id,
+                senderId: req.user._id
+            });
+        } catch (notifError) {
+            console.error('Failed to create notification:', notifError.message);
+        }
 
-        // Log activity
-        await ActivityLog.create({
-            action: 'subtask_created',
-            userId: req.user._id,
-            targetUserId: assignedTo,
-            taskId: task._id,
-            teamId: task.teamId,
-            details: `Subtask created: ${title} for task: ${task.title}`
-        });
+        // Log activity (don't let this fail the response)
+        try {
+            await ActivityLog.create({
+                action: 'subtask_created',
+                userId: req.user._id,
+                targetUserId: assignedTo,
+                taskId: task._id,
+                teamId: task.teamId,
+                details: `Subtask created: ${title} for task: ${task.title}`
+            });
+        } catch (activityError) {
+            console.error('Failed to log activity:', activityError.message);
+        }
 
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo', 'name email')
@@ -432,7 +452,12 @@ const addSubtask = async (req, res) => {
             data: populatedTask
         });
     } catch (error) {
-        console.error('Add subtask error:', error);
+        console.error('❌ Add subtask error:', error);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('Request params:', req.params);
+        console.error('Request body:', req.body);
+        console.error('User:', req.user?._id);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };
@@ -445,9 +470,9 @@ const updateSubtask = async (req, res) => {
         const { status } = req.body;
 
         if (!status) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide status' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide status'
             });
         }
 
@@ -464,7 +489,7 @@ const updateSubtask = async (req, res) => {
         // Update subtask status
         const oldStatus = subtask.status;
         subtask.status = status;
-        
+
         if (status === 'completed') {
             subtask.completedAt = new Date();
         }
@@ -510,9 +535,9 @@ const deleteSubtask = async (req, res) => {
 
         // Verify the task is assigned to the current user (team lead)
         if (task.assignedTo.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'You can only delete subtasks from your own tasks' 
+            return res.status(403).json({
+                success: false,
+                message: 'You can only delete subtasks from your own tasks'
             });
         }
 
@@ -522,7 +547,7 @@ const deleteSubtask = async (req, res) => {
         }
 
         const subtaskTitle = subtask.title;
-        
+
         // Remove subtask
         task.subtasks.pull(req.params.subtaskId);
 
