@@ -358,7 +358,10 @@ const AdminTeamManagement = () => {
                                     </div>
                                     <div className="relative">
                                         <button
-                                            onClick={() => setOpenMenuId(openMenuId === team._id ? null : team._id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenMenuId(openMenuId === team._id ? null : team._id);
+                                            }}
                                             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                                         >
                                             <MoreVertical className="w-5 h-5" />
@@ -367,6 +370,7 @@ const AdminTeamManagement = () => {
                                         {openMenuId === team._id && (
                                             <div 
                                                 ref={menuRef}
+                                                onClick={(e) => e.stopPropagation()}
                                                 className="absolute right-0 top-10 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 py-2"
                                             >
                                                 <button

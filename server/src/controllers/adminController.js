@@ -517,7 +517,19 @@ const createTeam = async (req, res) => {
         });
     } catch (error) {
         console.error('Create team error:', error);
-        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+        // Handle duplicate key error (11000)
+        if (error.code === 11000) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Team with this name already exists' 
+            });
+        }
+        // Return actual error message for debugging
+        res.status(500).json({ 
+            success: false, 
+            message: error.message || 'Server error during team creation',
+            error: error.message 
+        });
     }
 };
 
