@@ -4,6 +4,7 @@ const {
     getTeams,
     getTeam,
     getMyTeam,
+    getLedTeams,
     createTeam,
     updateTeam,
     addMember,
@@ -14,6 +15,7 @@ const { protect, authorize } = require('../middleware/auth');
 router.use(protect);
 
 router.get('/my-team', getMyTeam);
+router.get('/my-led-teams', authorize('team_lead'), getLedTeams);
 router.route('/')
     .get(getTeams)
     .post(authorize('team_lead'), createTeam);

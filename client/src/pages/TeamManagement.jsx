@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
-    Users, Phone, Mail, MapPin, Calendar, TrendingUp, 
+    Users, User, Phone, Mail, MapPin, Calendar, TrendingUp,
     CheckCircle, Clock, AlertCircle, X, Search, Filter,
     PhoneCall, PhoneOff, PhoneMissed, BarChart3
 } from 'lucide-react';
@@ -11,14 +11,24 @@ import { usersAPI, teamsAPI, tasksAPI, callsAPI } from '../services/api';
 
 const TeamManagement = () => {
     const { isTeamLead, user } = useAuth();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    
+    // View Mode: 'teams' (list of teams) or 'members' (list of members in a team)
+    // For regular members, this defaults to 'members' and stays there.
+    // For Team Leads, it starts at 'teams' (if they have multiple?) or we can default to 'teams' list always for consistency.
+    const [viewMode, setViewMode] = useState(isTeamLead ? 'teams' : 'members');
+    
+    const [teams, setTeams] = useState([]);
+    const [currentTeam, setCurrentTeam] = useState(null); // The team currently being viewed
+    
     const [members, setMembers] = useState([]);
     const [teamTasks, setTeamTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedMember, setSelectedMember] = useState(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [showCallModal, setShowCallModal] = useState(false);
-    const [callStatus, setCallStatus] = useState(null); // 'checking' | 'ringing' | 'oncall' | 'ended' | 'missed'
+    const [callStatus, setCallStatus] = useState(null); 
     const [callDuration, setCallDuration] = useState(0);
     const [callTimer, setCallTimer] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -42,25 +52,65 @@ const TeamManagement = () => {
         try {
             setLoading(true);
             
-            if (isTeamLead && user.teamId) {
-                // Get team members
+            if (isTeamLead) {
+                // Fetch ALL teams led by this user
+                const teamsRes = await teamsAPI.getLedTeams();
+                const teamsData = teamsRes.data.data;
+                setTeams(teamsData);
+
+                // If user was already viewing a specific team (e.g. back navigation or deep link logic could go here)
+                // For now, if currentTeam is set, we assume we want to refresh its data
+                if (currentTeam) {
+                   const updatedTeam = teamsData.find(t => t._id === currentTeam._id);
+                   if (updatedTeam) {
+                       setCurrentTeam(updatedTeam);
+                       setMembers(updatedTeam.members || []);
+                       // Fetch tasks for this specific team
+                       const tasksRes = await tasksAPI.getAll({ teamId: updatedTeam._id });
+                       setTeamTasks(tasksRes.data.data || []);
+                   }
+                }
+            } else {
+                // Regular member - get their single team details
                 const teamRes = await teamsAPI.getMyTeam();
                 const teamData = teamRes.data.data;
+                setCurrentTeam(teamData);
                 setMembers(teamData.members || []);
-
-                // Get all tasks for the team
-                const tasksRes = await tasksAPI.getAll({ teamId: user.teamId._id || user.teamId });
-                setTeamTasks(tasksRes.data.data || []);
-            } else {
-                // Regular member - get all users
-                const usersRes = await usersAPI.getAll();
-                setMembers(usersRes.data.data || []);
+                setViewMode('members'); // Force members view
+                
+                // Get tasks
+                if (teamData._id) {
+                     const tasksRes = await tasksAPI.getAll({ teamId: teamData._id });
+                     setTeamTasks(tasksRes.data.data || []);
+                }
             }
         } catch (err) {
             console.error('Failed to fetch data:', err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleTeamClick = async (team) => {
+        setLoading(true);
+        setCurrentTeam(team);
+        setMembers(team.members || []);
+        setViewMode('members');
+        try {
+            const tasksRes = await tasksAPI.getAll({ teamId: team._id });
+            setTeamTasks(tasksRes.data.data || []);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBackToTeams = () => {
+        setCurrentTeam(null);
+        setMembers([]);
+        setTeamTasks([]);
+        setViewMode('teams');
     };
 
     const getMemberTasks = (memberId) => {
@@ -218,11 +268,82 @@ const TeamManagement = () => {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-gray-600 mt-1">View and manage your team members</p>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            {viewMode === 'teams' ? 'My Teams' : currentTeam?.name || 'Team Members'}
+                        </h2>
+                        <p className="text-gray-600 mt-1">
+                            {viewMode === 'teams' 
+                                ? 'Manage and oversee all your teams' 
+                                : `Manage members and view performance for ${currentTeam?.name}`}
+                        </p>
                     </div>
+                    {viewMode === 'members' && isTeamLead && (
+                         <button 
+                            onClick={handleBackToTeams}
+                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                         >
+                            <User className="w-4 h-4" /> {/* Fallback icon, ensure ArrowLeft is imported if strictly needed, using User as placeholder or imported lucide icons */}
+                            Back to Teams
+                         </button>
+                    )}
                 </div>
 
-                {/* Stats Cards */}
+                {/* TEAMS GRID VIEW */}
+                {viewMode === 'teams' && isTeamLead && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                        {teams.map(team => (
+                            <div 
+                                key={team._id} 
+                                onClick={() => handleTeamClick(team)}
+                                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group"
+                            >
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                        <Users className="w-6 h-6" />
+                                    </div>
+                                    <span className={`px-2 py-1 text-xs font-bold rounded-lg uppercase ${
+                                        team.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                        {team.status}
+                                    </span>
+                                </div>
+                                
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">{team.name}</h3>
+                                <p className="text-sm text-gray-500 line-clamp-2 mb-6 h-10">{team.description || 'No description provided.'}</p>
+                                
+                                <div className="space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Members</span>
+                                        <span className="font-bold text-gray-900">{team.members?.length || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Project</span>
+                                        <span className="font-bold text-gray-900 truncate max-w-[150px]">{team.currentProject || 'N/A'}</span>
+                                    </div>
+                                    
+                                    {/* Progress Bar (Mock or real if available) */}
+                                    <div className="pt-2">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-xs font-semibold text-gray-500">Overall Progress</span>
+                                            <span className="text-xs font-bold text-orange-600">{team.completionRate || 0}%</span>
+                                        </div>
+                                        <div className="w-full bg-gray-100 rounded-full h-2">
+                                            <div 
+                                                className="bg-orange-500 h-2 rounded-full transition-all"
+                                                style={{ width: `${team.completionRate || 0}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* MEMBERS VIEW (Existing Logic wrapped) */}
+                {viewMode === 'members' && (
+                    <>
+                {/* Stats Cards (Filtered by current team) */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
                         <div className="flex items-center justify-between">
@@ -396,11 +517,11 @@ const TeamManagement = () => {
                                         {/* Action Buttons */}
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => handleViewDetails(member)}
+                                                onClick={() => navigate(`/team/member/${member._id}`)}
                                                 className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-all font-semibold text-sm flex items-center justify-center gap-2"
                                             >
                                                 <BarChart3 className="w-4 h-4" />
-                                                Details
+                                                View Profile
                                             </button>
                                             {isTeamLead && member._id !== user._id && (
                                                 <button
@@ -422,6 +543,8 @@ const TeamManagement = () => {
                             );
                         })}
                     </div>
+                )}
+                    </>
                 )}
             </div>
         </Layout>

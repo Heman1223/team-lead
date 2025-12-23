@@ -23,7 +23,17 @@ const activityLogSchema = new mongoose.Schema({
             'member_removed',
             'notification_sent',
             'call_initiated',
-            'call_ended'
+            'call_ended',
+            'subtask_created',
+            'subtask_updated',
+            'subtask_deleted',
+            'profile_updated',
+            'password_changed',
+            'settings_updated',
+            'availability_updated',
+            'system_settings_updated',
+            'audit_settings_updated',
+            'access_settings_updated'
         ]
     },
     userId: {

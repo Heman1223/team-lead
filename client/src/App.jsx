@@ -14,10 +14,12 @@ import AdminActivityLogs from './pages/AdminActivityLogs';
 import TeamManagement from './pages/TeamManagement';
 import TaskManagement from './pages/TaskManagement';
 import TeamLeadTaskBreakdown from './pages/TeamLeadTaskBreakdown';
+import MemberProfile from './pages/MemberProfile';
 import MemberSubtasks from './pages/MemberSubtasks';
 import Notifications from './pages/Notifications';
 import Communication from './pages/Communication';
 import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 import './index.css';
 
 function App() {
@@ -74,6 +76,11 @@ function App() {
               <TeamManagement />
             </ProtectedRoute>
           } />
+          <Route path="/team/member/:memberId" element={
+            <ProtectedRoute>
+              <MemberProfile />
+            </ProtectedRoute>
+          } />
           <Route path="/tasks" element={
             <ProtectedRoute>
               <TaskManagement />
@@ -102,6 +109,11 @@ function App() {
           <Route path="/reports" element={
             <ProtectedRoute requiredRole="team_lead">
               <Reports />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           } />
 

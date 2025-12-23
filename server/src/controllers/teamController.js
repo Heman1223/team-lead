@@ -46,7 +46,7 @@ const getTeam = async (req, res) => {
     }
 };
 
-// @desc    Get current user's team
+// @desc    Get current user's team (Member view)
 // @route   GET /api/teams/my-team
 // @access  Private
 const getMyTeam = async (req, res) => {
@@ -65,6 +65,34 @@ const getMyTeam = async (req, res) => {
         });
     } catch (error) {
         console.error('Get my team error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// @desc    Get all teams managed by current user (Team Lead view)
+// @route   GET /api/teams/my-led-teams
+// @access  Private (Team Lead)
+const getLedTeams = async (req, res) => {
+    try {
+        const teams = await Team.find({ leadId: req.user._id })
+            .populate('leadId', 'name email avatar')
+            .populate('members', 'name email avatar status designation');
+
+        // Calculate progress for each team dynamically if needed
+        // For now, valid statistics are expected to be updated/stored on the team model
+        // or we could aggregate active task stats here. 
+        // Let's ensure strict project progress is available.
+        
+        // Populate specific mock "current project" if not strictly defined, 
+        // or rely on fields 'currentProject' and 'projectProgress' from schema.
+
+        res.json({
+            success: true,
+            count: teams.length,
+            data: teams
+        });
+    } catch (error) {
+        console.error('Get led teams error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
@@ -239,6 +267,7 @@ module.exports = {
     getTeams,
     getTeam,
     getMyTeam,
+    getLedTeams,
     createTeam,
     updateTeam,
     addMember,

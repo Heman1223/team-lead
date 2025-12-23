@@ -33,7 +33,6 @@ const Sidebar = () => {
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },
     { path: '/task-breakdown', label: 'Task Breakdown', icon: ClipboardList, teamLeadOnly: true },
     { path: '/my-subtasks', label: 'My Subtasks', icon: CheckSquare, teamMemberOnly: true },
-    { path: '/notifications', label: 'Notifications', icon: Bell },
     { path: '/communication', label: 'Communication', icon: MessageSquare },
     { path: '/reports', label: 'Reports', icon: BarChart3, teamLeadOnly: true }
   ];
@@ -89,22 +88,6 @@ const Sidebar = () => {
             );
           })}
         </div>
-
-        <div className="my-6 border-t border-gray-700/50" />
-
-        <NavLink
-          to="/settings"
-          className={({ isActive }) => `
-            w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
-            ${isActive 
-              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30' 
-              : 'text-gray-400 hover:bg-gray-800/50 hover:text-orange-400'
-            }
-          `}
-        >
-          <Settings className="w-5 h-5 flex-shrink-0 group-hover:text-orange-400" />
-          <span className="font-medium text-sm">Settings</span>
-        </NavLink>
       </nav>
 
       {/* User Info */}

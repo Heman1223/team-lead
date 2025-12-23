@@ -6,13 +6,20 @@ const ActivityLog = require('../models/ActivityLog');
 // @access  Private
 const getNotifications = async (req, res) => {
     try {
-        const { isRead, limit = 20 } = req.query;
+        const { isRead, limit = 20, filter } = req.query;
 
-        let query = { userId: req.user._id };
-        if (isRead !== undefined) query.isRead = isRead === 'true';
+        let query = {};
+        
+        if (filter === 'sent') {
+            query.senderId = req.user._id;
+        } else {
+            query.userId = req.user._id;
+            if (isRead !== undefined) query.isRead = isRead === 'true';
+        }
 
         const notifications = await Notification.find(query)
-            .populate('senderId', 'name avatar')
+            .populate('senderId', 'name avatar') // For received: who sent it
+            .populate('userId', 'name')          // For sent: who received it
             .populate('taskId', 'title')
             .sort({ createdAt: -1 })
             .limit(parseInt(limit));
@@ -85,24 +92,34 @@ const createReminder = async (req, res) => {
     try {
         const { userId, taskId, title, message, priority } = req.body;
 
-        const notification = await Notification.create({
+        const notificationData = {
             type: 'manual_reminder',
             title: title || 'Reminder from Team Lead',
             message,
             userId,
-            taskId,
             senderId: req.user._id,
             priority: priority || 'medium'
-        });
+        };
 
-        await ActivityLog.create({
+        if (taskId) {
+            notificationData.taskId = taskId;
+        }
+
+        const notification = await Notification.create(notificationData);
+
+        const activityData = {
             action: 'notification_sent',
             userId: req.user._id,
             targetUserId: userId,
-            taskId,
             teamId: req.user.teamId,
             details: `Manual reminder sent: ${message.substring(0, 50)}...`
-        });
+        };
+
+        if (taskId) {
+            activityData.taskId = taskId;
+        }
+
+        await ActivityLog.create(activityData);
 
         res.status(201).json({
             success: true,

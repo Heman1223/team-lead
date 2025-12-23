@@ -59,6 +59,7 @@ export const teamsAPI = {
     getAll: () => api.get('/teams'),
     getOne: (id) => api.get(`/teams/${id}`),
     getMyTeam: () => api.get('/teams/my-team'),
+    getLedTeams: () => api.get('/teams/my-led-teams'),
     create: (data) => api.post('/teams', data),
     update: (id, data) => api.put(`/teams/${id}`, data),
     addMember: (teamId, userId) => api.post(`/teams/${teamId}/members`, { userId }),
@@ -113,6 +114,21 @@ export const reportsAPI = {
     getTeamPerformance: () => api.get('/reports/team-performance'),
     getOverdueTrends: () => api.get('/reports/overdue-trends'),
     export: (type) => api.get('/reports/export', { params: { type } })
+};
+
+// Settings API
+export const settingsAPI = {
+    getSettings: () => api.get('/settings'),
+    updateProfile: (data) => api.put('/settings/profile', data),
+    changePassword: (data) => api.put('/settings/password', data),
+    updateNotifications: (data) => api.put('/settings/notifications', data),
+    updatePreferences: (data) => api.put('/settings/preferences', data),
+    updateAvailability: (data) => api.put('/settings/availability', data),
+    updateCallSettings: (data) => api.put('/settings/call-settings', data),
+    updateWorkPreferences: (data) => api.put('/settings/work-preferences', data),
+    updateSystemSettings: (data) => api.put('/settings/system', data),
+    updateAuditSettings: (data) => api.put('/settings/audit', data),
+    updateAccessSettings: (data) => api.put('/settings/access', data)
 };
 
 export default api;
