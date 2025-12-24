@@ -45,16 +45,16 @@ const startServer = async () => {
         console.log('✓ Database connected\n');
 
         console.log('--- Loading Routes ---');
-        
+
         // Load auth routes
         try {
             const authRoutes = require('./routes/authRoutes');
             console.log('✓ Auth routes file loaded');
-            
+
             // Mount the routes
             app.use('/api/auth', authRoutes);
             console.log('✓ Auth routes mounted at /api/auth');
-            
+
             // List all registered routes
             console.log('\nRegistered Auth Routes:');
             authRoutes.stack.forEach(r => {
@@ -79,7 +79,8 @@ const startServer = async () => {
             { path: '/api/calls', file: './routes/callRoutes', name: 'Call' },
             { path: '/api/activities', file: './routes/activityRoutes', name: 'Activity' },
             { path: '/api/reports', file: './routes/reportRoutes', name: 'Report' },
-            { path: '/api/settings', file: './routes/settingsRoutes', name: 'Settings' }
+            { path: '/api/settings', file: './routes/settingsRoutes', name: 'Settings' },
+            { path: '/api/messages', file: './routes/messageRoutes', name: 'Message' }
         ];
 
         otherRoutes.forEach(route => {
@@ -108,8 +109,8 @@ const startServer = async () => {
         // 404 handler - MUST BE LAST
         app.use((req, res) => {
             console.log(`404 - Route not found: ${req.method} ${req.url}`);
-            res.status(404).json({ 
-                success: false, 
+            res.status(404).json({
+                success: false,
                 message: 'Route not found',
                 requestedUrl: req.url,
                 method: req.method

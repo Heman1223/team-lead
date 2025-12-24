@@ -106,6 +106,15 @@ export const activitiesAPI = {
     getForUser: (userId) => api.get(`/activities/user/${userId}`)
 };
 
+// Messages API
+export const messagesAPI = {
+    getConversations: () => api.get('/messages/conversations'),
+    getMessages: (userId, params) => api.get(`/messages/${userId}`, { params }),
+    sendMessage: (data) => api.post('/messages', data),
+    markAsRead: (id) => api.put(`/messages/${id}/read`),
+    getUnreadCount: () => api.get('/messages/unread-count')
+};
+
 // Reports API
 export const reportsAPI = {
     getSummary: () => api.get('/reports/summary'),

@@ -4,19 +4,18 @@ const ActivityLog = require('../models/ActivityLog');
 
 // @desc    Get all users (team members)
 // @route   GET /api/users
-// @access  Private (Team Lead only)
+// @access  Private
 const getUsers = async (req, res) => {
     try {
         const { teamId, status, role } = req.query;
 
         let query = {};
 
-        // Filter by team if specified or user's team
+        // Only filter by team if explicitly specified in query
         if (teamId) {
             query.teamId = teamId;
-        } else if (req.user.teamId) {
-            query.teamId = req.user.teamId;
         }
+        // Note: Removed automatic filtering by user's team to show all users across teams
 
         if (status) query.status = status;
         if (role) query.role = role;

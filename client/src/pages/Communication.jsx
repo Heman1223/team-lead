@@ -1,45 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
-import { usersAPI, callsAPI } from '../services/api';
-import { 
-    Phone, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOff, 
-    Clock, Search, RefreshCw, MessageCircle, Send, X,
-    CheckCircle, AlertCircle, Users
+import { usersAPI, messagesAPI } from '../services/api';
+import {
+    Search, RefreshCw, Send, ArrowLeft,
+    Users, MessageCircle, Check, CheckCheck
 } from 'lucide-react';
 
 const Communication = () => {
     const { user } = useAuth();
     const [members, setMembers] = useState([]);
-    const [callHistory, setCallHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedMember, setSelectedMember] = useState(null);
-    const [availability, setAvailability] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [callFilter, setCallFilter] = useState('all');
-    const [showCallModal, setShowCallModal] = useState(false);
-    const [showMessageModal, setShowMessageModal] = useState(false);
+
+    // Chat state
+    const [conversations, setConversations] = useState([]);
+    const [messages, setMessages] = useState([]);
     const [messageText, setMessageText] = useState('');
     const [sendingMessage, setSendingMessage] = useState(false);
+    const [loadingMessages, setLoadingMessages] = useState(false);
+    const [activeView, setActiveView] = useState('contacts'); // 'contacts' or 'chat'
+    const messagesEndRef = useRef(null);
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 30000);
+        fetchConversations();
+        const interval = setInterval(() => {
+            fetchData();
+            if (selectedMember) {
+                fetchMessages(selectedMember._id);
+            }
+        }, 10000);
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
 
     const fetchData = async () => {
         try {
             setRefreshing(true);
-            const [membersRes, callsRes] = await Promise.all([
-                usersAPI.getAll(),
-                callsAPI.getHistory({ limit: 50 })
-            ]);
-            // Show all members including current user
+            const membersRes = await usersAPI.getAll();
             setMembers(membersRes.data.data || []);
-            setCallHistory(callsRes.data.data || []);
         } catch (err) {
             console.error('Failed to fetch data:', err);
         } finally {
@@ -48,50 +58,54 @@ const Communication = () => {
         }
     };
 
-    const checkAvailability = async (member) => {
+    const fetchConversations = async () => {
         try {
-            const response = await callsAPI.checkAvailability(member._id);
-            setAvailability(response.data.data);
-            setSelectedMember(member);
-            setShowCallModal(true);
+            const res = await messagesAPI.getConversations();
+            setConversations(res.data.data || []);
         } catch (err) {
-            console.error('Failed to check availability:', err);
+            console.error('Failed to fetch conversations:', err);
         }
     };
 
-    const initiateCall = async () => {
-        if (!selectedMember) return;
+    const fetchMessages = async (userId) => {
         try {
-            await callsAPI.initiate({ receiverId: selectedMember._id });
-            setShowCallModal(false);
-            setSelectedMember(null);
-            setAvailability(null);
-            fetchData();
-            alert('✅ Call initiated successfully!');
+            setLoadingMessages(true);
+            const res = await messagesAPI.getMessages(userId);
+            setMessages(res.data.data || []);
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to initiate call');
+            console.error('Failed to fetch messages:', err);
+        } finally {
+            setLoadingMessages(false);
         }
     };
 
-    const openMessageModal = (member) => {
+    const openChat = async (member) => {
         setSelectedMember(member);
-        setShowMessageModal(true);
-        setMessageText('');
+        setActiveView('chat');
+        await fetchMessages(member._id);
     };
 
-    const sendMessage = async () => {
-        if (!selectedMember || !messageText.trim()) return;
-        
+    const closeChat = () => {
+        setSelectedMember(null);
+        setActiveView('contacts');
+        setMessages([]);
+        fetchConversations();
+    };
+
+    const sendMessage = async (e) => {
+        e?.preventDefault();
+        if (!selectedMember || !messageText.trim() || sendingMessage) return;
+
         setSendingMessage(true);
         try {
-            // Simulate sending message (you can integrate with a real messaging API)
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            alert(`✅ Message sent to ${selectedMember.name}!`);
-            setShowMessageModal(false);
-            setSelectedMember(null);
+            await messagesAPI.sendMessage({
+                receiverId: selectedMember._id,
+                content: messageText.trim()
+            });
             setMessageText('');
+            await fetchMessages(selectedMember._id);
         } catch (err) {
+            console.error('Failed to send message:', err);
             alert('Failed to send message');
         } finally {
             setSendingMessage(false);
@@ -107,44 +121,10 @@ const Communication = () => {
         }
     };
 
-    const getStatusBadge = (status) => {
-        switch (status) {
-            case 'online': return 'bg-green-50 text-green-700 border-green-200';
-            case 'busy': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-            case 'offline': return 'bg-gray-50 text-gray-700 border-gray-200';
-            default: return 'bg-gray-50 text-gray-700 border-gray-200';
-        }
-    };
-
-    const getCallStatusIcon = (status) => {
-        switch (status) {
-            case 'answered': return <PhoneIncoming className="w-4 h-4 text-green-600" />;
-            case 'missed': return <PhoneMissed className="w-4 h-4 text-red-600" />;
-            case 'busy': return <PhoneOff className="w-4 h-4 text-yellow-600" />;
-            default: return <Phone className="w-4 h-4 text-gray-600" />;
-        }
-    };
-
-    const getCallStatusBadge = (status) => {
-        switch (status) {
-            case 'answered': return 'bg-green-50 text-green-700 border-green-200';
-            case 'missed': return 'bg-red-50 text-red-700 border-red-200';
-            case 'busy': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-            default: return 'bg-gray-50 text-gray-700 border-gray-200';
-        }
-    };
-
-    const formatDuration = (seconds) => {
-        if (!seconds) return '0:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
     const formatTime = (date) => {
         const now = new Date();
-        const callDate = new Date(date);
-        const diffMs = now - callDate;
+        const msgDate = new Date(date);
+        const diffMs = now - msgDate;
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
@@ -153,19 +133,18 @@ const Communication = () => {
         if (diffMins < 60) return `${diffMins}m ago`;
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays < 7) return `${diffDays}d ago`;
-        return callDate.toLocaleDateString();
+        return msgDate.toLocaleDateString();
+    };
+
+    const formatMessageTime = (date) => {
+        return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     const filteredMembers = members.filter(m => {
         const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            m.email.toLowerCase().includes(searchTerm.toLowerCase());
+            m.email.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
         return matchesSearch && matchesStatus;
-    });
-
-    const filteredCalls = callHistory.filter(call => {
-        if (callFilter === 'all') return true;
-        return call.status === callFilter;
     });
 
     const statusCounts = {
@@ -174,10 +153,16 @@ const Communication = () => {
         offline: members.filter(m => m.status === 'offline').length
     };
 
-    const callCounts = {
-        answered: callHistory.filter(c => c.status === 'answered').length,
-        missed: callHistory.filter(c => c.status === 'missed').length,
-        busy: callHistory.filter(c => c.status === 'busy').length
+    // Get unread count for a member
+    const getUnreadCount = (memberId) => {
+        const conv = conversations.find(c => c._id.toString() === memberId.toString());
+        return conv?.unreadCount || 0;
+    };
+
+    // Get last message for a member
+    const getLastMessage = (memberId) => {
+        const conv = conversations.find(c => c._id.toString() === memberId.toString());
+        return conv?.lastMessage || null;
     };
 
     if (loading) {
@@ -195,372 +180,222 @@ const Communication = () => {
 
     return (
         <Layout title="Communication">
-            <div className="space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Communication</h1>
-                        <p className="text-gray-600 mt-1">Connect with your team members</p>
-                    </div>
-                    <button
-                        onClick={fetchData}
-                        disabled={refreshing}
-                        className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </button>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Total Members</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">{members.length}</p>
-                            </div>
-                            <div className="p-4 bg-blue-100 rounded-xl">
-                                <Users className="w-8 h-8 text-blue-600" />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Online</p>
-                                <p className="text-3xl font-bold text-green-600 mt-2">{statusCounts.online}</p>
-                            </div>
-                            <div className="p-4 bg-green-100 rounded-xl">
-                                <CheckCircle className="w-8 h-8 text-green-600" />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Total Calls</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">{callHistory.length}</p>
-                            </div>
-                            <div className="p-4 bg-purple-100 rounded-xl">
-                                <Phone className="w-8 h-8 text-purple-600" />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Answered</p>
-                                <p className="text-3xl font-bold text-green-600 mt-2">{callCounts.answered}</p>
-                            </div>
-                            <div className="p-4 bg-green-100 rounded-xl">
-                                <PhoneIncoming className="w-8 h-8 text-green-600" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Team Members List */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-gray-900">Team Members</h2>
-                                <div className="flex items-center gap-2">
+            <div className="h-[calc(100vh-120px)]">
+                {/* WhatsApp-style Chat Layout */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 h-full overflow-hidden">
+                    <div className="flex h-full">
+                        {/* Left Panel - Contacts List */}
+                        <div className={`w-full md:w-96 border-r border-gray-200 flex flex-col ${activeView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
+                            {/* Header */}
+                            <div className="p-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h2 className="text-xl font-bold">Messages</h2>
                                     <button
-                                        onClick={() => setStatusFilter('all')}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                            statusFilter === 'all'
-                                                ? 'bg-orange-100 text-orange-700'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        }`}
+                                        onClick={fetchData}
+                                        disabled={refreshing}
+                                        className="p-2 hover:bg-white/20 rounded-full transition-colors"
                                     >
-                                        All ({members.length})
-                                    </button>
-                                    <button
-                                        onClick={() => setStatusFilter('online')}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                            statusFilter === 'online'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                        Online ({statusCounts.online})
+                                        <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
                                     </button>
                                 </div>
-                            </div>
-
-                            {/* Search */}
-                            <div className="mb-4">
+                                {/* Search */}
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-orange-200 w-4 h-4" />
                                     <input
                                         type="text"
-                                        placeholder="Search members..."
+                                        placeholder="Search contacts..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                        className="w-full pl-10 pr-4 py-2 bg-white/20 border border-white/30 rounded-xl text-white placeholder-orange-200 focus:outline-none focus:bg-white/30"
                                     />
                                 </div>
                             </div>
 
-                            {/* Members Grid */}
-                            <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                                {filteredMembers.map((member) => (
-                                    <div
-                                        key={member._id}
-                                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                            {/* Status Filter Tabs */}
+                            <div className="flex gap-1 p-2 bg-gray-50 border-b border-gray-200">
+                                {[
+                                    { key: 'all', label: 'All', count: members.length },
+                                    { key: 'online', label: 'Online', count: statusCounts.online }
+                                ].map(tab => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setStatusFilter(tab.key)}
+                                        className={`flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter === tab.key
+                                                ? 'bg-orange-100 text-orange-700'
+                                                : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
                                     >
-                                        <div className="flex items-center gap-4">
-                                            <div className="relative">
+                                        {tab.label} ({tab.count})
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Contacts List */}
+                            <div className="flex-1 overflow-y-auto">
+                                {filteredMembers.map((member) => {
+                                    const lastMsg = getLastMessage(member._id);
+                                    const unread = getUnreadCount(member._id);
+
+                                    return (
+                                        <div
+                                            key={member._id}
+                                            onClick={() => openChat(member)}
+                                            className={`flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${selectedMember?._id === member._id ? 'bg-orange-50' : ''
+                                                }`}
+                                        >
+                                            {/* Avatar */}
+                                            <div className="relative flex-shrink-0">
                                                 <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
                                                     {member.name.charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className={`absolute bottom-0 right-0 w-4 h-4 ${getStatusColor(member.status)} rounded-full border-2 border-white`}></span>
+                                                <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 ${getStatusColor(member.status)} rounded-full border-2 border-white`}></span>
                                             </div>
-                                            <div>
-                                                <p className="font-semibold text-gray-900">{member.name}</p>
-                                                <p className="text-sm text-gray-600">{member.email}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(member.status)}`}>
-                                                        {member.status}
-                                                    </span>
-                                                    <span className="text-xs text-gray-500">{member.role}</span>
+
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="font-semibold text-gray-900 truncate">{member.name}</p>
+                                                    {lastMsg && (
+                                                        <span className="text-xs text-gray-500">
+                                                            {formatTime(lastMsg.createdAt)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center justify-between mt-0.5">
+                                                    <p className="text-sm text-gray-600 truncate">
+                                                        {lastMsg ? lastMsg.content : member.email}
+                                                    </p>
+                                                    {unread > 0 && (
+                                                        <span className="ml-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
+                                                            {unread}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => openMessageModal(member)}
-                                                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all font-medium"
-                                                title="Send Message"
-                                            >
-                                                <MessageCircle className="w-4 h-4" />
-                                                Message
-                                            </button>
-                                            <button
-                                                onClick={() => checkAvailability(member)}
-                                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all font-medium"
-                                                title="Call Member"
-                                            >
-                                                <Phone className="w-4 h-4" />
-                                                Call
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {filteredMembers.length === 0 && (
                                     <div className="text-center py-12">
                                         <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                                        <p className="text-gray-600">No members found</p>
+                                        <p className="text-gray-600">No contacts found</p>
                                     </div>
                                 )}
                             </div>
                         </div>
-                    </div>
 
-                    {/* Call History */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-gray-900">Call History</h2>
-                                <select
-                                    value={callFilter}
-                                    onChange={(e) => setCallFilter(e.target.value)}
-                                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                                >
-                                    <option value="all">All Calls</option>
-                                    <option value="answered">Answered</option>
-                                    <option value="missed">Missed</option>
-                                    <option value="busy">Busy</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                                {filteredCalls.map((call) => (
-                                    <div
-                                        key={call._id}
-                                        className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
-                                    >
-                                        <div className="flex items-start justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                {getCallStatusIcon(call.status)}
-                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getCallStatusBadge(call.status)}`}>
-                                                    {call.status}
-                                                </span>
+                        {/* Right Panel - Chat Area */}
+                        <div className={`flex-1 flex flex-col ${activeView === 'contacts' ? 'hidden md:flex' : 'flex'}`}>
+                            {selectedMember ? (
+                                <>
+                                    {/* Chat Header */}
+                                    <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center gap-4">
+                                        <button
+                                            onClick={closeChat}
+                                            className="md:hidden p-2 hover:bg-gray-200 rounded-full transition-colors"
+                                        >
+                                            <ArrowLeft className="w-5 h-5 text-gray-600" />
+                                        </button>
+                                        <div className="relative">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                                                {selectedMember.name.charAt(0).toUpperCase()}
                                             </div>
-                                            <span className="text-xs text-gray-500">{formatTime(call.createdAt)}</span>
+                                            <span className={`absolute bottom-0 right-0 w-3 h-3 ${getStatusColor(selectedMember.status)} rounded-full border-2 border-white`}></span>
                                         </div>
-                                        <div className="flex items-center gap-2 text-sm mb-2">
-                                            <span className="font-medium text-gray-900">{call.callerId?.name || 'Unknown'}</span>
-                                            <span className="text-gray-400">→</span>
-                                            <span className="font-medium text-gray-900">{call.receiverId?.name || 'Unknown'}</span>
+                                        <div className="flex-1">
+                                            <p className="font-semibold text-gray-900">{selectedMember.name}</p>
+                                            <p className="text-sm text-gray-600 capitalize">{selectedMember.status}</p>
                                         </div>
-                                        {call.duration > 0 && (
-                                            <div className="flex items-center gap-1 text-xs text-gray-600">
-                                                <Clock className="w-3 h-3" />
-                                                <span>{formatDuration(call.duration)}</span>
+                                    </div>
+
+                                    {/* Messages Area */}
+                                    <div className="flex-1 overflow-y-auto p-4 bg-[#e5ded8]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.05"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
+                                        {loadingMessages ? (
+                                            <div className="flex items-center justify-center h-full">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                                            </div>
+                                        ) : messages.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                                                <MessageCircle className="w-16 h-16 text-gray-300 mb-4" />
+                                                <p>No messages yet</p>
+                                                <p className="text-sm">Start a conversation with {selectedMember.name}</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {messages.map((msg) => {
+                                                    const isSent = msg.sender._id === user._id;
+                                                    return (
+                                                        <div
+                                                            key={msg._id}
+                                                            className={`flex ${isSent ? 'justify-end' : 'justify-start'}`}
+                                                        >
+                                                            <div
+                                                                className={`max-w-[70%] px-4 py-2 rounded-2xl shadow-sm ${isSent
+                                                                        ? 'bg-[#dcf8c6] rounded-tr-sm'
+                                                                        : 'bg-white rounded-tl-sm'
+                                                                    }`}
+                                                            >
+                                                                <p className="text-gray-800 break-words">{msg.content}</p>
+                                                                <div className={`flex items-center gap-1 mt-1 ${isSent ? 'justify-end' : 'justify-start'}`}>
+                                                                    <span className="text-xs text-gray-500">
+                                                                        {formatMessageTime(msg.createdAt)}
+                                                                    </span>
+                                                                    {isSent && (
+                                                                        msg.read
+                                                                            ? <CheckCheck className="w-4 h-4 text-blue-500" />
+                                                                            : <Check className="w-4 h-4 text-gray-400" />
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                <div ref={messagesEndRef} />
                                             </div>
                                         )}
                                     </div>
-                                ))}
-                                {filteredCalls.length === 0 && (
-                                    <div className="text-center py-12">
-                                        <Phone className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                                        <p className="text-gray-600">No call history</p>
+
+                                    {/* Message Input */}
+                                    <form onSubmit={sendMessage} className="p-4 bg-gray-50 border-t border-gray-200">
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="text"
+                                                value={messageText}
+                                                onChange={(e) => setMessageText(e.target.value)}
+                                                placeholder="Type a message..."
+                                                className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={!messageText.trim() || sendingMessage}
+                                                className="p-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full hover:from-orange-600 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {sendingMessage ? (
+                                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                ) : (
+                                                    <Send className="w-5 h-5" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </>
+                            ) : (
+                                /* Empty State */
+                                <div className="flex-1 flex flex-col items-center justify-center bg-gray-50">
+                                    <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center mb-6">
+                                        <MessageCircle className="w-12 h-12 text-orange-500" />
                                     </div>
-                                )}
-                            </div>
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Team Chat</h3>
+                                    <p className="text-gray-600 text-center max-w-md">
+                                        Select a team member from the list to start chatting.
+                                        <br />
+                                        Stay connected with your team!
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
-
-                {/* Call Modal */}
-                {showCallModal && selectedMember && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-                            <div className="p-6">
-                                <div className="text-center">
-                                    <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4">
-                                        {selectedMember.name.charAt(0).toUpperCase()}
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedMember.name}</h3>
-                                    <p className="text-gray-600 mb-4">{selectedMember.email}</p>
-
-                                    {availability && (
-                                        <div className="mb-6">
-                                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border ${getStatusBadge(availability.status)}`}>
-                                                <span className={`w-2 h-2 ${getStatusColor(availability.status)} rounded-full`}></span>
-                                                <span className="font-medium capitalize">{availability.status}</span>
-                                            </div>
-                                            
-                                            {availability.canCall ? (
-                                                <div className="mt-4 p-4 bg-green-50 rounded-xl border border-green-200">
-                                                    <div className="flex items-center justify-center gap-2 text-green-700">
-                                                        <CheckCircle className="w-5 h-5" />
-                                                        <span className="font-medium">Available to call</span>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="mt-4 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                                                    <div className="flex items-center justify-center gap-2 text-yellow-700">
-                                                        <AlertCircle className="w-5 h-5" />
-                                                        <span className="font-medium">
-                                                            {availability.status === 'busy' ? 'Currently busy' : 'Currently offline'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            <p className="text-sm text-gray-500 mt-3">
-                                                Last active: {new Date(availability.lastActive).toLocaleString()}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => {
-                                            setShowCallModal(false);
-                                            setSelectedMember(null);
-                                            setAvailability(null);
-                                        }}
-                                        className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-semibold"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={initiateCall}
-                                        disabled={!availability?.canCall}
-                                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <PhoneCall className="w-5 h-5" />
-                                        Call Now
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Message Modal */}
-                {showMessageModal && selectedMember && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
-                            <div className="p-6">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                            {selectedMember.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-xl font-bold text-gray-900">{selectedMember.name}</h3>
-                                            <p className="text-sm text-gray-600">{selectedMember.email}</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            setShowMessageModal(false);
-                                            setSelectedMember(null);
-                                            setMessageText('');
-                                        }}
-                                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
-
-                                <div className="mb-6">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Your Message
-                                    </label>
-                                    <textarea
-                                        value={messageText}
-                                        onChange={(e) => setMessageText(e.target.value)}
-                                        placeholder="Type your message here..."
-                                        rows={6}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-2">
-                                        {messageText.length} characters
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => {
-                                            setShowMessageModal(false);
-                                            setSelectedMember(null);
-                                            setMessageText('');
-                                        }}
-                                        className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-semibold"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={sendMessage}
-                                        disabled={!messageText.trim() || sendingMessage}
-                                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {sendingMessage ? (
-                                            <>
-                                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                                Sending...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Send className="w-5 h-5" />
-                                                Send Message
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </Layout>
     );
