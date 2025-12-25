@@ -34,6 +34,48 @@ const subtaskSchema = new mongoose.Schema({
         enum: ['not_started', 'in_progress', 'completed', 'blocked'],
         default: 'not_started'
     },
+    progressPercentage: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
+    },
+    eodReports: [{
+        reportDate: {
+            type: Date,
+            default: Date.now
+        },
+        workCompleted: {
+            type: String,
+            required: true,
+            maxlength: [2000, 'Work completed description cannot exceed 2000 characters']
+        },
+        hoursSpent: {
+            type: Number,
+            default: 0
+        },
+        progressUpdate: {
+            type: Number,
+            min: 0,
+            max: 100
+        },
+        blockers: {
+            type: String,
+            maxlength: [1000, 'Blockers description cannot exceed 1000 characters']
+        },
+        nextDayPlan: {
+            type: String,
+            maxlength: [1000, 'Next day plan cannot exceed 1000 characters']
+        },
+        submittedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        submittedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     completedAt: {
         type: Date
     },
@@ -54,6 +96,18 @@ const taskSchema = new mongoose.Schema({
     description: {
         type: String,
         maxlength: [2000, 'Description cannot be more than 2000 characters']
+    },
+    detailedDescription: {
+        type: String,
+        maxlength: [10000, 'Detailed description cannot be more than 10000 characters']
+    },
+    clientRequirements: {
+        type: String,
+        maxlength: [5000, 'Client requirements cannot be more than 5000 characters']
+    },
+    projectScope: {
+        type: String,
+        maxlength: [5000, 'Project scope cannot be more than 5000 characters']
     },
     category: {
         type: String,
@@ -166,7 +220,14 @@ const taskSchema = new mongoose.Schema({
     },
     attachments: [{
         name: String,
+        originalName: String,
         url: String,
+        fileType: String,
+        fileSize: Number,
+        uploadedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
         uploadedAt: {
             type: Date,
             default: Date.now
@@ -194,8 +255,11 @@ const taskSchema = new mongoose.Schema({
 // Auto-calculate progress based on subtasks
 taskSchema.methods.calculateProgress = function() {
     if (this.subtasks && this.subtasks.length > 0) {
-        const completedSubtasks = this.subtasks.filter(st => st.status === 'completed').length;
-        this.progressPercentage = Math.round((completedSubtasks / this.subtasks.length) * 100);
+        // Calculate average progress from all subtasks
+        const totalProgress = this.subtasks.reduce((sum, subtask) => {
+            return sum + (subtask.progressPercentage || 0);
+        }, 0);
+        this.progressPercentage = Math.round(totalProgress / this.subtasks.length);
         
         // Update parent task status based on progress
         if (this.progressPercentage === 100) {

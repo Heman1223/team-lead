@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 // @desc    Get all conversations for current user
 // @route   GET /api/messages/conversations
@@ -167,6 +168,15 @@ const sendMessage = async (req, res) => {
         // Populate sender and receiver info
         await message.populate('sender', 'name email avatar');
         await message.populate('receiver', 'name email avatar');
+
+        // Send notification to receiver
+        await Notification.create({
+            type: 'mention',
+            title: 'New Message',
+            message: `${req.user.name} sent you a message: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+            userId: receiverId,
+            senderId: req.user._id
+        });
 
         res.status(201).json({
             success: true,

@@ -5,7 +5,8 @@ const {
     markAsRead,
     markAllAsRead,
     createReminder,
-    deleteNotification
+    deleteNotification,
+    getUnreadCount
 } = require('../controllers/notificationController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -14,6 +15,7 @@ router.use(protect);
 router.route('/')
     .get(getNotifications);
 
+router.get('/unread-count', getUnreadCount);
 router.put('/read-all', markAllAsRead);
 router.post('/reminder', authorize('team_lead'), createReminder);
 

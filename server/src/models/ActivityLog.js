@@ -19,6 +19,7 @@ const activityLogSchema = new mongoose.Schema({
             'comment_added',
             'team_created',
             'team_updated',
+            'team_deleted',
             'member_added',
             'member_removed',
             'notification_sent',

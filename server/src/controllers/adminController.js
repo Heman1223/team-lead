@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const Task = require('../models/Task');
 const ActivityLog = require('../models/ActivityLog');
+const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 
 // @desc    Get all users
@@ -506,6 +507,15 @@ const createTeam = async (req, res) => {
             details: `Admin created team: ${team.name} with ${members.length} member(s). Status: ${status || 'active'}, Priority: ${priority || 'medium'}, Type: ${taskType || 'project_based'}`
         });
 
+        // Send notification to team lead
+        await Notification.create({
+            type: 'system',
+            title: 'New Team Created',
+            message: `You have been assigned as the lead of team: ${team.name}`,
+            userId: leadId,
+            senderId: req.user._id
+        });
+
         const populatedTeam = await Team.findById(team._id)
             .populate('leadId', 'name email coreField designation')
             .populate('members', 'name email role coreField designation')
@@ -575,6 +585,17 @@ const assignMembersToTeam = async (req, res) => {
             details: `Admin assigned ${memberIds.length} members to team: ${team.name}`
         });
 
+        // Send notifications to new members
+        for (const memberId of memberIds) {
+            await Notification.create({
+                type: 'system',
+                title: 'Added to Team',
+                message: `You have been added to team: ${team.name}`,
+                userId: memberId,
+                senderId: req.user._id
+            });
+        }
+
         const updatedTeam = await Team.findById(team._id)
             .populate('leadId', 'name email')
             .populate('members', 'name email role');
@@ -597,12 +618,24 @@ const getAllTasks = async (req, res) => {
         const tasks = await Task.find()
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
-            .populate('teamId', 'name');
+            .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email avatar');
+        
+        // Calculate progress for each task before returning
+        const tasksWithProgress = await Promise.all(
+            tasks.map(async (task) => {
+                if (task.subtasks && task.subtasks.length > 0) {
+                    task.calculateProgress();
+                    await task.save();
+                }
+                return task;
+            })
+        );
         
         res.json({
             success: true,
-            count: tasks.length,
-            data: tasks
+            count: tasksWithProgress.length,
+            data: tasksWithProgress
         });
     } catch (error) {
         console.error('Get all tasks error:', error);
@@ -671,21 +704,6 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
-module.exports = {
-    getAllUsers,
-    createUser,
-    updateUser,
-    deleteUser,
-    toggleUserActive,
-    resetUserPassword,
-    getAllTeams,
-    createTeam,
-    assignMembersToTeam,
-    getAllTasks,
-    getAllActivities,
-    getDashboardStats
-};
-
 
 // @desc    Assign task to Team Lead
 // @route   POST /api/admin/assign-task
@@ -694,7 +712,10 @@ const assignTaskToTeamLead = async (req, res) => {
     try {
         const { 
             title, 
-            description, 
+            description,
+            detailedDescription,
+            clientRequirements,
+            projectScope,
             category,
             priority, 
             startDate,
@@ -729,6 +750,9 @@ const assignTaskToTeamLead = async (req, res) => {
             // Basic Info
             title,
             description: description || '',
+            detailedDescription: detailedDescription || '',
+            clientRequirements: clientRequirements || '',
+            projectScope: projectScope || '',
             category: category || 'other',
             priority: priority || 'medium',
             
@@ -768,6 +792,17 @@ const assignTaskToTeamLead = async (req, res) => {
             targetUserId: teamLeadId,
             taskId: task._id,
             details: `Admin assigned task "${title}" to ${teamLead.name}`
+        });
+
+        // Send notification to team lead
+        await Notification.create({
+            type: 'task_assigned',
+            title: 'New Task Assigned',
+            message: `Admin assigned you a new task: ${title}`,
+            userId: teamLeadId,
+            taskId: task._id,
+            senderId: req.user._id,
+            priority: priority || 'medium'
         });
 
         const populatedTask = await Task.findById(task._id)
@@ -1099,6 +1134,9 @@ const updateTask = async (req, res) => {
         const {
             title,
             description,
+            detailedDescription,
+            clientRequirements,
+            projectScope,
             category,
             priority,
             startDate,
@@ -1118,6 +1156,9 @@ const updateTask = async (req, res) => {
         // Update fields
         if (title) task.title = title;
         if (description !== undefined) task.description = description;
+        if (detailedDescription !== undefined) task.detailedDescription = detailedDescription;
+        if (clientRequirements !== undefined) task.clientRequirements = clientRequirements;
+        if (projectScope !== undefined) task.projectScope = projectScope;
         if (category) task.category = category;
         if (priority) task.priority = priority;
         if (startDate) task.startDate = new Date(startDate);
@@ -1142,10 +1183,21 @@ const updateTask = async (req, res) => {
             details: `Admin updated task: ${task.title}`
         });
 
+        // Send notification to assigned user
+        await Notification.create({
+            type: 'task_updated',
+            title: 'Task Updated',
+            message: `Admin updated your task: ${task.title}`,
+            userId: task.assignedTo,
+            taskId: task._id,
+            senderId: req.user._id
+        });
+
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
-            .populate('teamId', 'name');
+            .populate('teamId', 'name')
+            .populate('attachments.uploadedBy', 'name');
 
         res.json({
             success: true,
@@ -1199,6 +1251,17 @@ const reassignTask = async (req, res) => {
             userId: req.user._id,
             taskId: task._id,
             details: `Admin reassigned task "${task.title}" from ${oldTeamLead?.name || 'Unknown'} to ${newTeamLead.name}`
+        });
+
+        // Send notification to new team lead
+        await Notification.create({
+            type: 'task_assigned',
+            title: 'Task Reassigned to You',
+            message: `Admin reassigned task to you: ${task.title}`,
+            userId: newTeamLeadId,
+            taskId: task._id,
+            senderId: req.user._id,
+            priority: task.priority || 'medium'
         });
 
         const populatedTask = await Task.findById(task._id)
@@ -1265,6 +1328,133 @@ const cancelTask = async (req, res) => {
     }
 };
 
+// @desc    Delete task
+// @route   DELETE /api/admin/tasks/:id
+// @access  Private/Admin
+const deleteTask = async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        const taskTitle = task.title;
+        await task.deleteOne();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'task_deleted',
+            userId: req.user._id,
+            details: `Admin deleted task: ${taskTitle}`
+        });
+
+        res.json({
+            success: true,
+            message: 'Task deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete task error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Upload attachment to task
+// @route   POST /api/admin/tasks/:id/attachments
+// @access  Private/Admin
+const uploadTaskAttachment = async (req, res) => {
+    try {
+        const { fileName, fileUrl, fileType, fileSize, originalName } = req.body;
+
+        if (!fileName || !fileUrl) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide fileName and fileUrl'
+            });
+        }
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        const attachment = {
+            name: fileName,
+            originalName: originalName || fileName,
+            url: fileUrl,
+            fileType: fileType || 'unknown',
+            fileSize: fileSize || 0,
+            uploadedBy: req.user._id,
+            uploadedAt: new Date()
+        };
+
+        task.attachments.push(attachment);
+        await task.save();
+
+        await ActivityLog.create({
+            action: 'task_updated',
+            userId: req.user._id,
+            taskId: task._id,
+            details: `Admin attached file to task: ${task.title} - ${fileName}`
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email')
+            .populate('assignedBy', 'name email')
+            .populate('teamId', 'name')
+            .populate('attachments.uploadedBy', 'name');
+
+        res.json({
+            success: true,
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Upload attachment error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Delete attachment from task
+// @route   DELETE /api/admin/tasks/:id/attachments/:attachmentId
+// @access  Private/Admin
+const deleteTaskAttachment = async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        const attachment = task.attachments.id(req.params.attachmentId);
+        if (!attachment) {
+            return res.status(404).json({ success: false, message: 'Attachment not found' });
+        }
+
+        const attachmentName = attachment.name;
+        task.attachments.pull(req.params.attachmentId);
+        await task.save();
+
+        await ActivityLog.create({
+            action: 'task_updated',
+            userId: req.user._id,
+            taskId: task._id,
+            details: `Admin removed file from task: ${task.title} - ${attachmentName}`
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email')
+            .populate('assignedBy', 'name email')
+            .populate('teamId', 'name')
+            .populate('attachments.uploadedBy', 'name');
+
+        res.json({
+            success: true,
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Delete attachment error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
 module.exports = {
     getAllUsers,
     getUserDetails,
@@ -1287,6 +1477,9 @@ module.exports = {
     assignTaskToTeamLead,
     getAllTeamLeads,
     updateTask,
+    deleteTask,
     reassignTask,
-    cancelTask
+    cancelTask,
+    uploadTaskAttachment,
+    deleteTaskAttachment
 };

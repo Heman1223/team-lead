@@ -78,7 +78,10 @@ export const tasksAPI = {
     getStats: () => api.get('/tasks/stats'),
     addSubtask: (taskId, data) => api.post(`/tasks/${taskId}/subtasks`, data),
     updateSubtask: (taskId, subtaskId, data) => api.put(`/tasks/${taskId}/subtasks/${subtaskId}`, data),
-    deleteSubtask: (taskId, subtaskId) => api.delete(`/tasks/${taskId}/subtasks/${subtaskId}`)
+    deleteSubtask: (taskId, subtaskId) => api.delete(`/tasks/${taskId}/subtasks/${subtaskId}`),
+    uploadAttachment: (taskId, data) => api.post(`/tasks/${taskId}/attachments`, data),
+    deleteAttachment: (taskId, attachmentId) => api.delete(`/tasks/${taskId}/attachments/${attachmentId}`),
+    submitEODReport: (taskId, subtaskId, data) => api.post(`/tasks/${taskId}/subtasks/${subtaskId}/eod-report`, data)
 };
 
 // Notifications API
@@ -87,7 +90,8 @@ export const notificationsAPI = {
     markAsRead: (id) => api.put(`/notifications/${id}/read`),
     markAllAsRead: () => api.put('/notifications/read-all'),
     createReminder: (data) => api.post('/notifications/reminder', data),
-    delete: (id) => api.delete(`/notifications/${id}`)
+    delete: (id) => api.delete(`/notifications/${id}`),
+    getUnreadCount: () => api.get('/notifications/unread-count')
 };
 
 // Calls API

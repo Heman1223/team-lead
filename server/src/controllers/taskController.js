@@ -38,13 +38,20 @@ const getTasks = async (req, res) => {
             .populate('subtasks.assignedTo', 'name email')
             .sort({ deadline: 1 });
 
-        // Update overdue tasks
+        // Update overdue tasks and calculate progress
         const now = new Date();
         for (let task of tasks) {
+            // Update overdue status
             if (task.status !== 'completed' && task.deadline < now && task.status !== 'overdue') {
                 task.status = 'overdue';
-                await task.save();
             }
+            
+            // Calculate progress if task has subtasks
+            if (task.subtasks && task.subtasks.length > 0) {
+                task.calculateProgress();
+            }
+            
+            await task.save();
         }
 
         res.json({
@@ -87,11 +94,26 @@ const getTask = async (req, res) => {
 // @access  Private (Team Lead only)
 const createTask = async (req, res) => {
     try {
-        const { title, description, priority, deadline, dueDate, assignedTo, notes, estimatedHours } = req.body;
+        const { 
+            title, 
+            description, 
+            detailedDescription,
+            clientRequirements,
+            projectScope,
+            priority, 
+            deadline, 
+            dueDate, 
+            assignedTo, 
+            notes, 
+            estimatedHours 
+        } = req.body;
 
         const task = await Task.create({
             title,
             description,
+            detailedDescription,
+            clientRequirements,
+            projectScope,
             priority: priority || 'medium',
             deadline: deadline || dueDate,
             dueDate: dueDate || deadline,
@@ -140,7 +162,20 @@ const createTask = async (req, res) => {
 // @access  Private
 const updateTask = async (req, res) => {
     try {
-        const { title, description, priority, deadline, assignedTo, status, notes, estimatedHours, actualHours } = req.body;
+        const { 
+            title, 
+            description, 
+            detailedDescription,
+            clientRequirements,
+            projectScope,
+            priority, 
+            deadline, 
+            assignedTo, 
+            status, 
+            notes, 
+            estimatedHours, 
+            actualHours 
+        } = req.body;
 
         let task = await Task.findById(req.params.id);
         if (!task) {
@@ -153,6 +188,9 @@ const updateTask = async (req, res) => {
         // Update fields
         if (title) task.title = title;
         if (description) task.description = description;
+        if (detailedDescription !== undefined) task.detailedDescription = detailedDescription;
+        if (clientRequirements !== undefined) task.clientRequirements = clientRequirements;
+        if (projectScope !== undefined) task.projectScope = projectScope;
         if (priority) task.priority = priority;
         if (deadline) task.deadline = deadline;
         if (assignedTo) task.assignedTo = assignedTo;
@@ -177,6 +215,23 @@ const updateTask = async (req, res) => {
                 teamId: task.teamId,
                 details: `Task "${task.title}" status changed from ${oldStatus} to ${status}`
             });
+
+            // Notify task owner/assigner about status change
+            const notifyUserId = task.assignedBy && task.assignedBy.toString() !== req.user._id.toString() 
+                ? task.assignedBy 
+                : task.assignedTo;
+            
+            if (notifyUserId && notifyUserId.toString() !== req.user._id.toString()) {
+                await Notification.create({
+                    type: 'task_updated',
+                    title: 'Task Status Changed',
+                    message: `Task "${task.title}" status changed to ${status}`,
+                    userId: notifyUserId,
+                    taskId: task._id,
+                    senderId: req.user._id,
+                    priority: status === 'completed' ? 'low' : 'medium'
+                });
+            }
         }
 
         // Notify if reassigned
@@ -349,12 +404,30 @@ const getTaskStats = async (req, res) => {
 // @access  Private
 const getMyTasks = async (req, res) => {
     try {
-        const tasks = await Task.find({ assignedTo: req.user._id })
+        // For team members, find tasks where:
+        // 1. They are directly assigned (assignedTo)
+        // 2. They have subtasks assigned to them
+        const query = {
+            $or: [
+                { assignedTo: req.user._id },
+                { 'subtasks.assignedTo': req.user._id }
+            ]
+        };
+
+        const tasks = await Task.find(query)
             .populate('assignedBy', 'name email')
             .populate('assignedTo', 'name email')
             .populate('teamId', 'name')
             .populate('subtasks.assignedTo', 'name email')
             .sort({ createdAt: -1 });
+
+        // Calculate progress for each task
+        for (let task of tasks) {
+            if (task.subtasks && task.subtasks.length > 0) {
+                task.calculateProgress();
+                await task.save();
+            }
+        }
 
         res.json({
             success: true,
@@ -467,12 +540,12 @@ const addSubtask = async (req, res) => {
 // @access  Private
 const updateSubtask = async (req, res) => {
     try {
-        const { status } = req.body;
+        const { status, progressPercentage } = req.body;
 
-        if (!status) {
+        if (!status && progressPercentage === undefined) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide status'
+                message: 'Please provide status or progressPercentage'
             });
         }
 
@@ -486,12 +559,14 @@ const updateSubtask = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Subtask not found' });
         }
 
-        // Update subtask status
+        // Update subtask status and progress
         const oldStatus = subtask.status;
-        subtask.status = status;
+        if (status) subtask.status = status;
+        if (progressPercentage !== undefined) subtask.progressPercentage = progressPercentage;
 
         if (status === 'completed') {
             subtask.completedAt = new Date();
+            subtask.progressPercentage = 100;
         }
 
         // Recalculate parent task progress
@@ -504,8 +579,21 @@ const updateSubtask = async (req, res) => {
             userId: req.user._id,
             taskId: task._id,
             teamId: task.teamId,
-            details: `Subtask "${subtask.title}" status changed from ${oldStatus} to ${status}`
+            details: `Subtask "${subtask.title}" status changed from ${oldStatus} to ${status || 'updated'}`
         });
+
+        // Notify team lead about subtask status change
+        if (status && status !== oldStatus && task.assignedTo && task.assignedTo.toString() !== req.user._id.toString()) {
+            await Notification.create({
+                type: 'task_updated',
+                title: 'Subtask Status Changed',
+                message: `Subtask "${subtask.title}" status changed to ${status}`,
+                userId: task.assignedTo,
+                taskId: task._id,
+                senderId: req.user._id,
+                priority: status === 'completed' ? 'low' : 'medium'
+            });
+        }
 
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo', 'name email')
@@ -519,6 +607,111 @@ const updateSubtask = async (req, res) => {
         });
     } catch (error) {
         console.error('Update subtask error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Submit EOD report for subtask
+// @route   POST /api/tasks/:id/subtasks/:subtaskId/eod-report
+// @access  Private
+const submitEODReport = async (req, res) => {
+    try {
+        const { workCompleted, hoursSpent, progressUpdate, blockers, nextDayPlan } = req.body;
+
+        if (!workCompleted) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide work completed description'
+            });
+        }
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        const subtask = task.subtasks.id(req.params.subtaskId);
+        if (!subtask) {
+            return res.status(404).json({ success: false, message: 'Subtask not found' });
+        }
+
+        // Verify the user is assigned to this subtask
+        if (subtask.assignedTo.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only submit EOD reports for your own subtasks'
+            });
+        }
+
+        // Create EOD report
+        const eodReport = {
+            reportDate: new Date(),
+            workCompleted,
+            hoursSpent: hoursSpent || 0,
+            progressUpdate: progressUpdate || subtask.progressPercentage,
+            blockers: blockers || '',
+            nextDayPlan: nextDayPlan || '',
+            submittedBy: req.user._id,
+            submittedAt: new Date()
+        };
+
+        subtask.eodReports.push(eodReport);
+
+        // Update subtask progress
+        if (progressUpdate !== undefined) {
+            subtask.progressPercentage = progressUpdate;
+            
+            // Auto-update status based on progress
+            if (progressUpdate === 100) {
+                subtask.status = 'completed';
+                subtask.completedAt = new Date();
+            } else if (progressUpdate > 0 && subtask.status === 'not_started') {
+                subtask.status = 'in_progress';
+            }
+        }
+
+        // If blockers mentioned, set status to blocked
+        if (blockers && blockers.trim().length > 0 && subtask.status !== 'completed') {
+            subtask.status = 'blocked';
+        }
+
+        // Recalculate parent task progress
+        task.calculateProgress();
+        await task.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'subtask_updated',
+            userId: req.user._id,
+            taskId: task._id,
+            teamId: task.teamId,
+            details: `EOD report submitted for subtask: ${subtask.title} (${progressUpdate || subtask.progressPercentage}% complete)`
+        });
+
+        // Notify team lead
+        await Notification.create({
+            type: 'task_updated',
+            title: 'EOD Report Submitted',
+            message: `${req.user.name} submitted EOD report for "${subtask.title}"`,
+            userId: task.assignedTo,
+            taskId: task._id,
+            senderId: req.user._id
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email')
+            .populate('assignedBy', 'name email')
+            .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email')
+            .populate('subtasks.eodReports.submittedBy', 'name email');
+
+        res.json({
+            success: true,
+            message: 'EOD report submitted successfully',
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Submit EOD report error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };
@@ -580,6 +773,103 @@ const deleteSubtask = async (req, res) => {
     }
 };
 
+// @desc    Upload attachment to task
+// @route   POST /api/tasks/:id/attachments
+// @access  Private (Team Lead only)
+const uploadAttachment = async (req, res) => {
+    try {
+        const { fileName, fileUrl, fileType, fileSize, originalName } = req.body;
+
+        if (!fileName || !fileUrl) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide fileName and fileUrl'
+            });
+        }
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        const attachment = {
+            name: fileName,
+            originalName: originalName || fileName,
+            url: fileUrl,
+            fileType: fileType || 'unknown',
+            fileSize: fileSize || 0,
+            uploadedBy: req.user._id,
+            uploadedAt: new Date()
+        };
+
+        task.attachments.push(attachment);
+        await task.save();
+
+        await ActivityLog.create({
+            action: 'task_updated',
+            userId: req.user._id,
+            taskId: task._id,
+            teamId: task.teamId,
+            details: `File attached to task: ${task.title} - ${fileName}`
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email avatar')
+            .populate('assignedBy', 'name email')
+            .populate('attachments.uploadedBy', 'name');
+
+        res.json({
+            success: true,
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Upload attachment error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// @desc    Delete attachment from task
+// @route   DELETE /api/tasks/:id/attachments/:attachmentId
+// @access  Private (Team Lead only)
+const deleteAttachment = async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        const attachment = task.attachments.id(req.params.attachmentId);
+        if (!attachment) {
+            return res.status(404).json({ success: false, message: 'Attachment not found' });
+        }
+
+        const attachmentName = attachment.name;
+        task.attachments.pull(req.params.attachmentId);
+        await task.save();
+
+        await ActivityLog.create({
+            action: 'task_updated',
+            userId: req.user._id,
+            taskId: task._id,
+            teamId: task.teamId,
+            details: `File removed from task: ${task.title} - ${attachmentName}`
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email avatar')
+            .populate('assignedBy', 'name email')
+            .populate('attachments.uploadedBy', 'name');
+
+        res.json({
+            success: true,
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Delete attachment error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
 module.exports = {
     getTasks,
     getTask,
@@ -591,5 +881,8 @@ module.exports = {
     getMyTasks,
     addSubtask,
     updateSubtask,
-    deleteSubtask
+    deleteSubtask,
+    uploadAttachment,
+    deleteAttachment,
+    submitEODReport
 };

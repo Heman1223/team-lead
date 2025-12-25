@@ -37,7 +37,9 @@ export const adminTasksAPI = {
     assignToTeamLead: (data) => api.post('/admin/assign-task', data),
     getTeamLeads: () => api.get('/admin/team-leads'),
     updateTask: (id, data) => api.put(`/admin/tasks/${id}`, data),
-    deleteTask: (id) => api.delete(`/admin/tasks/${id}`)
+    deleteTask: (id) => api.delete(`/admin/tasks/${id}`),
+    uploadAttachment: (taskId, data) => api.post(`/admin/tasks/${taskId}/attachments`, data),
+    deleteAttachment: (taskId, attachmentId) => api.delete(`/admin/tasks/${taskId}/attachments/${attachmentId}`)
 };
 
 // Admin Activities API

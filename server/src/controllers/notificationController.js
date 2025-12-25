@@ -157,10 +157,31 @@ const deleteNotification = async (req, res) => {
     }
 };
 
+// @desc    Get unread notification count
+// @route   GET /api/notifications/unread-count
+// @access  Private
+const getUnreadCount = async (req, res) => {
+    try {
+        const unreadCount = await Notification.countDocuments({ 
+            userId: req.user._id, 
+            isRead: false 
+        });
+
+        res.json({
+            success: true,
+            unreadCount
+        });
+    } catch (error) {
+        console.error('Get unread count error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
 module.exports = {
     getNotifications,
     markAsRead,
     markAllAsRead,
     createReminder,
-    deleteNotification
+    deleteNotification,
+    getUnreadCount
 };

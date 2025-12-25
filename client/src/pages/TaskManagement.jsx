@@ -21,6 +21,9 @@ const TaskManagement = () => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
+        detailedDescription: '',
+        clientRequirements: '',
+        projectScope: '',
         priority: 'medium',
         deadline: '',
         assignedTo: '',
@@ -28,6 +31,8 @@ const TaskManagement = () => {
     });
     const [comment, setComment] = useState('');
     const [error, setError] = useState('');
+    const [activeTab, setActiveTab] = useState('overview');
+    const [uploadingFile, setUploadingFile] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -47,12 +52,27 @@ const TaskManagement = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [tasksRes, membersRes] = await Promise.all([
-                tasksAPI.getAll(),
-                usersAPI.getAll()
-            ]);
-            setTasks(tasksRes.data.data);
-            setMembers(membersRes.data.data);
+            
+            if (isTeamLead) {
+                // Team leads see all tasks
+                const [tasksRes, membersRes] = await Promise.all([
+                    tasksAPI.getAll(),
+                    usersAPI.getAll()
+                ]);
+                setTasks(tasksRes.data.data);
+                setMembers(membersRes.data.data);
+            } else {
+                // Team members see parent tasks that have subtasks assigned to them
+                const tasksRes = await tasksAPI.getMyTasks();
+                const allTasks = tasksRes.data.data || [];
+                
+                // Filter to show only parent tasks (tasks assigned to team lead that have subtasks)
+                const parentTasks = allTasks.filter(task => 
+                    task.subtasks && task.subtasks.length > 0
+                );
+                
+                setTasks(parentTasks);
+            }
         } catch (err) {
             console.error('Failed to fetch data:', err);
         } finally {
@@ -116,15 +136,67 @@ const TaskManagement = () => {
         }
     };
 
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size must be less than 10MB');
+            return;
+        }
+
+        setUploadingFile(true);
+        try {
+            // Convert file to base64
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64String = reader.result;
+                
+                await tasksAPI.uploadAttachment(selectedTask._id, {
+                    fileName: file.name,
+                    fileUrl: base64String,
+                    fileType: file.type,
+                    fileSize: file.size,
+                    originalName: file.name
+                });
+
+                const updated = await tasksAPI.getOne(selectedTask._id);
+                setSelectedTask(updated.data.data);
+                alert('File uploaded successfully');
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            alert('Failed to upload file');
+        } finally {
+            setUploadingFile(false);
+        }
+    };
+
+    const handleDeleteAttachment = async (attachmentId) => {
+        if (!confirm('Are you sure you want to delete this attachment?')) return;
+        try {
+            await tasksAPI.deleteAttachment(selectedTask._id, attachmentId);
+            const updated = await tasksAPI.getOne(selectedTask._id);
+            setSelectedTask(updated.data.data);
+        } catch (err) {
+            alert('Failed to delete attachment');
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             title: '',
             description: '',
+            detailedDescription: '',
+            clientRequirements: '',
+            projectScope: '',
             priority: 'medium',
             deadline: '',
             assignedTo: '',
             notes: ''
         });
+        setActiveTab('overview');
     };
 
     const openEditModal = (task) => {
@@ -132,6 +204,9 @@ const TaskManagement = () => {
         setFormData({
             title: task.title,
             description: task.description || '',
+            detailedDescription: task.detailedDescription || '',
+            clientRequirements: task.clientRequirements || '',
+            projectScope: task.projectScope || '',
             priority: task.priority,
             deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '',
             assignedTo: task.assignedTo?._id || '',
@@ -139,6 +214,7 @@ const TaskManagement = () => {
         });
         setShowDetailModal(false);
         setShowModal(true);
+        setActiveTab('overview');
     };
 
     const filteredTasks = tasks.filter(task => {
@@ -346,77 +422,175 @@ const TaskManagement = () => {
                                     </svg>
                                 </button>
                             </div>
+                            
+                            {/* Tabs */}
+                            <div className="flex border-b border-gray-200 px-6">
+                                <button
+                                    onClick={() => setActiveTab('overview')}
+                                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                                        activeTab === 'overview'
+                                            ? 'border-orange-500 text-orange-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    Overview
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('details')}
+                                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                                        activeTab === 'details'
+                                            ? 'border-orange-500 text-orange-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    Detailed Description
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('requirements')}
+                                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                                        activeTab === 'requirements'
+                                            ? 'border-orange-500 text-orange-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    Requirements
+                                </button>
+                            </div>
+
                             <form onSubmit={handleSubmit}>
                                 <div className="modal-body">
                                     {error && <div className="error-message">{error}</div>}
 
-                                    <div className="form-group">
-                                        <label>Title *</label>
-                                        <input
-                                            type="text"
-                                            value={formData.title}
-                                            onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                            required
-                                            placeholder="Task title"
-                                        />
-                                    </div>
+                                    {/* Overview Tab */}
+                                    {activeTab === 'overview' && (
+                                        <>
+                                            <div className="form-group">
+                                                <label>Title *</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.title}
+                                                    onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                                    required
+                                                    placeholder="Task title"
+                                                />
+                                            </div>
 
-                                    <div className="form-group">
-                                        <label>Description</label>
-                                        <textarea
-                                            rows="3"
-                                            value={formData.description}
-                                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder="Task description..."
-                                        />
-                                    </div>
+                                            <div className="form-group">
+                                                <label>Brief Description</label>
+                                                <textarea
+                                                    rows="3"
+                                                    value={formData.description}
+                                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                                    placeholder="Brief task description..."
+                                                    maxLength="2000"
+                                                />
+                                                <small className="text-gray-500">{formData.description?.length || 0}/2000 characters</small>
+                                            </div>
 
-                                    <div className="form-row">
+                                            <div className="form-row">
+                                                <div className="form-group">
+                                                    <label>Priority *</label>
+                                                    <select
+                                                        value={formData.priority}
+                                                        onChange={e => setFormData({ ...formData, priority: e.target.value })}
+                                                    >
+                                                        <option value="low">Low</option>
+                                                        <option value="medium">Medium</option>
+                                                        <option value="high">High</option>
+                                                    </select>
+                                                </div>
+                                                <div className="form-group">
+                                                    <label>Deadline *</label>
+                                                    <input
+                                                        type="datetime-local"
+                                                        value={formData.deadline}
+                                                        onChange={e => setFormData({ ...formData, deadline: e.target.value })}
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="form-group">
+                                                <label>Assign To *</label>
+                                                <select
+                                                    value={formData.assignedTo}
+                                                    onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
+                                                    required
+                                                >
+                                                    <option value="">Select member</option>
+                                                    {members.map(m => (
+                                                        <option key={m._id} value={m._id}>{m.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="form-group">
+                                                <label>Notes</label>
+                                                <textarea
+                                                    rows="2"
+                                                    value={formData.notes}
+                                                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                                    placeholder="Additional notes..."
+                                                    maxLength="1000"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Detailed Description Tab */}
+                                    {activeTab === 'details' && (
+                                        <>
+                                            <div className="form-group">
+                                                <label>Detailed Project Description</label>
+                                                <p className="text-sm text-gray-500 mb-2">
+                                                    Provide comprehensive details about what needs to be done, technical specifications, and implementation guidelines.
+                                                </p>
+                                                <textarea
+                                                    rows="10"
+                                                    value={formData.detailedDescription}
+                                                    onChange={e => setFormData({ ...formData, detailedDescription: e.target.value })}
+                                                    placeholder="Enter detailed description of the project, technical requirements, implementation steps, etc..."
+                                                    maxLength="10000"
+                                                    className="font-mono text-sm"
+                                                />
+                                                <small className="text-gray-500">{formData.detailedDescription?.length || 0}/10000 characters</small>
+                                            </div>
+
+                                            <div className="form-group">
+                                                <label>Project Scope</label>
+                                                <p className="text-sm text-gray-500 mb-2">
+                                                    Define what is included and excluded from this project.
+                                                </p>
+                                                <textarea
+                                                    rows="6"
+                                                    value={formData.projectScope}
+                                                    onChange={e => setFormData({ ...formData, projectScope: e.target.value })}
+                                                    placeholder="Define project scope, deliverables, boundaries..."
+                                                    maxLength="5000"
+                                                />
+                                                <small className="text-gray-500">{formData.projectScope?.length || 0}/5000 characters</small>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Requirements Tab */}
+                                    {activeTab === 'requirements' && (
                                         <div className="form-group">
-                                            <label>Priority *</label>
-                                            <select
-                                                value={formData.priority}
-                                                onChange={e => setFormData({ ...formData, priority: e.target.value })}
-                                            >
-                                                <option value="low">Low</option>
-                                                <option value="medium">Medium</option>
-                                                <option value="high">High</option>
-                                            </select>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Deadline *</label>
-                                            <input
-                                                type="datetime-local"
-                                                value={formData.deadline}
-                                                onChange={e => setFormData({ ...formData, deadline: e.target.value })}
-                                                required
+                                            <label>Client Requirements</label>
+                                            <p className="text-sm text-gray-500 mb-2">
+                                                Document what the client wants, their expectations, specific features, and any constraints.
+                                            </p>
+                                            <textarea
+                                                rows="12"
+                                                value={formData.clientRequirements}
+                                                onChange={e => setFormData({ ...formData, clientRequirements: e.target.value })}
+                                                placeholder="Enter client requirements, expectations, features needed, constraints, etc..."
+                                                maxLength="5000"
+                                                className="font-mono text-sm"
                                             />
+                                            <small className="text-gray-500">{formData.clientRequirements?.length || 0}/5000 characters</small>
                                         </div>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Assign To *</label>
-                                        <select
-                                            value={formData.assignedTo}
-                                            onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">Select member</option>
-                                            {members.map(m => (
-                                                <option key={m._id} value={m._id}>{m.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Notes</label>
-                                        <textarea
-                                            rows="2"
-                                            value={formData.notes}
-                                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                            placeholder="Additional notes..."
-                                        />
-                                    </div>
+                                    )}
                                 </div>
                                 <div className="modal-footer">
                                     <button type="button" className="btn btn-secondary" onClick={() => { setShowModal(false); setSelectedTask(null); }}>
@@ -434,7 +608,7 @@ const TaskManagement = () => {
                 {/* Task Detail Modal */}
                 {showDetailModal && selectedTask && (
                     <div className="modal-overlay" onClick={() => { setShowDetailModal(false); setSelectedTask(null); }}>
-                        <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal modal-lg" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px' }}>
                             <div className="modal-header">
                                 <div className="detail-header-content">
                                     <div className={`priority-indicator priority-${selectedTask.priority}`} />
@@ -447,7 +621,7 @@ const TaskManagement = () => {
                                     </svg>
                                 </button>
                             </div>
-                            <div className="modal-body">
+                            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                                 {/* Status & Priority */}
                                 <div className="detail-section">
                                     <div className="detail-row">
@@ -487,8 +661,189 @@ const TaskManagement = () => {
                                 {/* Description */}
                                 {selectedTask.description && (
                                     <div className="detail-section">
-                                        <h4>Description</h4>
-                                        <p>{selectedTask.description}</p>
+                                        <h4>Brief Description</h4>
+                                        <p className="whitespace-pre-wrap">{selectedTask.description}</p>
+                                    </div>
+                                )}
+
+                                {/* Detailed Description */}
+                                {selectedTask.detailedDescription && (
+                                    <div className="detail-section">
+                                        <h4>Detailed Project Description</h4>
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <p className="whitespace-pre-wrap font-mono text-sm">{selectedTask.detailedDescription}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Client Requirements */}
+                                {selectedTask.clientRequirements && (
+                                    <div className="detail-section">
+                                        <h4>Client Requirements</h4>
+                                        <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                            <p className="whitespace-pre-wrap font-mono text-sm">{selectedTask.clientRequirements}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Project Scope */}
+                                {selectedTask.projectScope && (
+                                    <div className="detail-section">
+                                        <h4>Project Scope</h4>
+                                        <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                                            <p className="whitespace-pre-wrap">{selectedTask.projectScope}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Attachments */}
+                                <div className="detail-section">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4>Attachments ({selectedTask.attachments?.length || 0})</h4>
+                                        {isTeamLead && (
+                                            <label className="btn btn-sm btn-secondary cursor-pointer">
+                                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                                Upload File
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    onChange={handleFileUpload}
+                                                    disabled={uploadingFile}
+                                                />
+                                            </label>
+                                        )}
+                                    </div>
+                                    {uploadingFile && (
+                                        <div className="text-sm text-gray-500 mb-2">Uploading file...</div>
+                                    )}
+                                    {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {selectedTask.attachments.map((att, i) => (
+                                                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                    <div className="flex items-center gap-3">
+                                                        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                        </svg>
+                                                        <div>
+                                                            <p className="font-medium text-sm">{att.originalName || att.name}</p>
+                                                            <p className="text-xs text-gray-500">
+                                                                {att.fileSize ? `${(att.fileSize / 1024).toFixed(2)} KB` : 'Unknown size'} • 
+                                                                {att.uploadedAt ? new Date(att.uploadedAt).toLocaleDateString() : 'Unknown date'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <a
+                                                            href={att.url}
+                                                            download={att.originalName || att.name}
+                                                            className="btn btn-sm btn-ghost"
+                                                            title="Download"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                            </svg>
+                                                        </a>
+                                                        {isTeamLead && (
+                                                            <button
+                                                                onClick={() => handleDeleteAttachment(att._id)}
+                                                                className="btn btn-sm btn-ghost text-red-600 hover:bg-red-50"
+                                                                title="Delete"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500">No attachments</p>
+                                    )}
+                                </div>
+
+                                {/* Team Member Subtasks & Progress */}
+                                {selectedTask.subtasks && selectedTask.subtasks.length > 0 && (
+                                    <div className="detail-section">
+                                        <h4 className="flex items-center gap-2 mb-4">
+                                            <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                            </svg>
+                                            Team Member Assignments & Progress
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {selectedTask.subtasks.map((subtask, idx) => (
+                                                <div key={subtask._id || idx} className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-all">
+                                                    <div className="flex items-start justify-between mb-3">
+                                                        <div className="flex-1">
+                                                            <h5 className="font-bold text-gray-900 mb-1">{subtask.title}</h5>
+                                                            {subtask.description && (
+                                                                <p className="text-sm text-gray-600 mb-2">{subtask.description}</p>
+                                                            )}
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-sm">
+                                                                        {subtask.assignedTo?.name?.charAt(0) || '?'}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-semibold text-gray-900">{subtask.assignedTo?.name || 'Unassigned'}</p>
+                                                                        <p className="text-xs text-gray-500">{subtask.assignedTo?.email || ''}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col items-end gap-2">
+                                                            <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
+                                                                subtask.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200' :
+                                                                subtask.status === 'in_progress' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                                subtask.status === 'blocked' ? 'bg-red-100 text-red-700 border-red-200' :
+                                                                'bg-gray-100 text-gray-700 border-gray-200'
+                                                            }`}>
+                                                                {subtask.status?.replace('_', ' ').toUpperCase()}
+                                                            </span>
+                                                            {subtask.eodReports && subtask.eodReports.length > 0 && (
+                                                                <span className="text-xs text-gray-600 flex items-center gap-1">
+                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    {subtask.eodReports.length} EOD report(s)
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Progress Bar */}
+                                                    <div className="mt-3">
+                                                        <div className="flex items-center justify-between text-xs mb-1.5">
+                                                            <span className="text-gray-600 font-medium">Progress</span>
+                                                            <span className="font-bold text-gray-900">{subtask.progressPercentage || 0}%</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                                            <div
+                                                                className={`h-2.5 rounded-full transition-all ${
+                                                                    subtask.progressPercentage === 100 ? 'bg-green-500' : 'bg-orange-500'
+                                                                }`}
+                                                                style={{ width: `${subtask.progressPercentage || 0}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Latest EOD Report */}
+                                                    {subtask.eodReports && subtask.eodReports.length > 0 && (
+                                                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                            <p className="text-xs font-semibold text-blue-900 mb-1">Latest Update:</p>
+                                                            <p className="text-sm text-blue-800">{subtask.eodReports[subtask.eodReports.length - 1].workCompleted}</p>
+                                                            <p className="text-xs text-blue-600 mt-1">
+                                                                {new Date(subtask.eodReports[subtask.eodReports.length - 1].submittedAt).toLocaleString()}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
 

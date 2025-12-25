@@ -22,8 +22,11 @@ const {
     assignTaskToTeamLead,
     getAllTeamLeads,
     updateTask,
+    deleteTask,
     reassignTask,
-    cancelTask
+    cancelTask,
+    uploadTaskAttachment,
+    deleteTaskAttachment
 } = require('../controllers/adminController');
 const {
     getTeamPerformance: getAnalyticsTeamPerformance,
@@ -75,8 +78,11 @@ router.get('/stats', getDashboardStats);
 router.post('/assign-task', assignTaskToTeamLead);
 router.get('/team-leads', getAllTeamLeads);
 router.put('/tasks/:id', updateTask);
+router.delete('/tasks/:id', deleteTask);
 router.put('/tasks/:id/reassign', reassignTask);
 router.put('/tasks/:id/cancel', cancelTask);
+router.post('/tasks/:id/attachments', uploadTaskAttachment);
+router.delete('/tasks/:id/attachments/:attachmentId', deleteTaskAttachment);
 
 // Analytics routes
 router.get('/analytics/team-performance', getAnalyticsTeamPerformance);

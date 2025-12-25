@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardList, Plus, Calendar, Clock, AlertCircle, CheckCircle, X, Search, Target, User, Users, Briefcase, TrendingUp, Filter, Eye } from 'lucide-react';
+import { ClipboardList, Plus, Calendar, Clock, AlertCircle, CheckCircle, X, Search, Target, User, Users, Briefcase, TrendingUp, Filter, Eye, Edit, Trash2, FileText, Paperclip, Upload, Download } from 'lucide-react';
 import { adminTasksAPI } from '../services/adminApi';
 import Layout from '../components/Layout';
 
@@ -17,6 +17,9 @@ const AdminTaskAssignment = () => {
         // Basic Info
         title: '',
         description: '',
+        detailedDescription: '',
+        clientRequirements: '',
+        projectScope: '',
         category: 'development',
         priority: 'medium',
         
@@ -34,6 +37,8 @@ const AdminTaskAssignment = () => {
         // Additional
         notes: ''
     });
+    const [activeTab, setActiveTab] = useState('overview');
+    const [uploadingFile, setUploadingFile] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -67,6 +72,9 @@ const AdminTaskAssignment = () => {
         setFormData({
             title: '',
             description: '',
+            detailedDescription: '',
+            clientRequirements: '',
+            projectScope: '',
             category: 'development',
             priority: 'medium',
             teamLeadId: '',
@@ -78,6 +86,31 @@ const AdminTaskAssignment = () => {
             deadlineType: 'soft',
             notes: ''
         });
+        setActiveTab('overview');
+        setShowModal(true);
+    };
+
+    const handleEditTask = (task) => {
+        setFormData({
+            title: task.title,
+            description: task.description || '',
+            detailedDescription: task.detailedDescription || '',
+            clientRequirements: task.clientRequirements || '',
+            projectScope: task.projectScope || '',
+            category: task.category || 'development',
+            priority: task.priority,
+            teamLeadId: task.assignedTo?._id || '',
+            taskType: task.taskType || 'one_time',
+            startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '',
+            dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+            estimatedEffort: task.estimatedEffort || '',
+            estimatedEffortUnit: task.estimatedEffortUnit || 'hours',
+            deadlineType: task.deadlineType || 'soft',
+            notes: task.notes || ''
+        });
+        setSelectedTask(task);
+        setActiveTab('overview');
+        setShowDetailsModal(false);
         setShowModal(true);
     };
 
@@ -90,13 +123,79 @@ const AdminTaskAssignment = () => {
         }
 
         try {
-            await adminTasksAPI.assignToTeamLead(formData);
-            alert('✅ Task assigned successfully!');
+            if (selectedTask && showModal) {
+                await adminTasksAPI.updateTask(selectedTask._id, formData);
+                alert('✅ Task updated successfully!');
+            } else {
+                await adminTasksAPI.assignToTeamLead(formData);
+                alert('✅ Task assigned successfully!');
+            }
             setShowModal(false);
+            setSelectedTask(null);
             fetchData();
         } catch (error) {
-            console.error('Error creating task:', error);
-            alert('❌ ' + (error.response?.data?.message || 'Failed to create task'));
+            console.error('Error saving task:', error);
+            alert('❌ ' + (error.response?.data?.message || 'Failed to save task'));
+        }
+    };
+
+    const handleDeleteTask = async (taskId) => {
+        if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) return;
+        
+        try {
+            await adminTasksAPI.deleteTask(taskId);
+            alert('✅ Task deleted successfully!');
+            setShowDetailsModal(false);
+            setSelectedTask(null);
+            fetchData();
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            alert('❌ Failed to delete task');
+        }
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size must be less than 10MB');
+            return;
+        }
+
+        setUploadingFile(true);
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64String = reader.result;
+                
+                await adminTasksAPI.uploadAttachment(selectedTask._id, {
+                    fileName: file.name,
+                    fileUrl: base64String,
+                    fileType: file.type,
+                    fileSize: file.size,
+                    originalName: file.name
+                });
+
+                alert('✅ File uploaded successfully');
+                fetchData();
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            alert('❌ Failed to upload file');
+        } finally {
+            setUploadingFile(false);
+        }
+    };
+
+    const handleDeleteAttachment = async (attachmentId) => {
+        if (!confirm('Are you sure you want to delete this attachment?')) return;
+        try {
+            await adminTasksAPI.deleteAttachment(selectedTask._id, attachmentId);
+            alert('✅ Attachment deleted');
+            fetchData();
+        } catch (err) {
+            alert('❌ Failed to delete attachment');
         }
     };
 
@@ -290,67 +389,98 @@ const AdminTaskAssignment = () => {
                             {filteredTasks.map(task => (
                                 <div 
                                     key={task._id} 
-                                    onClick={() => {
-                                        setSelectedTask(task);
-                                        setShowDetailsModal(true);
-                                    }}
-                                    className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group relative flex flex-col h-full hover:border-orange-200"
+                                    className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 group relative flex flex-col h-full hover:border-orange-200"
                                 >
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="p-3 bg-gray-50 rounded-2xl group-hover:bg-orange-50 transition-colors duration-300">
-                                            <span className="text-2xl">{getCategoryIcon(task.category)}</span>
-                                        </div>
-                                        <div className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${getPriorityColor(task.priority)}`}>
-                                            {task.priority?.toUpperCase()}
-                                        </div>
+                                    {/* Action Buttons */}
+                                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleEditTask(task); }}
+                                            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                                            title="Edit Task"
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteTask(task._id); }}
+                                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                                            title="Delete Task"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
                                     </div>
 
-                                    <div className="mb-4 flex-1">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors">
-                                            {task.title}
-                                        </h3>
-                                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                                            <Briefcase className="w-3.5 h-3.5" />
-                                            <span>Lead: <span className="font-semibold text-gray-700">{task.assignedTo?.name}</span></span>
-                                        </div>
-                                        <p className="text-sm text-gray-500 line-clamp-2">
-                                            {task.description || 'No description provided'}
-                                        </p>
-                                    </div>
-
-                                    <div className="space-y-4 mt-auto">
-                                        <div>
-                                            <div className="flex items-center justify-between text-xs mb-1.5">
-                                                <span className="text-gray-600 font-medium">Progress</span>
-                                                <span className={`font-bold ${
-                                                    task.progressPercentage === 100 ? 'text-green-600' : 'text-gray-900'
-                                                }`}>{task.progressPercentage || 0}%</span>
+                                    <div 
+                                        onClick={() => { setSelectedTask(task); setShowDetailsModal(true); }}
+                                        className="cursor-pointer flex-1 flex flex-col"
+                                    >
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="p-3 bg-gray-50 rounded-2xl group-hover:bg-orange-50 transition-colors duration-300">
+                                                <span className="text-2xl">{getCategoryIcon(task.category)}</span>
                                             </div>
-                                            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                                                <div 
-                                                    className={`h-2 rounded-full transition-all duration-500 ${
-                                                        task.progressPercentage === 100 ? 'bg-green-500' : 'bg-gradient-to-r from-orange-500 to-orange-600'
-                                                    }`}
-                                                    style={{ width: `${task.progressPercentage || 0}%` }}
-                                                ></div>
+                                            <div className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${getPriorityColor(task.priority)}`}>
+                                                {task.priority?.toUpperCase()}
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between pt-4 border-t border-gray-100 text-xs">
-                                            <div className="flex items-center gap-1.5 text-gray-500">
-                                                <Calendar className="w-4 h-4" />
-                                                <span>{new Date(task.dueDate || task.deadline).toLocaleDateString()}</span>
+                                        <div className="mb-4 flex-1">
+                                            <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors">
+                                                {task.title}
+                                            </h3>
+                                            <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                                                <Briefcase className="w-3.5 h-3.5" />
+                                                <span>Lead: <span className="font-semibold text-gray-700">{task.assignedTo?.name}</span></span>
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-gray-500">
-                                                <Users className="w-4 h-4" />
-                                                <span>{task.subtasks?.length || 0} Subtasks</span>
-                                            </div>
+                                            <p className="text-sm text-gray-500 line-clamp-2 mb-2">
+                                                {task.description || 'No description provided'}
+                                            </p>
+                                            {(task.clientRequirements || task.detailedDescription) && (
+                                                <div className="flex items-center gap-1 text-xs text-blue-600 font-medium">
+                                                    <FileText className="w-3 h-3" />
+                                                    <span>Detailed requirements attached</span>
+                                                </div>
+                                            )}
+                                            {task.attachments && task.attachments.length > 0 && (
+                                                <div className="flex items-center gap-1 text-xs text-green-600 font-medium mt-1">
+                                                    <Paperclip className="w-3 h-3" />
+                                                    <span>{task.attachments.length} file(s) attached</span>
+                                                </div>
+                                            )}
                                         </div>
-                                        
-                                        <div className="flex items-center justify-between gap-2 pt-2">
-                                           <span className={`px-3 py-1 text-xs font-semibold rounded-lg border w-full text-center ${getStatusColor(task.status)}`}>
-                                                {task.status?.replace('_', ' ').toUpperCase()}
-                                            </span>
+
+                                        <div className="space-y-4 mt-auto">
+                                            <div>
+                                                <div className="flex items-center justify-between text-xs mb-1.5">
+                                                    <span className="text-gray-600 font-medium">Progress</span>
+                                                    <span className={`font-bold ${
+                                                        task.progressPercentage === 100 ? 'text-green-600' : 'text-gray-900'
+                                                    }`}>{task.progressPercentage || 0}%</span>
+                                                </div>
+                                                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                                    <div 
+                                                        className={`h-2 rounded-full transition-all duration-500 ${
+                                                            task.progressPercentage === 100 ? 'bg-green-500' : 'bg-gradient-to-r from-orange-500 to-orange-600'
+                                                        }`}
+                                                        style={{ width: `${task.progressPercentage || 0}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between pt-4 border-t border-gray-100 text-xs">
+                                                <div className="flex items-center gap-1.5 text-gray-500">
+                                                    <Calendar className="w-4 h-4" />
+                                                    <span>{new Date(task.dueDate || task.deadline).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-gray-500">
+                                                    <Users className="w-4 h-4" />
+                                                    <span>{task.subtasks?.length || 0} Subtasks</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex items-center justify-between gap-2 pt-2">
+                                               <span className={`px-3 py-1 text-xs font-semibold rounded-lg border w-full text-center ${getStatusColor(task.status)}`}>
+                                                    {task.status?.replace('_', ' ').toUpperCase()}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -496,12 +626,38 @@ const AdminTaskAssignment = () => {
                                                         <p className="text-sm text-gray-600 mt-1 line-clamp-1">{subtask.description}</p>
                                                     )}
                                                     
-                                                    <div className="flex items-center gap-4 mt-3">
-                                                        <div className="flex items-center gap-2 text-sm bg-gray-50 px-3 py-1 rounded-lg border border-gray-100">
+                                                    <div className="flex items-center gap-4 mt-3 flex-wrap">
+                                                        <div className="flex items-center gap-2 text-sm bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                                                             <User className="w-3.5 h-3.5 text-gray-500" />
-                                                            <span className="text-gray-600">Assigned into:</span>
+                                                            <span className="text-gray-600">Assigned to:</span>
                                                             <span className="font-bold text-gray-900">{subtask.assignedTo?.name || 'Unassigned'}</span>
                                                         </div>
+                                                        
+                                                        {/* Progress Bar for Subtask */}
+                                                        <div className="flex-1 min-w-[200px]">
+                                                            <div className="flex items-center justify-between text-xs mb-1">
+                                                                <span className="text-gray-600 font-medium">Progress</span>
+                                                                <span className={`font-bold ${
+                                                                    subtask.progressPercentage === 100 ? 'text-green-600' : 'text-orange-600'
+                                                                }`}>{subtask.progressPercentage || 0}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                                <div 
+                                                                    className={`h-2 rounded-full transition-all duration-500 ${
+                                                                        subtask.progressPercentage === 100 ? 'bg-green-500' : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                                                                    }`}
+                                                                    style={{ width: `${subtask.progressPercentage || 0}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* EOD Reports Count */}
+                                                        {subtask.eodReports && subtask.eodReports.length > 0 && (
+                                                            <div className="flex items-center gap-1 text-xs bg-blue-50 px-2 py-1 rounded-lg border border-blue-200">
+                                                                <FileText className="w-3 h-3 text-blue-600" />
+                                                                <span className="text-blue-700 font-semibold">{subtask.eodReports.length} EOD Report{subtask.eodReports.length > 1 ? 's' : ''}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
