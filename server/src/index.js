@@ -15,15 +15,19 @@ const connectDB = require("./config/db");
 // Create Express app
 const app = express();
 
-// Middleware
+// Middleware - UPDATED CORS CONFIGURATION
 app.use(
   cors({
     origin: [
       process.env.CLIENT_URL || "http://localhost:5173",
+      process.env.FRONTEND_URL || "http://localhost:5173",
+      "https://team-lead-gamma.vercel.app",
       "http://localhost:5174",
       "http://localhost:5175",
     ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(express.json());
@@ -44,6 +48,7 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
 // ROOT route (VERY IMPORTANT for Render)
 app.get("/", (req, res) => {
   res.json({
