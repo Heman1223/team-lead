@@ -37,7 +37,7 @@ const AdminDashboard = () => {
             setStats(statsRes.data.data);
             setTeamPerformance(performanceRes.data.data);
             setBestTeams(bestTeamsRes.data.data);
-            
+
             // Calculate today's task statistics
             const tasks = tasksRes.data.data || [];
             const today = new Date();
@@ -60,8 +60,8 @@ const AdminDashboard = () => {
             const overdue = tasks.filter(t => t.isOverdue && t.status !== 'completed' && t.status !== 'cancelled').length;
 
             // Find best responding team lead (highest completion rate)
-            const bestTeamLead = bestTeamsRes.data.data && bestTeamsRes.data.data.length > 0 
-                ? bestTeamsRes.data.data[0] 
+            const bestTeamLead = bestTeamsRes.data.data && bestTeamsRes.data.data.length > 0
+                ? bestTeamsRes.data.data[0]
                 : null;
 
             setTaskStats({
@@ -132,32 +132,32 @@ const AdminDashboard = () => {
 
     return (
         <Layout title="Admin Dashboard">
-            <div className="space-y-6 p-6">
+            <div className="space-y-6 p-4 sm:p-6">
                 {/* Page Header */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Team Lead Performance Dashboard</h1>
-                        <p className="text-gray-500 mt-1">Real-time analytics and team performance metrics</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Team Lead Performance Dashboard</h1>
+                        <p className="text-gray-500 mt-1 text-sm sm:text-base">Real-time analytics and team performance metrics</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-medium border border-green-200">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-medium border border-green-200">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            Live
+                            <span className="hidden sm:inline">Live</span>
                         </div>
                         <button
                             onClick={fetchDashboardData}
                             disabled={refreshing}
-                            className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
+                            className="px-3 sm:px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 flex items-center gap-2 text-sm"
                         >
                             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                            Refresh
+                            <span className="hidden sm:inline">Refresh</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 sm:p-6 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-600 mb-1">Total Teams</p>
@@ -208,7 +208,7 @@ const AdminDashboard = () => {
                                 <p className="text-sm font-medium text-gray-600 mb-1">Overall Progress</p>
                                 <p className="text-3xl font-bold text-gray-900 mb-1">{stats?.overallProgress || 0}%</p>
                                 <div className="w-full bg-gray-200 rounded-full h-2.5 mt-3">
-                                    <div 
+                                    <div
                                         className="bg-gradient-to-r from-green-500 to-green-600 h-2.5 rounded-full transition-all duration-500"
                                         style={{ width: `${stats?.overallProgress || 0}%` }}
                                     ></div>
@@ -222,7 +222,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Today's Task Statistics - NEW */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                     <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-2xl p-6 border border-cyan-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
                             <div>
@@ -295,11 +295,11 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
                     {/* LEFT SIDE - Charts (8 columns) */}
                     <div className="lg:col-span-8 space-y-5">
                         {/* Task Completion Trend */}
-                        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
                             <div className="mb-6">
                                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                     <Activity className="w-5 h-5 text-blue-600" />
@@ -307,31 +307,31 @@ const AdminDashboard = () => {
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">Daily task completion over the last 7 days</p>
                             </div>
-                            <div className="h-64">
+                            <div className="h-48 sm:h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={completionTrendData}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                        <XAxis 
-                                            dataKey="date" 
+                                        <XAxis
+                                            dataKey="date"
                                             tick={{ fill: '#6B7280', fontSize: 12 }}
                                             axisLine={{ stroke: '#E5E7EB' }}
                                         />
-                                        <YAxis 
+                                        <YAxis
                                             tick={{ fill: '#6B7280', fontSize: 12 }}
                                             axisLine={{ stroke: '#E5E7EB' }}
                                         />
-                                        <Tooltip 
-                                            contentStyle={{ 
-                                                backgroundColor: 'white', 
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: 'white',
                                                 border: '1px solid #E5E7EB',
                                                 borderRadius: '8px',
                                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                                             }}
                                         />
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="completed" 
-                                            stroke="#3B82F6" 
+                                        <Line
+                                            type="monotone"
+                                            dataKey="completed"
+                                            stroke="#3B82F6"
                                             strokeWidth={3}
                                             dot={{ fill: '#3B82F6', r: 5 }}
                                             activeDot={{ r: 7 }}
@@ -343,7 +343,7 @@ const AdminDashboard = () => {
                         </div>
 
                         {/* Team Completion Rate */}
-                        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
                             <div className="mb-6">
                                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                     <BarChart3 className="w-5 h-5 text-orange-600" />
@@ -351,38 +351,38 @@ const AdminDashboard = () => {
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">Completion percentage and overdue tasks by team</p>
                             </div>
-                            <div className="h-64">
+                            <div className="h-48 sm:h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={teamCompletionData} barGap={8}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                        <XAxis 
-                                            dataKey="name" 
+                                        <XAxis
+                                            dataKey="name"
                                             tick={{ fill: '#6B7280', fontSize: 12 }}
                                             axisLine={{ stroke: '#E5E7EB' }}
                                         />
-                                        <YAxis 
+                                        <YAxis
                                             tick={{ fill: '#6B7280', fontSize: 12 }}
                                             axisLine={{ stroke: '#E5E7EB' }}
                                         />
-                                        <Tooltip 
-                                            contentStyle={{ 
-                                                backgroundColor: 'white', 
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: 'white',
                                                 border: '1px solid #E5E7EB',
                                                 borderRadius: '8px',
                                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                                             }}
                                         />
-                                        <Bar 
-                                            dataKey="completion" 
-                                            fill="#10B981" 
-                                            name="Completion %" 
-                                            radius={[8, 8, 0, 0]} 
+                                        <Bar
+                                            dataKey="completion"
+                                            fill="#10B981"
+                                            name="Completion %"
+                                            radius={[8, 8, 0, 0]}
                                         />
-                                        <Bar 
-                                            dataKey="overdue" 
-                                            fill="#EF4444" 
-                                            name="Overdue Tasks" 
-                                            radius={[8, 8, 0, 0]} 
+                                        <Bar
+                                            dataKey="overdue"
+                                            fill="#EF4444"
+                                            name="Overdue Tasks"
+                                            radius={[8, 8, 0, 0]}
                                         />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -390,7 +390,7 @@ const AdminDashboard = () => {
                         </div>
 
                         {/* Task Status Distribution */}
-                        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
                             <div className="mb-6">
                                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                     <Target className="w-5 h-5 text-purple-600" />
@@ -398,8 +398,8 @@ const AdminDashboard = () => {
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">Overall task status breakdown</p>
                             </div>
-                            <div className="flex items-center gap-8">
-                                <div className="h-48 w-48">
+                            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
+                                <div className="h-40 w-40 sm:h-48 sm:w-48">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
@@ -415,9 +415,9 @@ const AdminDashboard = () => {
                                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip 
-                                                contentStyle={{ 
-                                                    backgroundColor: 'white', 
+                                            <Tooltip
+                                                contentStyle={{
+                                                    backgroundColor: 'white',
                                                     border: '1px solid #E5E7EB',
                                                     borderRadius: '8px'
                                                 }}
@@ -425,11 +425,11 @@ const AdminDashboard = () => {
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <div className="flex-1 grid grid-cols-2 gap-3">
+                                <div className="flex-1 w-full grid grid-cols-2 gap-3">
                                     {taskStatusData.map((item) => (
                                         <div key={item.name} className="flex items-center gap-2">
-                                            <div 
-                                                className="w-4 h-4 rounded-full" 
+                                            <div
+                                                className="w-4 h-4 rounded-full"
                                                 style={{ backgroundColor: item.color }}
                                             ></div>
                                             <div>
@@ -455,8 +455,8 @@ const AdminDashboard = () => {
                             </div>
                             <div className="space-y-3">
                                 {bestTeams.slice(0, 5).map((team, index) => (
-                                    <div 
-                                        key={team.teamId} 
+                                    <div
+                                        key={team.teamId}
                                         className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl border border-orange-100 hover:shadow-sm transition-shadow cursor-pointer"
                                     >
                                         <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-orange-200 flex-shrink-0">
@@ -513,7 +513,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Team Performance Leaderboard */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 lg:p-8">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3">
                             <div className="p-2 bg-orange-100 rounded-lg">
@@ -532,8 +532,8 @@ const AdminDashboard = () => {
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {teamPerformance.map((team, index) => (
-                                <div 
-                                    key={team.teamId} 
+                                <div
+                                    key={team.teamId}
                                     className="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 p-6 hover:shadow-lg transition-all"
                                 >
                                     <div className="flex items-start justify-between mb-4">
@@ -556,12 +556,11 @@ const AdminDashboard = () => {
                                             <span className="text-sm font-bold text-orange-600">{team.progressPercentage}%</span>
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-3">
-                                            <div 
-                                                className={`h-3 rounded-full transition-all duration-500 ${
-                                                    team.performanceStatus === 'doing_great' ? 'bg-gradient-to-r from-green-500 to-green-600' :
+                                            <div
+                                                className={`h-3 rounded-full transition-all duration-500 ${team.performanceStatus === 'doing_great' ? 'bg-gradient-to-r from-green-500 to-green-600' :
                                                     team.performanceStatus === 'average' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
-                                                    'bg-gradient-to-r from-red-500 to-red-600'
-                                                }`}
+                                                        'bg-gradient-to-r from-red-500 to-red-600'
+                                                    }`}
                                                 style={{ width: `${team.progressPercentage}%` }}
                                             ></div>
                                         </div>

@@ -16,7 +16,7 @@ const Layout = ({ children, title }) => {
 
   useEffect(() => {
     fetchUnreadCount();
-    
+
     // Poll for new notifications every 30 seconds
     const interval = setInterval(() => {
       fetchUnreadCount();
@@ -24,7 +24,7 @@ const Layout = ({ children, title }) => {
         fetchNotifications();
       }
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, [showDropdown]);
 
@@ -46,12 +46,12 @@ const Layout = ({ children, title }) => {
     try {
       const response = await notificationsAPI.getUnreadCount();
       const newCount = response.data.unreadCount || 0;
-      
+
       // Show toast if count increased (new notification)
       if (newCount > previousCount && previousCount > 0) {
         showNewNotificationToast();
       }
-      
+
       setPreviousCount(newCount);
       setUnreadCount(newCount);
     } catch (error) {
@@ -73,11 +73,11 @@ const Layout = ({ children, title }) => {
       // Fetch the latest notification
       const response = await notificationsAPI.getAll({ limit: 1, isRead: false });
       const latestNotif = response.data.data?.[0];
-      
+
       if (latestNotif) {
         const toastId = Date.now();
         setToasts(prev => [...prev, { id: toastId, notification: latestNotif }]);
-        
+
         // Auto-remove toast after 5 seconds
         setTimeout(() => {
           setToasts(prev => prev.filter(t => t.id !== toastId));
@@ -98,7 +98,7 @@ const Layout = ({ children, title }) => {
   const handleMarkAsRead = async (id) => {
     try {
       await notificationsAPI.markAsRead(id);
-      setNotifications(prev => prev.map(n => 
+      setNotifications(prev => prev.map(n =>
         n._id === id ? { ...n, isRead: true } : n
       ));
       await fetchUnreadCount();
@@ -122,7 +122,7 @@ const Layout = ({ children, title }) => {
       await handleMarkAsRead(notification._id);
     }
     setShowDropdown(false);
-    
+
     // Navigate to related page if taskId exists
     if (notification.taskId) {
       navigate('/tasks');
@@ -188,7 +188,7 @@ const Layout = ({ children, title }) => {
                 </button>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h1>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <div className="relative" ref={dropdownRef}>
                   <button
@@ -206,7 +206,7 @@ const Layout = ({ children, title }) => {
 
                   {/* Notification Dropdown */}
                   {showDropdown && (
-                    <div className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in slide-in-from-top-2 duration-200 z-50">
+                    <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in slide-in-from-top-2 duration-200 z-50">
                       <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                         <h3 className="font-bold text-gray-900">Notifications</h3>
                         <div className="flex items-center gap-2">
@@ -240,9 +240,8 @@ const Layout = ({ children, title }) => {
                             <div
                               key={notif._id}
                               onClick={() => handleNotificationClick(notif)}
-                              className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                                !notif.isRead ? 'bg-orange-50/30' : ''
-                              }`}
+                              className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${!notif.isRead ? 'bg-orange-50/30' : ''
+                                }`}
                             >
                               <div className="flex items-start gap-3">
                                 <div className={`p-2 rounded-lg ${getTypeColor(notif.type)}`}>
@@ -272,9 +271,9 @@ const Layout = ({ children, title }) => {
                     </div>
                   )}
                 </div>
-                
-                <Link 
-                  to="/settings" 
+
+                <Link
+                  to="/settings"
                   className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200"
                   title="Settings"
                 >
