@@ -20,6 +20,7 @@ import Notifications from './pages/Notifications';
 import Communication from './pages/Communication';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import LeadsPage from './pages/leads/LeadsPage';
 import './index.css';
 
 function App() {
@@ -109,6 +110,11 @@ function App() {
           <Route path="/reports" element={
             <ProtectedRoute requiredRole="team_lead">
               <Reports />
+            </ProtectedRoute>
+          } />
+          <Route path="/leads" element={
+            <ProtectedRoute>
+              <LeadsPage />
             </ProtectedRoute>
           } />
           <Route path="/settings" element={

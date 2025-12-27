@@ -28,6 +28,8 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    preflightContinue: false,
+    optionsSuccessStatus: 200
   })
 );
 app.use(express.json());
@@ -61,6 +63,7 @@ app.get("/", (req, res) => {
       "/api/users",
       "/api/teams",
       "/api/tasks",
+      "/api/leads",
     ],
   });
 });
@@ -103,6 +106,7 @@ const startServer = async () => {
       { path: "/api/users", file: "./routes/userRoutes", name: "User" },
       { path: "/api/teams", file: "./routes/teamRoutes", name: "Team" },
       { path: "/api/tasks", file: "./routes/taskRoutes", name: "Task" },
+      { path: "/api/leads", file: "./routes/leadRoutes", name: "Lead" },
       {
         path: "/api/notifications",
         file: "./routes/notificationRoutes",

@@ -1,12 +1,13 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 const api = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    withCredentials: true
 });
 
 // Request interceptor to add auth token
@@ -142,6 +143,23 @@ export const settingsAPI = {
     updateSystemSettings: (data) => api.put('/settings/system', data),
     updateAuditSettings: (data) => api.put('/settings/audit', data),
     updateAccessSettings: (data) => api.put('/settings/access', data)
+};
+
+// Leads API
+export const leadsAPI = {
+    getAll: (params) => api.get('/leads', { params }),
+    getOne: (id) => api.get(`/leads/${id}`),
+    create: (data) => api.post('/leads', data),
+    update: (id, data) => api.put(`/leads/${id}`, data),
+    assign: (id, data) => api.put(`/leads/${id}/assign`, data),
+    convertToProject: (id) => api.post(`/leads/${id}/convert`),
+    previewLeads: (formData) => api.post('/leads/preview', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    }),
+    importLeads: (leads) => api.post('/leads/import', { leads }),
+    getStats: () => api.get('/leads/stats')
 };
 
 export default api;

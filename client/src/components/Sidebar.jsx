@@ -1,19 +1,20 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  LayoutDashboard, 
-  Users, 
-  CheckSquare, 
-  Bell, 
-  MessageSquare, 
-  BarChart3, 
-  UserCog, 
-  UsersRound, 
-  ClipboardList, 
+import {
+  LayoutDashboard,
+  Users,
+  CheckSquare,
+  Bell,
+  MessageSquare,
+  BarChart3,
+  UserCog,
+  UsersRound,
+  ClipboardList,
   Activity,
   LogOut,
   Settings,
-  X
+  X,
+  Target
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -24,12 +25,14 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/users', label: 'User Management', icon: UserCog },
     { path: '/admin/teams', label: 'Team Management', icon: UsersRound },
+    { path: '/leads', label: 'Lead Management', icon: Target },
     { path: '/admin/tasks', label: 'Task Assignment', icon: ClipboardList },
     { path: '/admin/activities', label: 'Activity Logs', icon: Activity }
   ];
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/leads', label: 'Leads', icon: Target },
     { path: '/team', label: 'Team', icon: Users },
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },
     { path: '/task-breakdown', label: 'Task Breakdown', icon: ClipboardList, teamLeadOnly: true },
@@ -38,13 +41,13 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/reports', label: 'Reports', icon: BarChart3, teamLeadOnly: true }
   ];
 
-  const displayMenuItems = isAdmin 
-    ? adminMenuItems 
+  const displayMenuItems = isAdmin
+    ? adminMenuItems
     : menuItems.filter(item => {
-        if (item.teamLeadOnly && !isTeamLead) return false;
-        if (item.teamMemberOnly && !isTeamMember) return false;
-        return true;
-      });
+      if (item.teamLeadOnly && !isTeamLead) return false;
+      if (item.teamMemberOnly && !isTeamMember) return false;
+      return true;
+    });
 
   const handleLinkClick = () => {
     // Close sidebar on mobile when a link is clicked
@@ -57,7 +60,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     <>
       {/* Mobile Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={onClose}
         />
@@ -102,8 +105,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                   onClick={handleLinkClick}
                   className={({ isActive }) => `
                     w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
-                    ${isActive 
-                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30' 
+                    ${isActive
+                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
                       : 'text-gray-400 hover:bg-gray-800/50 hover:text-orange-400'
                     }
                   `}
@@ -134,7 +137,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-orange-600 text-gray-300 hover:text-white rounded-lg transition-all duration-200 group"
           >

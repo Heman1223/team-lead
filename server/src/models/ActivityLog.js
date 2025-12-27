@@ -34,7 +34,13 @@ const activityLogSchema = new mongoose.Schema({
             'availability_updated',
             'system_settings_updated',
             'audit_settings_updated',
-            'access_settings_updated'
+            'access_settings_updated',
+            'lead_created',
+            'lead_updated',
+            'lead_assigned',
+            'lead_status_changed',
+            'lead_converted',
+            'lead_deleted'
         ]
     },
     userId: {
@@ -49,6 +55,10 @@ const activityLogSchema = new mongoose.Schema({
     taskId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Task'
+    },
+    leadId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Lead'
     },
     teamId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -72,5 +82,6 @@ const activityLogSchema = new mongoose.Schema({
 activityLogSchema.index({ userId: 1, createdAt: -1 });
 activityLogSchema.index({ teamId: 1, createdAt: -1 });
 activityLogSchema.index({ taskId: 1, createdAt: -1 });
+activityLogSchema.index({ leadId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('ActivityLog', activityLogSchema);

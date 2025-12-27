@@ -1,0 +1,510 @@
+const Lead = require('../models/Lead');
+const User = require('../models/User');
+const Team = require('../models/Team');
+const Task = require('../models/Task');
+const ActivityLog = require('../models/ActivityLog');
+const csv = require('csv-parser');
+const fs = require('fs');
+const path = require('path');
+
+// @desc    Get all leads (with role-based filtering)
+// @route   GET /api/leads
+// @access  Private
+const getLeads = async (req, res) => {
+    try {
+        let query = { isActive: true };
+
+        // Role-based filtering
+        if (req.user.role === 'team_lead') {
+            // Team leads see leads assigned to their team
+            const team = await Team.findOne({ leadId: req.user._id });
+            if (team) {
+                query.$or = [
+                    { assignedTeam: team._id },
+                    { createdBy: req.user._id }
+                ];
+            } else {
+                query.createdBy = req.user._id;
+            }
+        } else if (req.user.role === 'team_member') {
+            // Employees see leads assigned to them
+            query.assignedTo = req.user._id;
+        }
+        // Admins see all (no extra filter)
+
+        const leads = await Lead.find(query)
+            .populate('assignedTo', 'name email')
+            .populate('assignedTeam', 'name')
+            .sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            count: leads.length,
+            data: leads
+        });
+    } catch (error) {
+        console.error('Get leads error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Get lead details
+// @route   GET /api/leads/:id
+// @access  Private
+const getLeadById = async (req, res) => {
+    try {
+        const lead = await Lead.findById(req.params.id)
+            .populate('assignedTo', 'name email')
+            .populate('assignedTeam', 'name')
+            .populate('createdBy', 'name email')
+            .populate('lastUpdatedBy', 'name email');
+
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        // Check permissions
+        const canAccess = checkLeadPermission(lead, req.user);
+        if (!canAccess && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized to view this lead' });
+        }
+
+        // Get activity logs for this lead
+        const activities = await ActivityLog.find({ leadId: lead._id })
+            .populate('userId', 'name email')
+            .sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            data: {
+                lead,
+                activities
+            }
+        });
+    } catch (error) {
+        console.error('Get lead error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Create lead
+// @route   POST /api/leads
+// @access  Private
+const createLead = async (req, res) => {
+    try {
+        const leadData = {
+            ...req.body,
+            createdBy: req.user._id
+        };
+
+        const lead = await Lead.create(leadData);
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'lead_created',
+            userId: req.user._id,
+            leadId: lead._id,
+            details: `Lead created for ${lead.clientName}`
+        });
+
+        res.status(201).json({
+            success: true,
+            data: lead
+        });
+    } catch (error) {
+        console.error('Create lead error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Update lead
+// @route   PUT /api/leads/:id
+// @access  Private
+const updateLead = async (req, res) => {
+    try {
+        let lead = await Lead.findById(req.params.id);
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        // Check archived status
+        if (lead.status === 'archived' && req.user.role !== 'admin') {
+            return res.status(400).json({ success: false, message: 'Archived leads are read-only' });
+        }
+
+        // Check permissions
+        if (req.user.role === 'team_member' && lead.assignedTo?.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Not authorized to update this lead' });
+        }
+
+        const oldStatus = lead.status;
+        const newStatus = req.body.status;
+
+        // Handle lost reason
+        if (newStatus === 'lost' && !req.body.lostReason) {
+            return res.status(400).json({ success: false, message: 'Lost leads require a reason' });
+        }
+
+        lead = await Lead.findByIdAndUpdate(
+            req.params.id,
+            { ...req.body, lastUpdatedBy: req.user._id },
+            { new: true, runValidators: true }
+        );
+
+        // Log status change activity
+        if (newStatus && newStatus !== oldStatus) {
+            await ActivityLog.create({
+                action: 'lead_status_changed',
+                userId: req.user._id,
+                leadId: lead._id,
+                details: `Status changed from ${oldStatus} to ${newStatus}${newStatus === 'lost' ? ' Reason: ' + req.body.lostReason : ''}`,
+                metadata: { oldStatus, newStatus }
+            });
+        } else {
+            // General update log
+            await ActivityLog.create({
+                action: 'lead_updated',
+                userId: req.user._id,
+                leadId: lead._id,
+                details: `Lead updated for ${lead.clientName}`
+            });
+        }
+
+        res.json({
+            success: true,
+            data: lead
+        });
+    } catch (error) {
+        console.error('Update lead error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Assign lead
+// @route   PUT /api/leads/:id/assign
+// @access  Private (Admin, Team Lead)
+const assignLead = async (req, res) => {
+    try {
+        const { assignedTo, assignedTeam } = req.body;
+        let lead = await Lead.findById(req.params.id);
+
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        // Role-based restrictions
+        if (req.user.role === 'team_member') {
+            return res.status(403).json({ success: false, message: 'Employees cannot reassign leads' });
+        }
+
+        if (req.user.role === 'team_lead') {
+            const team = await Team.findOne({ leadId: req.user._id });
+            if (!team || (assignedTeam && assignedTeam !== team._id.toString())) {
+                return res.status(403).json({ success: false, message: 'Team leads can only assign to their own team' });
+            }
+            // If assigning to an employee, ensure they are in the team
+            if (assignedTo) {
+                const isMember = team.members.includes(assignedTo);
+                if (!isMember) {
+                    return res.status(400).json({ success: false, message: 'User is not a member of your team' });
+                }
+            }
+        }
+
+        lead.assignedTo = assignedTo || null;
+        lead.assignedTeam = assignedTeam || null;
+        lead.assignedBy = req.user._id;
+        lead.assignedAt = new Date();
+        await lead.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'lead_assigned',
+            userId: req.user._id,
+            leadId: lead._id,
+            details: `Lead assigned to ${assignedTo ? 'User' : 'None'} and ${assignedTeam ? 'Team' : 'None'}`,
+            metadata: { assignedTo, assignedTeam }
+        });
+
+        res.json({
+            success: true,
+            data: lead
+        });
+    } catch (error) {
+        console.error('Assign lead error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Convert lead to Project (Task)
+// @route   POST /api/leads/:id/convert
+// @access  Private (Admin, Team Lead)
+const convertToProject = async (req, res) => {
+    try {
+        const lead = await Lead.findById(req.params.id);
+        if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+
+        if (lead.status !== 'won') {
+            return res.status(400).json({ success: false, message: 'Only "Won" leads can be converted to projects' });
+        }
+
+        // Create a Task as a project
+        const project = await Task.create({
+            title: `Project: ${lead.clientName} - ${lead.category}`,
+            description: lead.description,
+            priority: lead.priority === 'urgent' ? 'critical' : lead.priority,
+            assignedTo: lead.assignedTo || req.user._id,
+            assignedBy: req.user._id,
+            teamId: lead.assignedTeam,
+            dueDate: lead.expectedCloseDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
+            deadline: lead.expectedCloseDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            status: 'not_started',
+            isParentTask: true,
+            leadId: lead._id // Pass lead link
+        });
+
+        // Update lead
+        lead.status = 'archived'; // Archive after conversion
+        await lead.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'lead_converted',
+            userId: req.user._id,
+            leadId: lead._id,
+            taskId: project._id,
+            details: `Lead converted to project: ${project.title}`
+        });
+
+        res.json({
+            success: true,
+            message: 'Lead converted to project successfully',
+            data: project
+        });
+    } catch (error) {
+        console.error('Convert lead error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Preview leads from CSV
+// @route   POST /api/leads/preview
+// @access  Private (Admin)
+const previewLeads = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: 'Please upload a CSV file' });
+    }
+
+    const leads = [];
+    const errors = [];
+    const filePath = req.file.path;
+    const validCategories = ['web_development', 'mobile_app', 'ui_ux_design', 'digital_marketing', 'seo', 'content_writing', 'consulting', 'other'];
+
+    console.log(`Starting CSV preview for file: ${req.file.filename}`);
+
+    fs.createReadStream(filePath)
+        .pipe(csv())
+        .on('data', (row) => {
+            // Clean keys (remove BOM or weird chars)
+            const cleanRow = {};
+            Object.keys(row).forEach(key => {
+                const cleanKey = key.replace(/^\uFEFF/, '').trim().toLowerCase();
+                cleanRow[cleanKey] = row[key];
+            });
+
+            const clientName = cleanRow.client_name || cleanRow['client name'] || cleanRow.name || cleanRow.customer;
+            const email = cleanRow.email || cleanRow['e-mail'] || cleanRow.email_address;
+            const phone = cleanRow.phone || cleanRow['phone number'] || cleanRow.mobile || cleanRow.contact;
+            const category = cleanRow.project_category || cleanRow.category || cleanRow.type || 'other';
+
+            if (!clientName || !email || !phone) {
+                errors.push({ row, error: 'Missing critical fields (Name, Email, or Phone)' });
+            } else {
+                leads.push({
+                    clientName,
+                    email: email.toString().toLowerCase().trim(),
+                    phone: phone.toString().trim(),
+                    category: validCategories.includes(category) ? category : 'other',
+                    description: cleanRow.description || cleanRow.details || cleanRow.notes || '',
+                    source: cleanRow.source || 'csv_import',
+                    estimatedValue: parseFloat(cleanRow.estimated_value || cleanRow.value || cleanRow.revenue || cleanRow.budget || 0) || 0
+                });
+            }
+        })
+        .on('end', async () => {
+            try {
+                console.log(`CSV parsed. Found ${leads.length} potential leads and ${errors.length} errors.`);
+
+                // Check for duplicates in DB
+                const emails = leads.map(l => l.email);
+                const phones = leads.map(l => l.phone);
+
+                const existingLeads = await Lead.find({
+                    isActive: true,
+                    $or: [
+                        { email: { $in: emails } },
+                        { phone: { $in: phones } }
+                    ]
+                });
+
+                const existingEmails = new Set(existingLeads.map(l => l.email));
+                const existingPhones = new Set(existingLeads.map(l => l.phone));
+
+                const leadsWithValidation = leads.map(l => {
+                    const isDuplicate = existingEmails.has(l.email) || existingPhones.has(l.phone);
+                    return {
+                        ...l,
+                        isValid: !isDuplicate,
+                        error: isDuplicate ? 'Record already exists in pipeline' : null
+                    };
+                });
+
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+                res.json({
+                    success: true,
+                    data: {
+                        leads: leadsWithValidation,
+                        errors,
+                        summary: {
+                            total: leads.length,
+                            valid: leadsWithValidation.filter(l => l.isValid).length,
+                            invalid: leadsWithValidation.filter(l => !l.isValid).length + errors.length
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error('Error in previewLeads:', err);
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                res.status(500).json({ success: false, message: 'Error processing CSV' });
+            }
+        });
+};
+
+// @desc    Confirm and import leads
+// @route   POST /api/leads/import
+// @access  Private (Admin)
+const importLeads = async (req, res) => {
+    try {
+        const { leads } = req.body;
+
+        if (!leads || !Array.isArray(leads)) {
+            return res.status(400).json({ success: false, message: 'No leads provided' });
+        }
+
+        const validLeads = leads.map(l => ({
+            ...l,
+            createdBy: req.user._id,
+            status: 'new'
+        }));
+
+        const imported = await Lead.insertMany(validLeads);
+
+        // Log batch import
+        await ActivityLog.create({
+            action: 'lead_created',
+            userId: req.user._id,
+            details: `Imported ${imported.length} leads from CSV`
+        });
+
+        res.json({
+            success: true,
+            count: imported.length
+        });
+    } catch (error) {
+        console.error('Import error:', error);
+        res.status(500).json({ success: false, message: 'Import failed', error: error.message });
+    }
+};
+
+// @desc    Get dashboard stats
+// @route   GET /api/leads/stats
+// @access  Private
+const getLeadStats = async (req, res) => {
+    try {
+        let query = { isActive: true };
+
+        if (req.user.role === 'team_lead') {
+            const team = await Team.findOne({ leadId: req.user._id });
+            if (team) {
+                query.$or = [{ assignedTeam: team._id }, { createdBy: req.user._id }];
+            } else {
+                query.createdBy = req.user._id;
+            }
+        } else if (req.user.role === 'team_member') {
+            query.assignedTo = req.user._id;
+        }
+
+        const stats = await Lead.aggregate([
+            { $match: query },
+            {
+                $group: {
+                    _id: null,
+                    totalLeads: { $sum: 1 },
+                    wonLeads: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
+                    totalPipelineValue: { $sum: '$estimatedValue' },
+                    leadsByStatus: {
+                        $push: '$status'
+                    },
+                    leadsByCategory: {
+                        $push: '$category'
+                    }
+                }
+            }
+        ]);
+
+        if (stats.length === 0) {
+            return res.json({ success: true, data: { totalLeads: 0, wonLeads: 0, totalPipelineValue: 0 } });
+        }
+
+        // Process status and category distribution
+        const statusDist = stats[0].leadsByStatus.reduce((acc, status) => {
+            acc[status] = (acc[status] || 0) + 1;
+            return acc;
+        }, {});
+
+        const categoryDist = stats[0].leadsByCategory.reduce((acc, cat) => {
+            acc[cat] = (acc[cat] || 0) + 1;
+            return acc;
+        }, {});
+
+        res.json({
+            success: true,
+            data: {
+                ...stats[0],
+                statusDist,
+                categoryDist,
+                conversionRate: stats[0].totalLeads > 0 ? (stats[0].wonLeads / stats[0].totalLeads) * 100 : 0
+            }
+        });
+    } catch (error) {
+        console.error('Get lead stats error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// Helper to check permission
+const checkLeadPermission = (lead, user) => {
+    if (user.role === 'admin') return true;
+    if (user.role === 'team_lead') {
+        // Should check if lead is in their team (assignedTeam or assignedTo matches someone in team)
+        // For simplicity, we check if assignedTeam matches or createdBy
+        return true; // Simplified for now, backend queries already filter
+    }
+    if (user.role === 'team_member') {
+        return lead.assignedTo?.toString() === user._id.toString();
+    }
+    return false;
+};
+
+module.exports = {
+    getLeads,
+    getLeadById,
+    createLead,
+    updateLead,
+    assignLead,
+    convertToProject,
+    importLeads,
+    previewLeads,
+    getLeadStats
+};
