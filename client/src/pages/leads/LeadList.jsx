@@ -12,7 +12,9 @@ import {
     Download,
     Eye,
     History,
-    RefreshCcw
+    RefreshCcw,
+    AlertCircle,
+    Target
 } from 'lucide-react';
 import { leadsAPI } from '../../services/api';
 
@@ -30,6 +32,7 @@ const statusColors = {
 const LeadList = ({ onSelectLead }) => {
     const [leads, setLeads] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
 
@@ -39,18 +42,23 @@ const LeadList = ({ onSelectLead }) => {
 
     const fetchLeads = async () => {
         try {
+            setLoading(true);
+            setError(null);
             const response = await leadsAPI.getAll();
-            setLeads(response.data.data);
+            console.log('Leads response:', response.data);
+            setLeads(response.data.data || []);
         } catch (error) {
             console.error('Error fetching leads:', error);
+            setError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+            setLeads([]);
         } finally {
             setLoading(false);
         }
     };
 
     const filteredLeads = leads.filter(lead => {
-        const matchesSearch = lead.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            lead.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = lead.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = filterStatus === 'all' || lead.status === filterStatus;
         return matchesSearch && matchesStatus;
     });
@@ -58,7 +66,30 @@ const LeadList = ({ onSelectLead }) => {
     if (loading) {
         return (
             <div className="flex items-center justify-center p-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+                    <p className="text-gray-400 font-medium">Loading leads...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center p-12">
+                <div className="text-center space-y-4 max-w-md">
+                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
+                        <AlertCircle className="w-8 h-8 text-red-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Error Loading Leads</h3>
+                    <p className="text-gray-400">{error}</p>
+                    <button
+                        onClick={fetchLeads}
+                        className="px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all font-semibold"
+                    >
+                        Try Again
+                    </button>
+                </div>
             </div>
         );
     }

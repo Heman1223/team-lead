@@ -138,6 +138,8 @@ const startServer = async () => {
         console.log(`✓ ${route.name} routes mounted at ${route.path}`);
       } catch (err) {
         console.log(`⚠ ${route.name} routes not found (skipping)`);
+        console.error(`   Error: ${err.message}`);
+        console.error(`   Stack: ${err.stack}`);
       }
     });
 
