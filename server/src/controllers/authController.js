@@ -84,7 +84,15 @@ const login = async (req, res) => {
         const isMatch = await user.matchPassword(password);
         if (!isMatch) {
             console.log('Password mismatch for user:', email);
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Invalid credentials',
+                debug: {
+                    storedHash: user.password,
+                    inputLen: password.length,
+                    isModified: user.isModified('password')
+                }
+            });
         }
 
         console.log('✓ Login successful for user:', email);

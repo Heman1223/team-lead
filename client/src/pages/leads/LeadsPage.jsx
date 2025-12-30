@@ -1,33 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import LeadDashboard from './LeadDashboard';
-import LeadList from './LeadList';
-import LeadImport from './LeadImport';
-import LeadDetail from './LeadDetail';
-import CreateLeadModal from './CreateLeadModal';
+import LeadList from './LeadListSimple';
+import LeadImport from './LeadImportSimple';
+import LeadDetail from './LeadDetailSimple';
+import CreateLeadModal from './CreateLeadModalSimple';
 import {
     LayoutDashboard,
     List,
     Upload,
-    Target,
     Plus,
-    Filter,
-    ChevronRight,
     Search
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 
 const LeadsPage = () => {
     const { isAdmin, isTeamLead } = useAuth();
+    const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [selectedLeadId, setSelectedLeadId] = useState(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
 
+    useEffect(() => {
+        const openId = searchParams.get('open');
+        if (openId) {
+            setSelectedLeadId(openId);
+        }
+    }, [searchParams]);
+
     const tabs = [
-        { id: 'dashboard', label: 'Revenue Pipeline', icon: LayoutDashboard },
-        { id: 'list', label: 'Lead Database', icon: List },
-        { id: 'import', label: 'Bulk Intake', icon: Upload, adminOnly: true }
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'list', label: 'All Leads', icon: List },
+        { id: 'import', label: 'Import Leads', icon: Upload, adminOnly: true }
     ];
 
     const filteredTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);
@@ -37,72 +43,61 @@ const LeadsPage = () => {
     };
 
     return (
-        <Layout title="Lead Intelligence">
-            <div className="p-8 md:p-12 max-w-[1600px] mx-auto space-y-12 animate-in fade-in duration-1000 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.05),transparent_40%)]">
-                {/* Page Header */}
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 pb-8 border-b border-gray-800/50">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 text-orange-500 font-black text-xs tracking-[0.3em] uppercase">
-                            <div className="w-8 h-px bg-orange-500/50" />
-                            <Target size={16} />
-                            <span>Commerce Engine</span>
-                        </div>
-                        <h1 className="text-6xl md:text-7xl font-black text-white tracking-tighter">
-                            Lead <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-500 to-orange-700">Intelligence</span>
-                        </h1>
-                        <p className="text-gray-400 text-xl max-w-3xl font-medium leading-relaxed">
-                            Orchestrate your sales lifecycle with precision. Monitor conversion metrics,
-                            assign high-value targets, and accelerate your project pipeline.
-                        </p>
+        <Layout title="Lead Management">
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Lead Management</h1>
+                        <p className="text-gray-600 mt-1">Manage your sales pipeline and track conversions</p>
                     </div>
-                    <div className="flex flex-wrap gap-5">
+                    <div className="flex gap-3">
                         <button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center gap-3 bg-gray-900 text-white border border-gray-800 px-10 py-5 rounded-[2rem] font-black text-lg hover:bg-gray-800 transition-all active:scale-95 shadow-2xl"
+                            className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-orange-700 transition-colors shadow-lg"
                         >
-                            <Plus size={24} className="text-orange-500" />
-                            Manual Entry
+                            <Plus size={20} />
+                            New Lead
                         </button>
                         {isAdmin && (
                             <button
                                 onClick={() => setActiveTab('import')}
-                                className="flex items-center gap-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-10 py-5 rounded-[2rem] font-black text-lg shadow-[0_20px_40px_rgba(249,115,22,0.25)] hover:shadow-[0_25px_50px_rgba(249,115,22,0.35)] hover:scale-[1.05] transition-all active:scale-95"
+                                className="flex items-center gap-2 bg-white text-gray-700 border border-gray-300 px-6 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
                             >
-                                <Upload size={24} />
-                                Ingest Data
+                                <Upload size={20} />
+                                Import CSV
                             </button>
                         )}
                     </div>
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="flex border-b border-gray-800 gap-1 overflow-x-auto pb-px">
-                    {filteredTabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`
-                                flex items-center gap-2 px-6 py-4 relative transition-all duration-300 whitespace-nowrap
-                                ${activeTab === tab.id
-                                    ? 'text-orange-500 font-bold'
-                                    : 'text-gray-500 hover:text-gray-300 font-medium'
-                                }
-                            `}
-                        >
-                            <tab.icon size={20} />
-                            <span>{tab.label}</span>
-                            {activeTab === tab.id && (
-                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-orange-600 rounded-t-full shadow-[0_0_12px_rgba(249,115,22,0.6)]" />
-                            )}
-                        </button>
-                    ))}
-                </div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex border-b border-gray-200">
+                        {filteredTabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`
+                                    flex items-center gap-2 px-6 py-4 font-semibold transition-all relative
+                                    ${activeTab === tab.id
+                                        ? 'text-orange-600 border-b-2 border-orange-600'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                    }
+                                `}
+                            >
+                                <tab.icon size={20} />
+                                <span>{tab.label}</span>
+                            </button>
+                        ))}
+                    </div>
 
-                {/* Tab Content */}
-                <div key={refreshKey} className="min-h-[60vh]">
-                    {activeTab === 'dashboard' && <LeadDashboard />}
-                    {activeTab === 'list' && <LeadList onSelectLead={setSelectedLeadId} />}
-                    {activeTab === 'import' && <LeadImport onComplete={() => setActiveTab('list')} />}
+                    {/* Tab Content */}
+                    <div className="p-6">
+                        {activeTab === 'dashboard' && <LeadDashboard refreshTrigger={refreshKey} />}
+                        {activeTab === 'list' && <LeadList key={refreshKey} onSelectLead={setSelectedLeadId} />}
+                        {activeTab === 'import' && <LeadImport onComplete={() => setActiveTab('list')} />}
+                    </div>
                 </div>
 
                 {/* Detail Modal */}
@@ -114,6 +109,7 @@ const LeadsPage = () => {
                     />
                 )}
 
+                {/* Create Modal */}
                 {isCreateModalOpen && (
                     <CreateLeadModal
                         onClose={() => setIsCreateModalOpen(false)}

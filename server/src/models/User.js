@@ -88,6 +88,7 @@ userSchema.pre('save', async function () {
     
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    console.log('🔒 Password hashed for user:', this.email);
 });
 
 // Compare password method

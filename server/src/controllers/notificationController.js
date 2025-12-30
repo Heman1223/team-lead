@@ -21,6 +21,7 @@ const getNotifications = async (req, res) => {
             .populate('senderId', 'name avatar') // For received: who sent it
             .populate('userId', 'name')          // For sent: who received it
             .populate('taskId', 'title')
+            .populate('leadId', 'clientName')
             .sort({ createdAt: -1 })
             .limit(parseInt(limit));
 

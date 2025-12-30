@@ -75,6 +75,10 @@ const startServer = async () => {
     await connectDB();
     console.log("✓ Database connected\n");
 
+    // Initialize Notification Scheduler
+    const initScheduler = require('./services/notificationScheduler');
+    initScheduler();
+
     console.log("--- Loading Routes ---");
 
     // Load auth routes
@@ -107,6 +111,7 @@ const startServer = async () => {
       { path: "/api/teams", file: "./routes/teamRoutes", name: "Team" },
       { path: "/api/tasks", file: "./routes/taskRoutes", name: "Task" },
       { path: "/api/leads", file: "./routes/leadRoutes", name: "Lead" },
+      { path: "/api/follow-ups", file: "./routes/followUpRoutes", name: "FollowUp" },
       {
         path: "/api/notifications",
         file: "./routes/notificationRoutes",
@@ -128,6 +133,11 @@ const startServer = async () => {
         path: "/api/messages",
         file: "./routes/messageRoutes",
         name: "Message",
+      },
+      {
+        path: "/api/analytics",
+        file: "./routes/analyticsRoutes",
+        name: "Analytics",
       },
     ];
 

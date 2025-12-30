@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import { adminAnalyticsAPI, adminTasksAPI } from '../services/adminApi';
 
 const AdminDashboard = () => {
+    console.log('AdminDashboard rendering...');
     const [stats, setStats] = useState(null);
     const [teamPerformance, setTeamPerformance] = useState([]);
     const [bestTeams, setBestTeams] = useState([]);
@@ -34,9 +35,9 @@ const AdminDashboard = () => {
                 adminTasksAPI.getAll()
             ]);
 
-            setStats(statsRes.data.data);
-            setTeamPerformance(performanceRes.data.data);
-            setBestTeams(bestTeamsRes.data.data);
+            setStats(statsRes.data.data || {});
+            setTeamPerformance(performanceRes.data.data || []);
+            setBestTeams(bestTeamsRes.data.data || []);
 
             // Calculate today's task statistics
             const tasks = tasksRes.data.data || [];
@@ -72,6 +73,16 @@ const AdminDashboard = () => {
             });
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
+            // Set default empty values to prevent crashes
+            setStats({});
+            setTeamPerformance([]);
+            setBestTeams([]);
+            setTaskStats({
+                assignedToday: 0,
+                dueToday: 0,
+                overdue: 0,
+                bestTeamLead: null
+            });
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -110,9 +121,9 @@ const AdminDashboard = () => {
     ] : [];
 
     const teamCompletionData = teamPerformance.map(team => ({
-        name: team.teamName.length > 15 ? team.teamName.substring(0, 15) + '...' : team.teamName,
-        completion: team.progressPercentage,
-        overdue: team.overdueTasks
+        name: team.teamName && team.teamName.length > 15 ? team.teamName.substring(0, 15) + '...' : (team.teamName || 'Unknown Team'),
+        completion: team.progressPercentage || 0,
+        overdue: team.overdueTasks || 0
     }));
 
     const completionTrendData = stats?.completionTrend || [];
@@ -463,12 +474,12 @@ const AdminDashboard = () => {
                                             <span className="text-orange-600 font-bold text-sm">{getRankBadge(index)}</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm text-gray-900 truncate">{team.teamName}</p>
-                                            <p className="text-xs text-gray-600">{team.teamLead}</p>
+                                            <p className="font-semibold text-sm text-gray-900 truncate">{team.teamName || 'Unknown Team'}</p>
+                                            <p className="text-xs text-gray-600">{team.teamLead || 'Unknown'}</p>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <p className="text-sm font-bold text-green-600">{team.completionRate}%</p>
-                                            <p className="text-xs text-gray-500">{team.avgResponseTime}h avg</p>
+                                            <p className="text-sm font-bold text-green-600">{team.completionRate || 0}%</p>
+                                            <p className="text-xs text-gray-500">{team.avgResponseTime || 0}h avg</p>
                                         </div>
                                     </div>
                                 ))}
@@ -539,11 +550,11 @@ const AdminDashboard = () => {
                                     <div className="flex items-start justify-between mb-4">
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="text-lg font-bold text-gray-900">{team.teamName}</h3>
+                                                <h3 className="text-lg font-bold text-gray-900">{team.teamName || 'Unknown Team'}</h3>
                                                 <span className="text-xs font-bold text-gray-500">#{index + 1}</span>
                                             </div>
-                                            <p className="text-sm text-gray-600 mt-1">Lead: {team.teamLead.name}</p>
-                                            <p className="text-xs text-gray-500">{team.memberCount} members</p>
+                                            <p className="text-sm text-gray-600 mt-1">Lead: {team.teamLead?.name || 'Unknown'}</p>
+                                            <p className="text-xs text-gray-500">{team.memberCount || 0} members</p>
                                         </div>
                                         <div className={`px-3 py-1.5 rounded-full border text-xs font-semibold ${getPerformanceColor(team.performanceStatus)}`}>
                                             {getPerformanceLabel(team.performanceStatus)}
@@ -553,7 +564,7 @@ const AdminDashboard = () => {
                                     <div className="mb-4">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-sm font-medium text-gray-700">Completion Rate</span>
-                                            <span className="text-sm font-bold text-orange-600">{team.progressPercentage}%</span>
+                                            <span className="text-sm font-bold text-orange-600">{team.progressPercentage || 0}%</span>
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-3">
                                             <div
@@ -561,7 +572,7 @@ const AdminDashboard = () => {
                                                     team.performanceStatus === 'average' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
                                                         'bg-gradient-to-r from-red-500 to-red-600'
                                                     }`}
-                                                style={{ width: `${team.progressPercentage}%` }}
+                                                style={{ width: `${team.progressPercentage || 0}%` }}
                                             ></div>
                                         </div>
                                     </div>
@@ -569,26 +580,26 @@ const AdminDashboard = () => {
                                     <div className="grid grid-cols-3 gap-3 mb-4">
                                         <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
                                             <p className="text-xs text-gray-600 font-medium">Total</p>
-                                            <p className="text-lg font-bold text-gray-900">{team.totalTasks}</p>
+                                            <p className="text-lg font-bold text-gray-900">{team.totalTasks || 0}</p>
                                         </div>
                                         <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
                                             <p className="text-xs text-gray-600 font-medium">Done</p>
-                                            <p className="text-lg font-bold text-green-600">{team.completedTasks}</p>
+                                            <p className="text-lg font-bold text-green-600">{team.completedTasks || 0}</p>
                                         </div>
                                         <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
                                             <p className="text-xs text-gray-600 font-medium">Overdue</p>
-                                            <p className="text-lg font-bold text-red-600">{team.overdueTasks}</p>
+                                            <p className="text-lg font-bold text-red-600">{team.overdueTasks || 0}</p>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-200">
                                         <div>
                                             <p className="text-xs text-gray-600 font-medium">Avg Completion</p>
-                                            <p className="text-sm font-bold text-gray-900">{team.avgCompletionTime}h</p>
+                                            <p className="text-sm font-bold text-gray-900">{team.avgCompletionTime || 0}h</p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-gray-600 font-medium">Recent Rate</p>
-                                            <p className="text-sm font-bold text-gray-900">{team.recentCompletionRate} tasks/week</p>
+                                            <p className="text-sm font-bold text-gray-900">{team.recentCompletionRate || 0} tasks/week</p>
                                         </div>
                                     </div>
                                 </div>

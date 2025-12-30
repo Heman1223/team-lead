@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -151,8 +151,10 @@ export const leadsAPI = {
     getOne: (id) => api.get(`/leads/${id}`),
     create: (data) => api.post('/leads', data),
     update: (id, data) => api.put(`/leads/${id}`, data),
+    delete: (id) => api.delete(`/leads/${id}`),
     assign: (id, data) => api.put(`/leads/${id}/assign`, data),
     convertToProject: (id) => api.post(`/leads/${id}/convert`),
+    escalate: (id, reason) => api.post(`/leads/${id}/escalate`, { reason }),
     previewLeads: (formData) => api.post('/leads/preview', formData, {
         headers: {
             'Content-Type': 'multipart/form-data'
@@ -160,6 +162,26 @@ export const leadsAPI = {
     }),
     importLeads: (leads) => api.post('/leads/import', { leads }),
     getStats: () => api.get('/leads/stats')
+};
+
+// Follow-ups API
+export const followUpsAPI = {
+    getAll: (params) => api.get('/follow-ups', { params }),
+    create: (data) => api.post('/follow-ups', data),
+    update: (id, data) => api.put(`/follow-ups/${id}`, data),
+    complete: (id, notes) => api.put(`/follow-ups/${id}/complete`, { notes }),
+    reschedule: (id, newDate, notes) => api.put(`/follow-ups/${id}/reschedule`, { newDate, notes }),
+    cancel: (id) => api.delete(`/follow-ups/${id}`),
+    getOverdue: () => api.get('/follow-ups/status/overdue'),
+    getUpcoming: () => api.get('/follow-ups/status/upcoming')
+};
+
+// Analytics API
+export const analyticsAPI = {
+    getLeadInflow: (range) => api.get('/analytics/leads/inflow', { params: { range } }),
+    getSourceDistribution: () => api.get('/analytics/leads/sources'),
+    getConversionMetrics: () => api.get('/analytics/leads/conversion'),
+    getTeamPerformance: () => api.get('/analytics/performance/team')
 };
 
 export default api;

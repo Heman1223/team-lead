@@ -141,8 +141,8 @@ const Communication = () => {
     };
 
     const filteredMembers = members.filter(m => {
-        const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            m.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            m.email?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
@@ -246,7 +246,7 @@ const Communication = () => {
                                             {/* Avatar */}
                                             <div className="relative flex-shrink-0">
                                                 <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                                    {member.name.charAt(0).toUpperCase()}
+                                                    {member.name?.charAt(0).toUpperCase() || '?'}
                                                 </div>
                                                 <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 ${getStatusColor(member.status)} rounded-full border-2 border-white`}></span>
                                             </div>
@@ -254,7 +254,7 @@ const Communication = () => {
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
-                                                    <p className="font-semibold text-gray-900 truncate">{member.name}</p>
+                                                    <p className="font-semibold text-gray-900 truncate">{member.name || 'Unknown'}</p>
                                                     {lastMsg && (
                                                         <span className="text-xs text-gray-500">
                                                             {formatTime(lastMsg.createdAt)}
@@ -263,7 +263,7 @@ const Communication = () => {
                                                 </div>
                                                 <div className="flex items-center justify-between mt-0.5">
                                                     <p className="text-sm text-gray-600 truncate">
-                                                        {lastMsg ? lastMsg.content : member.email}
+                                                        {lastMsg ? lastMsg.content : (member.email || 'No email')}
                                                     </p>
                                                     {unread > 0 && (
                                                         <span className="ml-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
@@ -298,13 +298,13 @@ const Communication = () => {
                                         </button>
                                         <div className="relative">
                                             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
-                                                {selectedMember.name.charAt(0).toUpperCase()}
+                                                {selectedMember.name?.charAt(0).toUpperCase() || '?'}
                                             </div>
                                             <span className={`absolute bottom-0 right-0 w-3 h-3 ${getStatusColor(selectedMember.status)} rounded-full border-2 border-white`}></span>
                                         </div>
                                         <div className="flex-1">
-                                            <p className="font-semibold text-gray-900">{selectedMember.name}</p>
-                                            <p className="text-sm text-gray-600 capitalize">{selectedMember.status}</p>
+                                            <p className="font-semibold text-gray-900">{selectedMember.name || 'Unknown'}</p>
+                                            <p className="text-sm text-gray-600 capitalize">{selectedMember.status || 'offline'}</p>
                                         </div>
                                     </div>
 
@@ -318,7 +318,7 @@ const Communication = () => {
                                             <div className="flex flex-col items-center justify-center h-full text-gray-500">
                                                 <MessageCircle className="w-16 h-16 text-gray-300 mb-4" />
                                                 <p>No messages yet</p>
-                                                <p className="text-sm">Start a conversation with {selectedMember.name}</p>
+                                                <p className="text-sm">Start a conversation with {selectedMember.name || 'this user'}</p>
                                             </div>
                                         ) : (
                                             <div className="space-y-2">

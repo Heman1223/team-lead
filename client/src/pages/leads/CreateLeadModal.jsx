@@ -1,25 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     X,
     Save,
     AlertCircle,
-    Check
+    Check,
+    UserPlus
 } from 'lucide-react';
-import { leadsAPI } from '../../services/api';
+import { leadsAPI, usersAPI, teamsAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const CreateLeadModal = ({ onClose, onSuccess }) => {
+    const { isAdmin, isTeamLead, user } = useAuth();
     const [formData, setFormData] = useState({
         clientName: '',
         email: '',
         phone: '',
         category: 'web_development',
         description: '',
+        inquiryMessage: '',
+        source: 'manual',
         priority: 'medium',
         estimatedValue: 0,
-        expectedCloseDate: ''
+        expectedCloseDate: '',
+        assignedTo: '',
+        assignedTeam: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [users, setUsers] = useState([]);
+    const [teams, setTeams] = useState([]);
+
+    useEffect(() => {
+        const fetchAssignmentOptions = async () => {
+            if (!isAdmin && !isTeamLead) return;
+
+            try {
+                // Fetch Teams
+                // If admin, fetch all teams. If team lead, fetch their led team.
+                // For simplicity, we'll just fetch all teams for admin, and filtered for team lead if API supports
+                // But specifically for 'teams', let's just get all and filter client-side or assume API handles it
+                const teamsRes = await teamsAPI.getAll(); 
+                // Note: teamsAPI.getAll might return all teams. 
+                // If Team Lead, we should probably use teamsAPI.getLedTeams() or similar if available, 
+                // but for now let's assume getAll and filter.
+                
+                let relevantTeams = teamsRes.data.data;
+                if (isTeamLead) {
+                    // Filter to only teams led by this user
+                    relevantTeams = relevantTeams.filter(t => t.leadId?._id === user._id || t.leadId === user._id);
+                }
+                setTeams(relevantTeams);
+
+                // Fetch Users
+                // Ideally we filter users by the selected team, but initially we might show all or none.
+                // Let's fetch all users for Admin, and team members for Team Lead
+                const usersRes = await usersAPI.getAll({ limit: 100 });
+                let relevantUsers = usersRes.data.data;
+                
+                if (isTeamLead && relevantTeams.length > 0) {
+                     // Get members of the led team(s)
+                     const teamMemberIds = relevantTeams.flatMap(t => t.members.map(m => m._id || m));
+                     relevantUsers = relevantUsers.filter(u => teamMemberIds.includes(u._id));
+                }
+                setUsers(relevantUsers);
+
+            } catch (err) {
+                console.error("Error fetching assignment options", err);
+            }
+        };
+
+        fetchAssignmentOptions();
+    }, [isAdmin, isTeamLead, user._id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -31,26 +82,29 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
         setLoading(true);
         setError(null);
         try {
-            console.log('Creating lead with data:', formData);
-            const response = await leadsAPI.create(formData);
+            // Remove empty assignment fields to avoid validation errors if optional
+            const submitData = { ...formData };
+            if (!submitData.assignedTo) delete submitData.assignedTo;
+            if (!submitData.assignedTeam) delete submitData.assignedTeam;
+
+            console.log('Creating lead with data:', submitData);
+            const response = await leadsAPI.create(submitData);
             console.log('Lead created successfully:', response.data);
+            
+            // If assignedTo is present, we might need to call assign API separately if create doesn't handle it
+            // checking leadController.createLead... it just does Lead.create(req.body). 
+            // Lead schema has assignedTo/assignedTeam, so it should work directly if passed.
+            
             onSuccess();
             onClose();
         } catch (err) {
             console.error('Error creating lead:', err);
-            console.error('Error response:', err.response);
-            console.error('Error status:', err.response?.status);
-            console.error('Error data:', err.response?.data);
-
             let errorMessage = 'Failed to create lead';
-            if (err.response?.status === 404) {
-                errorMessage = 'API endpoint not found. Please ensure the backend server is running.';
-            } else if (err.response?.data?.message) {
+            if (err.response?.data?.message) {
                 errorMessage = err.response.data.message;
             } else if (err.message) {
                 errorMessage = err.message;
             }
-
             setError(errorMessage);
         } finally {
             setLoading(false);
@@ -153,17 +207,98 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
                                 className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
                             />
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-orange-500">Source</label>
+                            <select
+                                name="source"
+                                value={formData.source}
+                                onChange={handleChange}
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                            >
+                                <option value="manual">Manual Entry</option>
+                                <option value="website">Website Form</option>
+                                <option value="linkedin">LinkedIn</option>
+                                <option value="referral">Referral</option>
+                                <option value="cold_call">Cold Call</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-orange-500">Priority</label>
+                            <select
+                                name="priority"
+                                value={formData.priority}
+                                onChange={handleChange}
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                            >
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {(isAdmin || isTeamLead) && (
+                        <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-800 space-y-3">
+                            <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider">
+                                <UserPlus size={14} />
+                                Immediate Assignment
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-gray-400">Assign to Team</label>
+                                    <select
+                                        name="assignedTeam"
+                                        value={formData.assignedTeam}
+                                        onChange={handleChange}
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="">-- No Team --</option>
+                                        {teams.map(team => (
+                                            <option key={team._id} value={team._id}>{team.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-gray-400">Assign to User</label>
+                                    <select
+                                        name="assignedTo"
+                                        value={formData.assignedTo}
+                                        onChange={handleChange}
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="">-- No User --</option>
+                                        {users.map(u => (
+                                            <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-orange-500">Inquiry Message</label>
+                        <textarea
+                            name="inquiryMessage"
+                            value={formData.inquiryMessage}
+                            onChange={handleChange}
+                            rows="2"
+                            className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all resize-none placeholder:text-gray-600"
+                            placeholder="Paste the initial inquiry message or notes here..."
+                        />
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-orange-500">Description</label>
+                        <label className="text-xs font-semibold text-orange-500">Internal Description / Notes</label>
                         <textarea
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
                             rows="3"
                             className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all resize-none placeholder:text-gray-600"
-                            placeholder="Enter lead description and requirements..."
+                            placeholder="Enter any internal notes or additional requirements..."
                         />
                     </div>
 

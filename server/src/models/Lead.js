@@ -30,14 +30,20 @@ const leadSchema = new mongoose.Schema({
         default: '',
         maxlength: [1000, 'Description cannot be more than 1000 characters']
     },
+    inquiryMessage: {
+        type: String,
+        default: '',
+        maxlength: [2000, 'Inquiry message cannot be more than 2000 characters']
+    },
 
-    // Lead Status & Priority
+    // Lead Status & Priority (Strictly following workflow)
     status: {
         type: String,
-        enum: ['new', 'contacted', 'qualified', 'proposal_sent', 'negotiation', 'won', 'lost', 'archived'],
-        default: 'new'
+        enum: ['new', 'contacted', 'interested', 'follow_up', 'converted', 'not_interested'],
+        default: 'new',
+        required: true
     },
-    lostReason: {
+    notInterestedReason: {
         type: String,
         default: ''
     },
@@ -102,20 +108,20 @@ const leadSchema = new mongoose.Schema({
     // Lead Source & Tracking
     source: {
         type: String,
-        enum: ['website', 'referral', 'social_media', 'email_campaign', 'cold_call', 'trade_show', 'csv_import', 'other'],
-        default: 'csv_import'
+        enum: ['manual', 'website', 'referral', 'social_media', 'email_campaign', 'cold_call', 'trade_show', 'linkedin', 'csv_import', 'other'],
+        default: 'manual'
     },
     sourceDetails: {
         type: String,
         default: ''
     },
 
-    // Communication History
+    // Communication History & Activity Timeline
     notes: [{
         content: {
             type: String,
             required: true,
-            maxlength: [500, 'Note cannot be more than 500 characters']
+            maxlength: [1000, 'Note cannot be more than 1000 characters']
         },
         addedBy: {
             type: mongoose.Schema.Types.ObjectId,
@@ -128,10 +134,79 @@ const leadSchema = new mongoose.Schema({
         },
         type: {
             type: String,
-            enum: ['note', 'call', 'email', 'meeting', 'proposal', 'follow_up'],
+            enum: ['note', 'call_done', 'call_not_picked', 'email', 'meeting', 'proposal', 'follow_up_scheduled', 'status_changed', 'lead_assigned'],
             default: 'note'
         }
     }],
+
+    // Attachments
+    attachments: [{
+        fileName: {
+            type: String,
+            required: true
+        },
+        fileUrl: {
+            type: String,
+            required: true
+        },
+        fileSize: {
+            type: Number,
+            default: 0
+        },
+        fileType: {
+            type: String,
+            default: ''
+        },
+        uploadedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        uploadedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
+
+    // Status History - Complete Traceability
+    statusHistory: [{
+        status: {
+            type: String,
+            required: true
+        },
+        changedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        changedAt: {
+            type: Date,
+            default: Date.now
+        },
+        notes: {
+            type: String,
+            default: ''
+        }
+    }],
+
+    // Escalation
+    escalatedToAdmin: {
+        type: Boolean,
+        default: false
+    },
+    escalatedAt: {
+        type: Date,
+        default: null
+    },
+    escalatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    escalationReason: {
+        type: String,
+        default: ''
+    },
 
     // Lead Qualification
     isQualified: {
@@ -185,10 +260,23 @@ const leadSchema = new mongoose.Schema({
         trim: true
     },
 
-    // System Fields
+    // System Fields (Soft Delete with 60-day recovery)
     isActive: {
         type: Boolean,
         default: true
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date,
+        default: null
+    },
+    deletedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
     },
     importBatch: {
         type: String,
@@ -202,6 +290,15 @@ const leadSchema = new mongoose.Schema({
     lastUpdatedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+        default: null
+    },
+    // Conversion tracking
+    convertedAt: {
+        type: Date,
+        default: null
+    },
+    conversionDuration: {
+        type: Number, // in days
         default: null
     }
 }, {
@@ -241,24 +338,68 @@ leadSchema.methods.addNote = function (content, addedBy, type = 'note') {
     return this;
 };
 
-// Update lead status with automatic date tracking
-leadSchema.methods.updateStatus = function (newStatus, updatedBy) {
+// Update lead status with automatic tracking and activity logging
+leadSchema.methods.updateStatus = function (newStatus, updatedBy, notes = '') {
     const oldStatus = this.status;
     this.status = newStatus;
     this.lastUpdatedBy = updatedBy;
 
-    // Set close date for won/lost leads
-    if (['won', 'lost'].includes(newStatus) && !this.actualCloseDate) {
+    // Log status change in history
+    this.statusHistory.push({
+        status: newStatus,
+        changedBy: updatedBy,
+        changedAt: new Date(),
+        notes: notes || `Status changed from ${oldStatus} to ${newStatus}`
+    });
+
+    // Track conversion
+    if (newStatus === 'converted' && !this.convertedAt) {
+        this.convertedAt = new Date();
         this.actualCloseDate = new Date();
+        // Calculate conversion duration in days
+        const createdDate = new Date(this.createdAt);
+        const convertedDate = new Date();
+        this.conversionDuration = Math.ceil((convertedDate - createdDate) / (1000 * 60 * 60 * 24));
     }
 
     // Add automatic note for status change
     this.addNote(
-        `Status changed from ${oldStatus} to ${newStatus}`,
+        notes || `Status changed from ${oldStatus} to ${newStatus}`,
         updatedBy,
-        'note'
+        'status_changed'
     );
 
+    return this;
+};
+
+// Soft delete with 60-day recovery period
+leadSchema.methods.softDelete = function (deletedBy) {
+    this.isDeleted = true;
+    this.isActive = false;
+    this.deletedAt = new Date();
+    this.deletedBy = deletedBy;
+    return this;
+};
+
+// Restore deleted lead
+leadSchema.methods.restore = function () {
+    this.isDeleted = false;
+    this.isActive = true;
+    this.deletedAt = null;
+    this.deletedBy = null;
+    return this;
+};
+
+// Add attachment
+leadSchema.methods.addAttachment = function (fileName, fileUrl, fileSize, fileType, uploadedBy) {
+    this.attachments.push({
+        fileName,
+        fileUrl,
+        fileSize,
+        fileType,
+        uploadedBy,
+        uploadedAt: new Date()
+    });
     return this;
 };
 

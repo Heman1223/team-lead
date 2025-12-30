@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const Task = require('../models/Task');
 const ActivityLog = require('../models/ActivityLog');
+const FollowUp = require('../models/FollowUp');
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
@@ -64,7 +65,7 @@ const getLeadById = async (req, res) => {
         }
 
         // Check permissions
-        const canAccess = checkLeadPermission(lead, req.user);
+        const canAccess = await checkLeadPermission(lead, req.user);
         if (!canAccess && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Not authorized to view this lead' });
         }
@@ -133,7 +134,8 @@ const updateLead = async (req, res) => {
         }
 
         // Check permissions
-        if (req.user.role === 'team_member' && lead.assignedTo?.toString() !== req.user._id.toString()) {
+        const canAccess = await checkLeadPermission(lead, req.user);
+        if (!canAccess && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Not authorized to update this lead' });
         }
 
@@ -190,6 +192,12 @@ const assignLead = async (req, res) => {
 
         if (!lead) {
             return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        // Check permissions - Ensure user has access to this lead
+        const canAccess = await checkLeadPermission(lead, req.user);
+        if (!canAccess) {
+             return res.status(403).json({ success: false, message: 'Not authorized to assign this lead' });
         }
 
         // Role-based restrictions
@@ -417,13 +425,17 @@ const importLeads = async (req, res) => {
     }
 };
 
-// @desc    Get dashboard stats
+// @desc    Get comprehensive dashboard stats
 // @route   GET /api/leads/stats
 // @access  Private
 const getLeadStats = async (req, res) => {
     try {
-        let query = { isActive: true };
+        console.log('=== GET LEAD STATS REQUEST ===');
+        console.log('User:', req.user._id, req.user.role);
+        
+        let query = { isActive: true, isDeleted: false };
 
+        // Role-based filtering
         if (req.user.role === 'team_lead') {
             const team = await Team.findOne({ leadId: req.user._id });
             if (team) {
@@ -435,65 +447,305 @@ const getLeadStats = async (req, res) => {
             query.assignedTo = req.user._id;
         }
 
-        const stats = await Lead.aggregate([
-            { $match: query },
-            {
-                $group: {
-                    _id: null,
-                    totalLeads: { $sum: 1 },
-                    wonLeads: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
-                    totalPipelineValue: { $sum: '$estimatedValue' },
-                    leadsByStatus: {
-                        $push: '$status'
-                    },
-                    leadsByCategory: {
-                        $push: '$category'
-                    }
-                }
-            }
-        ]);
+        console.log('Query:', JSON.stringify(query, null, 2));
 
-        if (stats.length === 0) {
-            return res.json({ success: true, data: { totalLeads: 0, wonLeads: 0, totalPipelineValue: 0 } });
+        // Get all leads matching query
+        const leads = await Lead.find(query);
+        console.log(`Found ${leads.length} leads`);
+
+        // Calculate stats
+        const totalLeads = leads.length;
+        const convertedLeads = leads.filter(l => l.status === 'converted').length;
+        const notInterestedLeads = leads.filter(l => l.status === 'not_interested').length;
+        const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(2) : 0;
+
+        console.log('Stats calculated:', { totalLeads, convertedLeads, notInterestedLeads, conversionRate });
+
+        // Leads by status
+        const statusDist = leads.reduce((acc, lead) => {
+            acc[lead.status] = (acc[lead.status] || 0) + 1;
+            return acc;
+        }, {});
+        console.log('Status distribution:', statusDist);
+
+        // Leads by source
+        const sourcesDist = leads.reduce((acc, lead) => {
+            const source = lead.source || 'unknown';
+            acc[source] = (acc[source] || 0) + 1;
+            return acc;
+        }, {});
+        console.log('Sources distribution:', sourcesDist);
+
+        // Total pipeline value
+        const totalPipelineValue = leads.reduce((sum, lead) => sum + (lead.estimatedValue || 0), 0);
+        console.log('Total pipeline value:', totalPipelineValue);
+
+        // Average conversion time (only for converted leads)
+        const convertedLeadsWithDuration = leads.filter(l => l.status === 'converted' && l.conversionDuration);
+        const avgConversionTime = convertedLeadsWithDuration.length > 0
+            ? (convertedLeadsWithDuration.reduce((sum, l) => sum + l.conversionDuration, 0) / convertedLeadsWithDuration.length).toFixed(1)
+            : 0;
+
+        // Employee performance (Admin and Team Lead only)
+        let employeePerformance = [];
+        if (req.user.role === 'admin' || req.user.role === 'team_lead') {
+            const performanceQuery = req.user.role === 'team_lead' && query.$or
+                ? { $or: query.$or }
+                : {};
+
+            const performance = await Lead.aggregate([
+                { $match: { ...performanceQuery, isActive: true, isDeleted: false, assignedTo: { $ne: null } } },
+                {
+                    $group: {
+                        _id: '$assignedTo',
+                        totalLeads: { $sum: 1 },
+                        convertedLeads: {
+                            $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] }
+                        },
+                        totalPipelineValue: { $sum: '$estimatedValue' }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: '_id',
+                        foreignField: '_id',
+                        as: 'user'
+                    }
+                },
+                { $unwind: '$user' },
+                {
+                    $project: {
+                        _id: 1,
+                        name: '$user.name',
+                        totalLeads: 1,
+                        convertedLeads: 1,
+                        totalPipelineValue: 1,
+                        conversionRate: {
+                            $cond: [
+                                { $gt: ['$totalLeads', 0] },
+                                { $multiply: [{ $divide: ['$convertedLeads', '$totalLeads'] }, 100] },
+                                0
+                            ]
+                        }
+                    }
+                },
+                { $sort: { conversionRate: -1 } }
+            ]);
+
+            employeePerformance = performance;
+            console.log('Employee performance:', employeePerformance.length, 'employees');
         }
 
-        // Process status and category distribution
-        const statusDist = stats[0].leadsByStatus.reduce((acc, status) => {
-            acc[status] = (acc[status] || 0) + 1;
-            return acc;
-        }, {});
+        const responseData = {
+            totalLeads,
+            wonLeads: convertedLeads,
+            convertedLeads,
+            notInterestedLeads,
+            conversionRate: parseFloat(conversionRate),
+            statusDist,
+            sourcesDist,
+            totalPipelineValue,
+            avgConversionTime: parseFloat(avgConversionTime),
+            employeePerformance
+        };
 
-        const categoryDist = stats[0].leadsByCategory.reduce((acc, cat) => {
-            acc[cat] = (acc[cat] || 0) + 1;
-            return acc;
-        }, {});
+        console.log('=== SENDING RESPONSE ===');
+        console.log(JSON.stringify(responseData, null, 2));
 
         res.json({
             success: true,
-            data: {
-                ...stats[0],
-                statusDist,
-                categoryDist,
-                conversionRate: stats[0].totalLeads > 0 ? (stats[0].wonLeads / stats[0].totalLeads) * 100 : 0
-            }
+            data: responseData
         });
     } catch (error) {
-        console.error('Get lead stats error:', error);
+        console.error('=== GET LEAD STATS ERROR ===');
+        console.error('Error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };
 
-// Helper to check permission
-const checkLeadPermission = (lead, user) => {
-    if (user.role === 'admin') return true;
-    if (user.role === 'team_lead') {
-        // Should check if lead is in their team (assignedTeam or assignedTo matches someone in team)
-        // For simplicity, we check if assignedTeam matches or createdBy
-        return true; // Simplified for now, backend queries already filter
+// @desc    Soft delete lead (60-day recovery)
+// @route   DELETE /api/leads/:id
+// @access  Private (Admin only)
+const deleteLead = async (req, res) => {
+    try {
+        // Only admins can delete leads
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Only admins can delete leads' });
+        }
+
+        const lead = await Lead.findById(req.params.id);
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        // Soft delete using model method
+        lead.softDelete(req.user._id);
+        await lead.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'lead_deleted',
+            userId: req.user._id,
+            leadId: lead._id,
+            details: `Lead soft deleted: ${lead.clientName} (Can be recovered within 60 days)`
+        });
+
+        res.json({
+            success: true,
+            message: 'Lead deleted successfully. Can be recovered within 60 days.'
+        });
+    } catch (error) {
+        console.error('Delete lead error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
+};
+
+// @desc    Restore deleted lead
+// @route   PUT /api/leads/:id/restore
+// @access  Private (Admin only)
+const restoreLead = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Only admins can restore leads' });
+        }
+
+        const lead = await Lead.findById(req.params.id);
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        if (!lead.isDeleted) {
+            return res.status(400).json({ success: false, message: 'Lead is not deleted' });
+        }
+
+        // Check if within 60-day recovery period
+        const daysSinceDeleted = Math.ceil((new Date() - new Date(lead.deletedAt)) / (1000 * 60 * 60 * 24));
+        if (daysSinceDeleted > 60) {
+            return res.status(400).json({ success: false, message: 'Recovery period (60 days) has expired' });
+        }
+
+        // Restore using model method
+        lead.restore();
+        await lead.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'lead_restored',
+            userId: req.user._id,
+            leadId: lead._id,
+            details: `Lead restored: ${lead.clientName}`
+        });
+
+        res.json({
+            success: true,
+            message: 'Lead restored successfully',
+            data: lead
+        });
+    } catch (error) {
+        console.error('Restore lead error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Escalate lead to Admin
+// @route   POST /api/leads/:id/escalate
+// @access  Private (Team Lead only)
+const escalateLead = async (req, res) => {
+    try {
+        // Only team leads can escalate
+        if (req.user.role !== 'team_lead') {
+            return res.status(403).json({ success: false, message: 'Only team leads can escalate leads' });
+        }
+
+        const { reason } = req.body;
+        if (!reason || reason.trim() === '') {
+            return res.status(400).json({ success: false, message: 'Escalation reason is required' });
+        }
+
+        const lead = await Lead.findById(req.params.id);
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        // Check if team lead has access to this lead
+        const team = await Team.findOne({ leadId: req.user._id });
+        if (!team || (lead.assignedTeam && lead.assignedTeam.toString() !== team._id.toString())) {
+            return res.status(403).json({ success: false, message: 'Not authorized to escalate this lead' });
+        }
+
+        // Update lead escalation fields
+        lead.escalatedToAdmin = true;
+        lead.escalatedAt = new Date();
+        lead.escalatedBy = req.user._id;
+        lead.escalationReason = reason;
+        lead.lastUpdatedBy = req.user._id;
+        
+        // Add note about escalation
+        lead.addNote(`Lead escalated to Admin. Reason: ${reason}`, req.user._id, 'note');
+        
+        await lead.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'lead_escalated',
+            userId: req.user._id,
+            leadId: lead._id,
+            details: `Lead escalated to Admin. Reason: ${reason}`
+        });
+
+        // Create notification for all admins
+        const admins = await User.find({ role: 'admin', isActive: true });
+        const Notification = require('../models/Notification');
+        const notificationPromises = admins.map(admin =>
+            Notification.create({
+                userId: admin._id,
+                type: 'lead_escalated',
+                title: 'Lead Escalated',
+                message: `${req.user.name} escalated a lead: ${lead.clientName}. Reason: ${reason}`,
+                relatedTo: lead._id,
+                relatedToModel: 'Lead',
+                priority: 'high'
+            })
+        );
+        await Promise.all(notificationPromises);
+
+        res.json({
+            success: true,
+            message: 'Lead escalated to Admin successfully',
+            data: lead
+        });
+    } catch (error) {
+        console.error('Escalate lead error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+
+// Helper to check permission
+const checkLeadPermission = async (lead, user) => {
+    if (user.role === 'admin') return true;
+    
+    if (user.role === 'team_lead') {
+        // Check if lead is created by them
+        if (lead.createdBy?.toString() === user._id.toString()) return true;
+
+        // Check if assigned team is led by this user
+        const team = await Team.findOne({ leadId: user._id });
+        if (team) {
+            // Check if assigned to the team
+            if (lead.assignedTeam?.toString() === team._id.toString()) return true;
+            
+            // Check if assigned to a member of the team
+            if (lead.assignedTo && team.members.includes(lead.assignedTo)) return true;
+        }
+        return false;
+    }
+    
     if (user.role === 'team_member') {
         return lead.assignedTo?.toString() === user._id.toString();
     }
+    
     return false;
 };
 
@@ -506,5 +758,8 @@ module.exports = {
     convertToProject,
     importLeads,
     previewLeads,
-    getLeadStats
+    getLeadStats,
+    deleteLead,
+    restoreLead,
+    escalateLead
 };

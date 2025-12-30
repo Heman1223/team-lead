@@ -3,62 +3,60 @@ import {
     Target,
     TrendingUp,
     CheckCircle2,
-    Clock,
-    AlertCircle,
+    XCircle,
     DollarSign,
     Users,
-    ArrowUpRight,
-    ArrowDownRight,
-    PieChart,
+    Clock,
     BarChart3,
-    Briefcase
+    RefreshCw
 } from 'lucide-react';
 import { leadsAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import FollowUpList from './FollowUpListSimple';
 
-const StatCard = ({ title, value, icon: Icon, color, trend, trendValue }) => {
-    const colorMap = {
-        orange: 'from-orange-500/20 to-orange-600/5 text-orange-400 border-orange-500/20',
-        emerald: 'from-emerald-500/20 to-emerald-600/5 text-emerald-400 border-emerald-500/20',
-        blue: 'from-blue-500/20 to-blue-600/5 text-blue-400 border-blue-500/20',
-        purple: 'from-purple-500/20 to-purple-600/5 text-purple-400 border-purple-500/20'
+const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
+    const colorClasses = {
+        blue: 'bg-blue-50 border-blue-200 text-blue-600',
+        green: 'bg-green-50 border-green-200 text-green-600',
+        red: 'bg-red-50 border-red-200 text-red-600',
+        orange: 'bg-orange-50 border-orange-200 text-orange-600',
+        purple: 'bg-purple-50 border-purple-200 text-purple-600'
     };
 
     return (
-        <div className={`bg-gradient-to-br ${colorMap[color]} backdrop-blur-xl border rounded-[2.5rem] p-8 hover:scale-[1.02] transition-all duration-500 group shadow-2xl shadow-black/20`}>
-            <div className="flex justify-between items-start mb-6">
-                <div className="p-4 rounded-2xl bg-gray-900/50 border border-white/5 text-inherit group-hover:scale-110 transition-transform duration-500">
-                    <Icon size={28} />
+        <div className="bg-white rounded-xl border-2 border-gray-200 p-6 hover:shadow-lg transition-all">
+            <div className="flex items-start justify-between mb-4">
+                <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+                    <Icon size={24} />
                 </div>
-                {trend && (
-                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black ${trend === 'up' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                        {trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                        <span>{trendValue}%</span>
-                    </div>
-                )}
             </div>
-            <h3 className="text-gray-400 text-sm font-bold uppercase tracking-widest mb-2">{title}</h3>
-            <p className="text-4xl font-black text-white tracking-tighter">{value}</p>
+            <h3 className="text-gray-600 text-sm font-semibold mb-1">{title}</h3>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
+            {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
         </div>
     );
 };
 
-const LeadDashboard = () => {
+const LeadDashboard = ({ refreshTrigger }) => {
+    const { user } = useAuth();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const response = await leadsAPI.getStats();
-                setStats(response.data.data);
-            } catch (error) {
-                console.error('Error fetching lead stats:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchStats();
-    }, []);
+    }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
+
+    const fetchStats = async () => {
+        setLoading(true);
+        try {
+            const response = await leadsAPI.getStats();
+            setStats(response.data.data);
+        } catch (error) {
+            console.error('Error fetching lead stats:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -75,107 +73,157 @@ const LeadDashboard = () => {
     }).format(stats?.totalPipelineValue || 0);
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Summary Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="space-y-6">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                     title="Total Leads"
                     value={stats?.totalLeads || 0}
                     icon={Target}
-                    color="orange"
-                    trend="up"
-                    trendValue="12"
+                    color="blue"
+                    subtitle="All active leads"
                 />
                 <StatCard
-                    title="Leads Won"
-                    value={stats?.wonLeads || 0}
+                    title="Converted"
+                    value={stats?.convertedLeads || 0}
                     icon={CheckCircle2}
-                    color="emerald"
-                    trend="up"
-                    trendValue="5"
+                    color="green"
+                    subtitle="Successfully closed"
                 />
                 <StatCard
                     title="Conversion Rate"
                     value={`${(stats?.conversionRate || 0).toFixed(1)}%`}
                     icon={TrendingUp}
-                    color="blue"
-                    trend="up"
-                    trendValue="2.4"
+                    color="purple"
+                    subtitle="Success rate"
                 />
                 <StatCard
                     title="Pipeline Value"
                     value={formattedPipelineValue}
                     icon={DollarSign}
-                    color="purple"
-                    trend="up"
-                    trendValue="18"
+                    color="orange"
+                    subtitle="Total estimated value"
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Status Distribution */}
-                <div className="bg-gray-900 border border-gray-800 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl -mr-32 -mt-32" />
-                    <div className="relative z-10 space-y-8">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-2xl font-black text-white tracking-tighter uppercase">Status Matrix</h3>
-                                <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">Lifecycle distribution</p>
-                            </div>
-                            <div className="w-12 h-12 bg-gray-800 rounded-2xl flex items-center justify-center text-orange-500 border border-white/5">
-                                <Target size={24} />
-                            </div>
-                        </div>
-                        <div className="space-y-6">
-                            {Object.entries(stats?.statusDist || {}).map(([status, count]) => (
-                                <div key={status} className="space-y-3 group/item">
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-sm font-black text-gray-400 uppercase tracking-widest group-hover/item:text-white transition-colors">{status.replace('_', ' ')}</span>
-                                        <span className="text-2xl font-black text-white tracking-tighter">{count}</span>
+            {/* Status Breakdown & Follow-Ups */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Lead Status Distribution */}
+                <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-gray-900">Lead Status</h3>
+                        <BarChart3 className="text-gray-400" size={20} />
+                    </div>
+                    {/* Fixed height with scroll */}
+                    <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                        {Object.entries(stats?.statusDist || {}).map(([status, count]) => {
+                            const percentage = stats.totalLeads > 0 ? (count / stats.totalLeads) * 100 : 0;
+                            const statusColors = {
+                                new: 'bg-blue-500',
+                                contacted: 'bg-yellow-500',
+                                interested: 'bg-purple-500',
+                                follow_up: 'bg-orange-500',
+                                converted: 'bg-green-500',
+                                not_interested: 'bg-red-500'
+                            };
+                            
+                            return (
+                                <div key={status}>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-semibold text-gray-700 capitalize">
+                                            {status.replace('_', ' ')}
+                                        </span>
+                                        <span className="text-sm text-gray-600">{count} ({percentage.toFixed(0)}%)</span>
                                     </div>
-                                    <div className="h-3 w-full bg-gray-800 rounded-full overflow-hidden border border-white/5">
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
                                         <div
-                                            className="h-full bg-gradient-to-r from-orange-400 via-orange-500 to-orange-700 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(249,115,22,0.3)]"
-                                            style={{ width: `${stats.totalLeads > 0 ? (count / stats.totalLeads) * 100 : 0}%` }}
-                                        />
+                                            className={`h-2 rounded-full ${statusColors[status] || 'bg-gray-500'}`}
+                                            style={{ width: `${percentage}%` }}
+                                        ></div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })}
                     </div>
                 </div>
 
-                <div className="bg-gray-900 border border-gray-800 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -ml-32 -mb-32" />
-                    <div className="relative z-10 space-y-8">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-2xl font-black text-white tracking-tighter uppercase">Market Segments</h3>
-                                <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">Lead distribution by sector</p>
-                            </div>
-                            <div className="w-12 h-12 bg-gray-800 rounded-2xl flex items-center justify-center text-blue-500 border border-white/5">
-                                <Briefcase size={24} />
-                            </div>
+                {/* Follow-Up Tasks */}
+                <FollowUpList />
+            </div>
+
+            {/* Lead Sources */}
+            <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-6">Lead Sources</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {Object.entries(stats?.sourcesDist || {}).map(([source, count]) => (
+                        <div key={source} className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <p className="text-2xl font-bold text-gray-900">{count}</p>
+                            <p className="text-sm text-gray-600 capitalize mt-1">{source.replace('_', ' ')}</p>
                         </div>
-                        <div className="space-y-6">
-                            {Object.entries(stats?.categoryDist || {}).map(([category, count]) => (
-                                <div key={category} className="space-y-3 group/item">
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-sm font-black text-gray-400 uppercase tracking-widest group-hover/item:text-white transition-colors">{category.replace('_', ' ')}</span>
-                                        <span className="text-2xl font-black text-white tracking-tighter">{count}</span>
-                                    </div>
-                                    <div className="h-3 w-full bg-gray-800 rounded-full overflow-hidden border border-white/5">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-700 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
-                                            style={{ width: `${stats.totalLeads > 0 ? (count / stats.totalLeads) * 100 : 0}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
+                    ))}
+                </div>
+            </div>
+
+            {/* Employee Performance (Admin & Team Lead only) */}
+            {(user?.role === 'admin' || user?.role === 'team_lead') && stats?.employeePerformance?.length > 0 && (
+                <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">Team Performance</h3>
+                    {/* Fixed height container with scroll - shows 4 rows */}
+                    <div className="overflow-x-auto">
+                        <div className="max-h-80 overflow-y-auto">
+                            <table className="w-full">
+                                <thead className="sticky top-0 bg-white">
+                                    <tr className="border-b border-gray-200">
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
+                                        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Total Leads</th>
+                                        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Converted</th>
+                                        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Rate</th>
+                                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Pipeline Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stats.employeePerformance.map((emp, index) => (
+                                        <tr key={emp._id} className="border-b border-gray-100 hover:bg-gray-50">
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold text-sm">
+                                                        {index + 1}
+                                                    </div>
+                                                    <span className="font-semibold text-gray-900">{emp.name || 'Unknown'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="text-center py-3 px-4 text-gray-900">{emp.totalLeads || 0}</td>
+                                            <td className="text-center py-3 px-4 text-green-600 font-semibold">{emp.convertedLeads || 0}</td>
+                                            <td className="text-center py-3 px-4">
+                                                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                                                    {(emp.conversionRate || 0).toFixed(1)}%
+                                                </span>
+                                            </td>
+                                            <td className="text-right py-3 px-4 text-gray-900 font-semibold">
+                                                ${(emp.totalPipelineValue || 0).toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {/* Additional Stats */}
+            {stats?.avgConversionTime > 0 && (
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200 p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-600 mb-1">Average Conversion Time</h3>
+                            <p className="text-3xl font-bold text-gray-900">{stats.avgConversionTime} days</p>
+                            <p className="text-sm text-gray-600 mt-1">From lead creation to conversion</p>
+                        </div>
+                        <Clock className="text-blue-500" size={48} />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

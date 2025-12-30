@@ -18,22 +18,24 @@ import {
     Edit3,
     TrendingUp,
     AlertTriangle,
-    Archive
+    AlertOctagon,
+    Plus,
+    Bell
 } from 'lucide-react';
-import { leadsAPI, usersAPI, teamsAPI } from '../../services/api';
+import { leadsAPI, usersAPI, teamsAPI, followUpsAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const statusColors = {
     new: 'bg-blue-600 text-white',
     contacted: 'bg-indigo-600 text-white',
-    qualified: 'bg-orange-600 text-white',
-    proposal_sent: 'bg-indigo-500 text-white',
-    negotiation: 'bg-yellow-500 text-slate-900',
-    won: 'bg-emerald-600 text-white',
-    lost: 'bg-rose-600 text-white',
-    archived: 'bg-slate-600 text-white'
+    interested: 'bg-purple-600 text-white',
+    follow_up_required: 'bg-yellow-500 text-slate-900',
+    converted: 'bg-emerald-600 text-white',
+    lost: 'bg-rose-600 text-white'
 };
 
 const LeadDetail = ({ leadId, onClose, onUpdate }) => {
+    const { user, isAdmin, isTeamLead } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
@@ -42,6 +44,15 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     const [note, setNote] = useState('');
     const [showLostReason, setShowLostReason] = useState(false);
     const [lostReason, setLostReason] = useState('');
+    const [showEscalateModal, setShowEscalateModal] = useState(false);
+    const [escalationReason, setEscalationReason] = useState('');
+    const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+    const [followUpData, setFollowUpData] = useState({
+        title: '',
+        scheduledDate: '',
+        notes: '',
+        priority: 'medium'
+    });
 
     useEffect(() => {
         if (leadId) {
@@ -124,6 +135,64 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         }
     };
 
+    const handleDelete = async () => {
+        if (!window.confirm('Are you sure you want to delete this lead? This action cannot be undone.')) return;
+        setUpdating(true);
+        try {
+            await leadsAPI.delete(leadId);
+            alert('Lead deleted successfully!');
+            onClose();
+            onUpdate();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Delete failed');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleEscalate = async () => {
+        if (!escalationReason.trim()) {
+            alert('Please provide a reason for escalation');
+            return;
+        }
+        setUpdating(true);
+        try {
+            await leadsAPI.escalate(leadId, escalationReason);
+            alert('Lead escalated to Admin successfully!');
+            setShowEscalateModal(false);
+            setEscalationReason('');
+            await fetchLeadDetails();
+            onUpdate();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Escalation failed');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleScheduleFollowUp = async () => {
+        if (!followUpData.title || !followUpData.scheduledDate) {
+            alert('Please provide title and date');
+            return;
+        }
+        setUpdating(true);
+        try {
+            await followUpsAPI.create({
+                leadId: leadId,
+                assignedTo: data.lead.assignedTo?._id || user._id,
+                ...followUpData
+            });
+            alert('Follow-up scheduled successfully!');
+            setShowFollowUpModal(false);
+            setFollowUpData({ title: '', scheduledDate: '', notes: '', priority: 'medium' });
+            await fetchLeadDetails();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to schedule follow-up');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     if (loading) return null;
 
     const lead = data.lead;
@@ -148,6 +217,11 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 <span className="px-3 py-1 bg-gray-800 text-gray-400 rounded-lg text-xs font-black uppercase tracking-widest border border-white/5 flex items-center gap-2">
                                     <Phone size={12} className="text-orange-500" /> {lead.phone}
                                 </span>
+                                {lead.escalatedToAdmin && (
+                                    <span className="px-3 py-1 bg-rose-500/20 text-rose-400 rounded-lg text-xs font-black uppercase tracking-widest border border-rose-500/30 flex items-center gap-2">
+                                        <AlertOctagon size={12} /> ESCALATED
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -158,45 +232,84 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
 
                 <div className="flex-1 overflow-y-auto p-12 space-y-12 bg-[radial-gradient(circle_at_bottom_left,rgba(249,115,22,0.03),transparent_40%)]">
                     {/* Action Bar */}
-                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 p-6 bg-gray-800/30 rounded-[2.5rem] border border-white/5 backdrop-blur-xl">
-                        {lead.status === 'won' && (
+                    <div className="flex flex-wrap gap-4">
+                        {/* Status Update */}
+                        <select
+                            className="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
+                            value={lead.status}
+                            onChange={(e) => handleUpdateStatus(e.target.value)}
+                            disabled={updating}
+                        >
+                            {Object.keys(statusColors).map(s => (
+                                <option key={s} value={s}>{s.replace('_', ' ').toUpperCase()}</option>
+                            ))}
+                        </select>
+
+                        {/* Schedule Follow-up */}
+                        <button
+                            onClick={() => setShowFollowUpModal(true)}
+                            className="flex items-center gap-2 px-6 py-4 bg-blue-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl disabled:opacity-50"
+                            disabled={updating}
+                        >
+                            <Bell size={16} />
+                            Follow-Up
+                        </button>
+
+                        {/* Team Lead: Escalate */}
+                        {isTeamLead && !lead.escalatedToAdmin && (
+                            <button
+                                onClick={() => setShowEscalateModal(true)}
+                                className="flex items-center gap-2 px-6 py-4 bg-yellow-500 text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-yellow-600 transition-all shadow-xl disabled:opacity-50"
+                                disabled={updating}
+                            >
+                                <AlertOctagon size={16} />
+                                Escalate
+                            </button>
+                        )}
+
+                        {/* Convert to Project */}
+                        {lead.status === 'converted' && (
                             <button
                                 onClick={handleConvertToProject}
                                 disabled={updating}
-                                className="flex items-center justify-center gap-3 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50"
+                                className="flex items-center gap-2 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-xl disabled:opacity-50"
                             >
-                                <TrendingUp size={18} />
-                                Convert to Project
+                                <TrendingUp size={16} />
+                                Convert
                             </button>
                         )}
-                        <div className="relative">
-                            <select
-                                className="w-full bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
-                                value={lead.status}
-                                onChange={(e) => handleUpdateStatus(e.target.value)}
-                                disabled={updating || lead.status === 'archived'}
+
+                        {/* Admin Only: Delete */}
+                        {isAdmin && (
+                            <button
+                                onClick={handleDelete}
+                                disabled={updating}
+                                className="flex items-center gap-2 px-6 py-4 bg-rose-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-600 transition-all shadow-xl disabled:opacity-50"
                             >
-                                {Object.keys(statusColors).map(s => (
-                                    <option key={s} value={s}>{s.replace('_', ' ').toUpperCase()}</option>
-                                ))}
-                            </select>
-                        </div>
+                                <Trash2 size={16} />
+                                Delete
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Assignment Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <select
                             className="bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
                             value={lead.assignedTo?._id || ''}
                             onChange={(e) => handleAssign(e.target.value, lead.assignedTeam?._id)}
-                            disabled={updating || lead.status === 'archived'}
+                            disabled={updating}
                         >
-                            <option value="">All Sign: User</option>
+                            <option value="">Assign: User</option>
                             {allUsers.map(u => <option key={u._id} value={u._id}>{u.name.toUpperCase()}</option>)}
                         </select>
                         <select
                             className="bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
                             value={lead.assignedTeam?._id || ''}
                             onChange={(e) => handleAssign(lead.assignedTo?._id, e.target.value)}
-                            disabled={updating || lead.status === 'archived'}
+                            disabled={updating}
                         >
-                            <option value="">All Sign: Team</option>
+                            <option value="">Assign: Team</option>
                             {allTeams.map(t => <option key={t._id} value={t._id}>{t.name.toUpperCase()}</option>)}
                         </select>
                     </div>
@@ -216,6 +329,40 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                             <div className="flex gap-2">
                                 <button onClick={() => handleUpdateStatus('lost')} className="px-4 py-2 bg-rose-500 text-white rounded-lg font-bold text-sm">Submit</button>
                                 <button onClick={() => setShowLostReason(false)} className="px-4 py-2 bg-gray-800 text-gray-400 rounded-lg text-sm">Cancel</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Status History Timeline */}
+                    {lead.statusHistory && lead.statusHistory.length > 0 && (
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <History className="text-purple-500" size={18} />
+                                Status History
+                            </h3>
+                            <div className="space-y-3 pl-4 border-l-2 border-gray-700/50">
+                                {lead.statusHistory.slice().reverse().map((history, idx) => (
+                                    <div key={idx} className="relative">
+                                        <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
+                                        <div className="bg-gray-800/30 p-4 rounded-xl space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[history.status]}`}>
+                                                    {history.status.replace('_', ' ').toUpperCase()}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    {new Date(history.changedAt).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            {history.notes && <p className="text-sm text-gray-400">{history.notes}</p>}
+                                            {history.changedBy && (
+                                                <div className="flex items-center gap-2">
+                                                    <User size={12} className="text-gray-500" />
+                                                    <span className="text-xs text-gray-500">{history.changedBy.name || 'System'}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
@@ -253,6 +400,18 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 </div>
                             </div>
 
+                            {lead.inquiryMessage && (
+                                <>
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mt-8">
+                                        <MessageSquare className="text-blue-500" size={18} />
+                                        Inquiry Message
+                                    </h3>
+                                    <div className="bg-gray-800/20 p-6 rounded-3xl border border-gray-700/30 text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                        {lead.inquiryMessage}
+                                    </div>
+                                </>
+                            )}
+
                             <h3 className="text-lg font-bold text-white flex items-center gap-2 mt-8">
                                 <MessageSquare className="text-blue-500" size={18} />
                                 Description
@@ -268,7 +427,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 Timeline & Activity
                             </h3>
                             <div className="space-y-6 pl-4 border-l border-gray-700/50">
-                                {activities.map((activity, idx) => (
+                                {activities.map((activity) => (
                                     <div key={activity._id} className="relative">
                                         <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
                                         <div className="space-y-1">
@@ -294,6 +453,111 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Escalation Modal */}
+            {showEscalateModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="bg-gray-900 border border-gray-700 rounded-3xl p-8 max-w-md w-full mx-4 space-y-6">
+                        <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                            <AlertOctagon className="text-yellow-500" size={28} />
+                            Escalate to Admin
+                        </h3>
+                        <p className="text-gray-400">Provide a detailed reason for escalating this lead to administrators.</p>
+                        <textarea
+                            className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 text-gray-200 focus:ring-2 focus:ring-yellow-500 outline-none min-h-[120px]"
+                            placeholder="Explain why this lead needs admin attention..."
+                            value={escalationReason}
+                            onChange={(e) => setEscalationReason(e.target.value)}
+                        />
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleEscalate}
+                                disabled={updating}
+                                className="flex-1 px-6 py-3 bg-yellow-500 text-slate-900 rounded-xl font-bold hover:bg-yellow-600 transition-all disabled:opacity-50"
+                            >
+                                Escalate Lead
+                            </button>
+                            <button
+                                onClick={() => setShowEscalateModal(false)}
+                                className="px-6 py-3 bg-gray-800 text-gray-400 rounded-xl font-bold hover:bg-gray-700 transition-all"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Follow-Up Modal */}
+            {showFollowUpModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="bg-gray-900 border border-gray-700 rounded-3xl p-8 max-w-md w-full mx-4 space-y-6">
+                        <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                            <Bell className="text-blue-500" size={28} />
+                            Schedule Follow-Up
+                        </h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-2">Title</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="Call to discuss pricing..."
+                                    value={followUpData.title}
+                                    onChange={(e) => setFollowUpData({ ...followUpData, title: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-2">Date & Time</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={followUpData.scheduledDate}
+                                    onChange={(e) => setFollowUpData({ ...followUpData, scheduledDate: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-2">Priority</label>
+                                <select
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={followUpData.priority}
+                                    onChange={(e) => setFollowUpData({ ...followUpData, priority: e.target.value })}
+                                >
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-2">Notes (Optional)</label>
+                                <textarea
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="Additional notes..."
+                                    rows="3"
+                                    value={followUpData.notes}
+                                    onChange={(e) => setFollowUpData({ ...followUpData, notes: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleScheduleFollowUp}
+                                disabled={updating}
+                                className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all disabled:opacity-50"
+                            >
+                                Schedule
+                            </button>
+                            <button
+                                onClick={() => setShowFollowUpModal(false)}
+                                className="px-6 py-3 bg-gray-800 text-gray-400 rounded-xl font-bold hover:bg-gray-700 transition-all"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

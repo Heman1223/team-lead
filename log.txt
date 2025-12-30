@@ -1,0 +1,45 @@
+﻿≡ƒº¬ Testing Admin Panel API...
+
+1∩╕ÅΓâú Testing health endpoint...
+Γ£à Health check: {
+  success: false,
+  message: 'Route not found',
+  requestedUrl: '/api/health',
+  method: 'GET'
+}
+
+2∩╕ÅΓâú Testing login...
+Γ£à Login successful! Token: eyJhbGciOiJIUzI1NiIs...
+
+3∩╕ÅΓâú Testing get all users...
+Γ£à Users fetched: undefined users
+
+4∩╕ÅΓâú Testing get all teams...
+Γ£à Teams fetched: undefined teams
+
+5∩╕ÅΓâú Testing get team leads...
+Γ£à Team leads fetched: undefined leads
+
+6∩╕ÅΓâú Testing dashboard stats...
+Γ£à Lead stats: {
+  _id: null,
+  totalLeads: 3,
+  wonLeads: 0,
+  totalPipelineValue: 10005,
+  leadsByStatus: [ 'new', 'qualified', 'new' ],
+  leadsByCategory: [ 'web_development', 'seo', 'web_development' ],
+  statusDist: { new: 2, qualified: 1 },
+  categoryDist: { web_development: 2, seo: 1 },
+  conversionRate: 0
+}
+
+=== Starting RBAC Verification ===
+7∩╕ÅΓâú Creating Test Team Lead & Member...
+Γ£à Test users created (if no errors above)
+
+8∩╕ÅΓâú Testing Team Lead Access...
+
+9∩╕ÅΓâú Testing Team Member Restrictions...
+
+Γ£à ALL TESTS PASSED! API is working correctly.
+

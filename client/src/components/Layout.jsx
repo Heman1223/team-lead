@@ -123,9 +123,19 @@ const Layout = ({ children, title }) => {
     }
     setShowDropdown(false);
 
-    // Navigate to related page if taskId exists
+    // Navigate to related page
     if (notification.taskId) {
       navigate('/tasks');
+    } else if (notification.leadId || notification.relatedToModel === 'Lead' || notification.relatedToModel === 'FollowUp') {
+      // If it's a lead-related notification, navigate to leads page
+      // Ideally we would pass the ID to open the modal: /leads?open=ID
+      // For now, simple navigation
+      const leadId = notification.leadId?._id || notification.leadId;
+      if (leadId) {
+          navigate(`/leads?open=${leadId}`);
+      } else {
+          navigate('/leads');
+      }
     }
   };
 
@@ -135,10 +145,24 @@ const Layout = ({ children, title }) => {
 
   const getIcon = (type) => {
     switch (type) {
-      case 'task_assigned': return <CheckCircle className="w-4 h-4" />;
-      case 'task_updated': return <CheckCircle className="w-4 h-4" />;
-      case 'deadline_reminder': return <Clock className="w-4 h-4" />;
-      case 'overdue_alert': return <AlertTriangle className="w-4 h-4" />;
+      case 'task_assigned': 
+      case 'lead_assigned':
+      case 'follow_up_assigned':
+        return <CheckCircle className="w-4 h-4" />;
+      
+      case 'task_updated': 
+      case 'lead_status_changed':
+        return <Info className="w-4 h-4" />; // Changed from CheckCircle for updates
+        
+      case 'deadline_reminder': 
+      case 'follow_up_upcoming':
+        return <Clock className="w-4 h-4" />;
+        
+      case 'overdue_alert': 
+      case 'follow_up_overdue':
+      case 'lead_escalated':
+        return <AlertTriangle className="w-4 h-4" />;
+        
       case 'manual_reminder': return <Bell className="w-4 h-4" />;
       default: return <Info className="w-4 h-4" />;
     }
@@ -146,11 +170,29 @@ const Layout = ({ children, title }) => {
 
   const getTypeColor = (type) => {
     switch (type) {
-      case 'task_assigned': return 'bg-green-100 text-green-600';
-      case 'task_updated': return 'bg-blue-100 text-blue-600';
-      case 'deadline_reminder': return 'bg-orange-100 text-orange-600';
-      case 'overdue_alert': return 'bg-red-100 text-red-600';
-      case 'manual_reminder': return 'bg-purple-100 text-purple-600';
+      case 'task_assigned': 
+      case 'lead_assigned':
+        return 'bg-green-100 text-green-600';
+      
+      case 'task_updated': 
+      case 'lead_status_changed':
+        return 'bg-blue-100 text-blue-600';
+      
+      case 'deadline_reminder': 
+      case 'follow_up_upcoming':
+        return 'bg-orange-100 text-orange-600';
+      
+      case 'overdue_alert': 
+      case 'follow_up_overdue':
+        return 'bg-red-100 text-red-600';
+        
+      case 'lead_escalated':
+        return 'bg-red-500 text-white shadow-lg shadow-red-500/30'; // Distinct urgent style
+        
+      case 'manual_reminder': 
+      case 'follow_up_assigned':
+        return 'bg-purple-100 text-purple-600';
+        
       case 'system': return 'bg-gray-100 text-gray-600';
       default: return 'bg-gray-100 text-gray-600';
     }
