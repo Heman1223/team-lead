@@ -402,18 +402,18 @@ const TeamManagement = () => {
 
                 {/* Search and Filter */}
                 <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                    <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
                         <div className="flex-1 relative">
-                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <Search className="absolute left-2.5 sm:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5 pointer-events-none" />
                             <input
                                 type="text"
-                                placeholder="Search members by name, email, or designation..."
+                                placeholder="Search members..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                className="w-full pl-9 sm:pl-10 lg:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 lg:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 overflow-x-auto">
                             {['all', 'online', 'busy', 'offline'].map(status => (
                                 <button
                                     key={status}

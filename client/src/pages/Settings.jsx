@@ -107,11 +107,55 @@ const Settings = () => {
             const updated = { ...settings.preferences, [field]: value };
             await settingsAPI.updatePreferences(updated);
             setSettings({ ...settings, preferences: updated });
-            showMessage('success', 'Preferences updated!');
+            
+            // Apply theme immediately if theme is changed
+            if (field === 'theme') {
+                applyTheme(value);
+                localStorage.setItem('theme', value);
+            }
+            
+            // Store other preferences in localStorage for quick access
+            if (field === 'language') {
+                localStorage.setItem('language', value);
+            }
+            if (field === 'dateFormat') {
+                localStorage.setItem('dateFormat', value);
+            }
+            if (field === 'timeFormat') {
+                localStorage.setItem('timeFormat', value);
+            }
+            
+            showMessage('success', 'Preferences updated successfully!');
         } catch (error) {
+            console.error('Preference update error:', error);
             showMessage('error', 'Failed to update preferences');
         }
     };
+
+    const applyTheme = (theme) => {
+        const root = document.documentElement;
+        
+        if (theme === 'dark') {
+            root.classList.add('dark');
+        } else if (theme === 'light') {
+            root.classList.remove('dark');
+        } else if (theme === 'auto') {
+            // Auto theme based on system preference
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (prefersDark) {
+                root.classList.add('dark');
+            } else {
+                root.classList.remove('dark');
+            }
+        }
+    };
+
+    // Apply theme on component mount
+    useEffect(() => {
+        if (settings?.preferences?.theme) {
+            applyTheme(settings.preferences.theme);
+        }
+    }, [settings]);
 
     const tabs = [
         { id: 'profile', label: 'Profile', icon: User, roles: ['admin', 'team_lead', 'team_member'] },
@@ -336,48 +380,96 @@ const Settings = () => {
                                         <select
                                             value={settings.preferences.language}
                                             onChange={(e) => handlePreferenceUpdate('language', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                                         >
-                                            <option value="en">English</option>
-                                            <option value="es">Spanish</option>
-                                            <option value="fr">French</option>
-                                            <option value="de">German</option>
+                                            <option value="en">🇺🇸 English</option>
+                                            <option value="es">🇪🇸 Spanish (Español)</option>
+                                            <option value="fr">🇫🇷 French (Français)</option>
+                                            <option value="de">🇩🇪 German (Deutsch)</option>
                                         </select>
+                                        <p className="text-xs text-gray-500 mt-1">Choose your preferred language</p>
                                     </div>
+                                    
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Theme</label>
                                         <select
                                             value={settings.preferences.theme}
                                             onChange={(e) => handlePreferenceUpdate('theme', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                                         >
-                                            <option value="light">Light</option>
-                                            <option value="dark">Dark</option>
-                                            <option value="auto">Auto</option>
+                                            <option value="light">☀️ Light Mode</option>
+                                            <option value="dark">🌙 Dark Mode</option>
+                                            <option value="auto">🔄 Auto (System)</option>
                                         </select>
+                                        <p className="text-xs text-gray-500 mt-1">Changes apply immediately</p>
                                     </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Timezone</label>
+                                        <select
+                                            value={settings.preferences.timezone || 'UTC'}
+                                            onChange={(e) => handlePreferenceUpdate('timezone', e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                                        >
+                                            <option value="UTC">UTC (Coordinated Universal Time)</option>
+                                            <option value="America/New_York">EST (Eastern Time)</option>
+                                            <option value="America/Chicago">CST (Central Time)</option>
+                                            <option value="America/Denver">MST (Mountain Time)</option>
+                                            <option value="America/Los_Angeles">PST (Pacific Time)</option>
+                                            <option value="Europe/London">GMT (London)</option>
+                                            <option value="Europe/Paris">CET (Paris)</option>
+                                            <option value="Asia/Tokyo">JST (Tokyo)</option>
+                                            <option value="Asia/Shanghai">CST (Shanghai)</option>
+                                            <option value="Asia/Kolkata">IST (India)</option>
+                                            <option value="Australia/Sydney">AEDT (Sydney)</option>
+                                        </select>
+                                        <p className="text-xs text-gray-500 mt-1">Your local timezone for dates and times</p>
+                                    </div>
+                                    
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Date Format</label>
                                         <select
                                             value={settings.preferences.dateFormat}
                                             onChange={(e) => handlePreferenceUpdate('dateFormat', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                                         >
-                                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                                            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                            <option value="MM/DD/YYYY">MM/DD/YYYY (12/30/2024)</option>
+                                            <option value="DD/MM/YYYY">DD/MM/YYYY (30/12/2024)</option>
+                                            <option value="YYYY-MM-DD">YYYY-MM-DD (2024-12-30)</option>
                                         </select>
+                                        <p className="text-xs text-gray-500 mt-1">How dates are displayed throughout the app</p>
                                     </div>
+                                    
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Time Format</label>
                                         <select
                                             value={settings.preferences.timeFormat}
                                             onChange={(e) => handlePreferenceUpdate('timeFormat', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                                         >
-                                            <option value="12h">12-hour</option>
-                                            <option value="24h">24-hour</option>
+                                            <option value="12h">12-hour (2:30 PM)</option>
+                                            <option value="24h">24-hour (14:30)</option>
                                         </select>
+                                        <p className="text-xs text-gray-500 mt-1">How times are displayed throughout the app</p>
+                                    </div>
+                                    
+                                    <div className="pt-4 border-t border-gray-200">
+                                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                            <p className="text-sm text-blue-800 font-medium">✨ Preview</p>
+                                            <div className="mt-2 space-y-1 text-sm text-blue-700">
+                                                <p>Date: {new Date().toLocaleDateString('en-US', { 
+                                                    year: 'numeric', 
+                                                    month: '2-digit', 
+                                                    day: '2-digit' 
+                                                })}</p>
+                                                <p>Time: {new Date().toLocaleTimeString('en-US', { 
+                                                    hour: '2-digit', 
+                                                    minute: '2-digit',
+                                                    hour12: settings.preferences.timeFormat === '12h'
+                                                })}</p>
+                                                <p>Theme: {settings.preferences.theme === 'light' ? '☀️ Light' : settings.preferences.theme === 'dark' ? '🌙 Dark' : '🔄 Auto'}</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

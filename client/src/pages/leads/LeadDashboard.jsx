@@ -24,15 +24,15 @@ const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
     };
 
     return (
-        <div className="bg-white rounded-xl border-2 border-gray-200 p-6 hover:shadow-lg transition-all">
-            <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-                    <Icon size={24} />
+        <div className="bg-white rounded-lg sm:rounded-xl border-2 border-gray-200 p-3 sm:p-4 lg:p-6 hover:shadow-lg transition-all">
+            <div className="flex items-start justify-between mb-2 sm:mb-3 lg:mb-4">
+                <div className={`p-2 sm:p-2.5 lg:p-3 rounded-lg ${colorClasses[color]}`}>
+                    <Icon size={18} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </div>
             </div>
-            <h3 className="text-gray-600 text-sm font-semibold mb-1">{title}</h3>
-            <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
-            {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+            <h3 className="text-gray-600 text-xs sm:text-sm font-semibold mb-0.5 sm:mb-1">{title}</h3>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-0.5 sm:mb-1">{value}</p>
+            {subtitle && <p className="text-xs sm:text-sm text-gray-500">{subtitle}</p>}
         </div>
     );
 };
@@ -73,49 +73,49 @@ const LeadDashboard = ({ refreshTrigger }) => {
     }).format(stats?.totalPipelineValue || 0);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
                 <StatCard
                     title="Total Leads"
                     value={stats?.totalLeads || 0}
                     icon={Target}
                     color="blue"
-                    subtitle="All active leads"
+                    subtitle="All active"
                 />
                 <StatCard
                     title="Converted"
                     value={stats?.convertedLeads || 0}
                     icon={CheckCircle2}
                     color="green"
-                    subtitle="Successfully closed"
+                    subtitle="Closed"
                 />
                 <StatCard
-                    title="Conversion Rate"
+                    title="Conv. Rate"
                     value={`${(stats?.conversionRate || 0).toFixed(1)}%`}
                     icon={TrendingUp}
                     color="purple"
-                    subtitle="Success rate"
+                    subtitle="Success"
                 />
                 <StatCard
-                    title="Pipeline Value"
+                    title="Pipeline"
                     value={formattedPipelineValue}
                     icon={DollarSign}
                     color="orange"
-                    subtitle="Total estimated value"
+                    subtitle="Est. value"
                 />
             </div>
 
             {/* Status Breakdown & Follow-Ups */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
                 {/* Lead Status Distribution */}
-                <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-bold text-gray-900">Lead Status</h3>
-                        <BarChart3 className="text-gray-400" size={20} />
+                <div className="bg-white rounded-lg sm:rounded-xl border-2 border-gray-200 p-3 sm:p-4 lg:p-6">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6">
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900">Lead Status</h3>
+                        <BarChart3 className="text-gray-400" size={16} />
                     </div>
                     {/* Fixed height with scroll */}
-                    <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                    <div className="space-y-3 sm:space-y-4 max-h-60 sm:max-h-80 overflow-y-auto pr-1 sm:pr-2">
                         {Object.entries(stats?.statusDist || {}).map(([status, count]) => {
                             const percentage = stats.totalLeads > 0 ? (count / stats.totalLeads) * 100 : 0;
                             const statusColors = {
@@ -129,15 +129,15 @@ const LeadDashboard = ({ refreshTrigger }) => {
                             
                             return (
                                 <div key={status}>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-sm font-semibold text-gray-700 capitalize">
+                                    <div className="flex justify-between items-center mb-1.5 sm:mb-2">
+                                        <span className="text-xs sm:text-sm font-semibold text-gray-700 capitalize">
                                             {status.replace('_', ' ')}
                                         </span>
-                                        <span className="text-sm text-gray-600">{count} ({percentage.toFixed(0)}%)</span>
+                                        <span className="text-xs sm:text-sm text-gray-600">{count} ({percentage.toFixed(0)}%)</span>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
                                         <div
-                                            className={`h-2 rounded-full ${statusColors[status] || 'bg-gray-500'}`}
+                                            className={`h-1.5 sm:h-2 rounded-full ${statusColors[status] || 'bg-gray-500'}`}
                                             style={{ width: `${percentage}%` }}
                                         ></div>
                                     </div>

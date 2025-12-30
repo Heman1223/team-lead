@@ -5,7 +5,6 @@ import Layout from '../components/Layout';
 import { adminAnalyticsAPI, adminTasksAPI } from '../services/adminApi';
 
 const AdminDashboard = () => {
-    console.log('AdminDashboard rendering...');
     const [stats, setStats] = useState(null);
     const [teamPerformance, setTeamPerformance] = useState([]);
     const [bestTeams, setBestTeams] = useState([]);
@@ -20,7 +19,6 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchDashboardData();
-        // Auto-refresh every 30 seconds
         const interval = setInterval(fetchDashboardData, 30000);
         return () => clearInterval(interval);
     }, []);
@@ -35,7 +33,26 @@ const AdminDashboard = () => {
                 adminTasksAPI.getAll()
             ]);
 
-            setStats(statsRes.data.data || {});
+            console.log('Stats Response:', statsRes.data);
+            console.log('Performance Response:', performanceRes.data);
+            console.log('Best Teams Response:', bestTeamsRes.data);
+
+            const statsData = statsRes.data.data || {};
+
+            // Transform stats data
+            const transformedStats = {
+                totalTeams: statsData.overview?.totalTeams || 0,
+                totalTeamLeads: statsData.overview?.totalUsers || 0,
+                totalMembers: statsData.overview?.totalUsers || 0,
+                totalTasks: statsData.tasks?.total || 0,
+                completedTasks: statsData.tasks?.completed || 0,
+                inProgressTasks: statsData.tasks?.inProgress || 0,
+                pendingTasks: (statsData.tasks?.total || 0) - (statsData.tasks?.completed || 0) - (statsData.tasks?.inProgress || 0),
+                overdueTasks: statsData.tasks?.overdue || 0,
+                overallProgress: statsData.tasks?.completionRate || 0
+            };
+
+            setStats(transformedStats);
             setTeamPerformance(performanceRes.data.data || []);
             setBestTeams(bestTeamsRes.data.data || []);
 
@@ -43,8 +60,6 @@ const AdminDashboard = () => {
             const tasks = tasksRes.data.data || [];
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
 
             const assignedToday = tasks.filter(t => {
                 const assignedDate = new Date(t.assignedAt || t.createdAt);
@@ -55,34 +70,15 @@ const AdminDashboard = () => {
             const dueToday = tasks.filter(t => {
                 const dueDate = new Date(t.dueDate || t.deadline);
                 dueDate.setHours(0, 0, 0, 0);
-                return dueDate.getTime() === today.getTime() && t.status !== 'completed' && t.status !== 'cancelled';
+                return dueDate.getTime() === today.getTime() && t.status !== 'completed';
             }).length;
 
-            const overdue = tasks.filter(t => t.isOverdue && t.status !== 'completed' && t.status !== 'cancelled').length;
+            const overdue = tasks.filter(t => t.isOverdue && t.status !== 'completed').length;
+            const bestTeamLead = bestTeamsRes.data.data?.[0] || null;
 
-            // Find best responding team lead (highest completion rate)
-            const bestTeamLead = bestTeamsRes.data.data && bestTeamsRes.data.data.length > 0
-                ? bestTeamsRes.data.data[0]
-                : null;
-
-            setTaskStats({
-                assignedToday,
-                dueToday,
-                overdue,
-                bestTeamLead
-            });
+            setTaskStats({ assignedToday, dueToday, overdue, bestTeamLead });
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
-            // Set default empty values to prevent crashes
-            setStats({});
-            setTeamPerformance([]);
-            setBestTeams([]);
-            setTaskStats({
-                assignedToday: 0,
-                dueToday: 0,
-                overdue: 0,
-                bestTeamLead: null
-            });
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -120,22 +116,17 @@ const AdminDashboard = () => {
         { name: 'Overdue', value: stats.overdueTasks, color: '#EF4444' }
     ] : [];
 
-    const teamCompletionData = teamPerformance.map(team => ({
-        name: team.teamName && team.teamName.length > 15 ? team.teamName.substring(0, 15) + '...' : (team.teamName || 'Unknown Team'),
-        completion: team.progressPercentage || 0,
+    const teamCompletionData = bestTeams.map(team => ({
+        name: team.teamName?.length > 15 ? team.teamName.substring(0, 15) + '...' : (team.teamName || 'Unknown'),
+        completion: team.completionRate || 0,
         overdue: team.overdueTasks || 0
     }));
-
-    const completionTrendData = stats?.completionTrend || [];
 
     if (loading) {
         return (
             <Layout title="Admin Dashboard">
                 <div className="flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
-                        <p className="mt-4 text-gray-700 font-semibold">Loading dashboard...</p>
-                    </div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600"></div>
                 </div>
             </Layout>
         );
@@ -143,236 +134,166 @@ const AdminDashboard = () => {
 
     return (
         <Layout title="Admin Dashboard">
-            <div className="space-y-6 p-4 sm:p-6">
+            <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
                 {/* Page Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Team Lead Performance Dashboard</h1>
-                        <p className="text-gray-500 mt-1 text-sm sm:text-base">Real-time analytics and team performance metrics</p>
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+                        <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">Real-time analytics</p>
                     </div>
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-medium border border-green-200">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="hidden sm:inline">Live</span>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-green-50 text-green-700 rounded-lg text-xs sm:text-sm font-medium border border-green-200">
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span>Live</span>
                         </div>
                         <button
                             onClick={fetchDashboardData}
                             disabled={refreshing}
-                            className="px-3 sm:px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 flex items-center gap-2 text-sm"
+                            className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 flex items-center gap-1.5 text-xs sm:text-sm"
                         >
-                            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${refreshing ? 'animate-spin' : ''}`} />
                             <span className="hidden sm:inline">Refresh</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 sm:p-6 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600 mb-1">Total Teams</p>
-                                <p className="text-3xl font-bold text-gray-900 mb-1">{stats?.totalTeams || 0}</p>
-                                <div className="mt-3 flex items-center gap-1">
-                                    <span className="text-xs text-gray-600">{stats?.totalTeamLeads || 0} Team Leads</span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Total Teams</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{stats?.totalTeams || 0}</p>
+                                <div className="mt-1.5 sm:mt-2">
+                                    <span className="text-xs text-gray-600">{stats?.totalTeamLeads || 0} Leads</span>
                                 </div>
                             </div>
-                            <div className="p-4 bg-blue-200 rounded-xl">
-                                <Users className="w-8 h-8 text-blue-700" />
+                            <div className="p-2.5 sm:p-3 bg-blue-200 rounded-lg flex-shrink-0 ml-2">
+                                <Users className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-blue-700" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600 mb-1">Total Members</p>
-                                <p className="text-3xl font-bold text-gray-900 mb-1">{stats?.totalMembers || 0}</p>
-                                <div className="mt-3 flex items-center gap-1">
-                                    <span className="text-xs text-green-600 font-medium">Active Users</span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Total Members</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{stats?.totalMembers || 0}</p>
+                                <div className="mt-1.5 sm:mt-2">
+                                    <span className="text-xs text-green-600 font-medium">Active</span>
                                 </div>
                             </div>
-                            <div className="p-4 bg-purple-200 rounded-xl">
-                                <Briefcase className="w-8 h-8 text-purple-700" />
+                            <div className="p-2.5 sm:p-3 bg-purple-200 rounded-lg flex-shrink-0 ml-2">
+                                <Briefcase className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-purple-700" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-6 border border-orange-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-orange-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600 mb-1">Total Tasks</p>
-                                <p className="text-3xl font-bold text-gray-900 mb-1">{stats?.totalTasks || 0}</p>
-                                <div className="mt-3 flex items-center gap-1">
-                                    <span className="text-xs text-green-600 font-medium">{stats?.completedTasks || 0} Completed</span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Total Tasks</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{stats?.totalTasks || 0}</p>
+                                <div className="mt-1.5 sm:mt-2">
+                                    <span className="text-xs text-green-600 font-medium">{stats?.completedTasks || 0} Done</span>
                                 </div>
                             </div>
-                            <div className="p-4 bg-orange-200 rounded-xl">
-                                <CheckCircle className="w-8 h-8 text-orange-700" />
+                            <div className="p-2.5 sm:p-3 bg-orange-200 rounded-lg flex-shrink-0 ml-2">
+                                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-orange-700" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-green-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-600 mb-1">Overall Progress</p>
-                                <p className="text-3xl font-bold text-gray-900 mb-1">{stats?.overallProgress || 0}%</p>
-                                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-3">
+                            <div className="flex-1 min-w-0 mr-2">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Progress</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats?.overallProgress || 0}%</p>
+                                <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 mt-1.5 sm:mt-2">
                                     <div
-                                        className="bg-gradient-to-r from-green-500 to-green-600 h-2.5 rounded-full transition-all duration-500"
+                                        className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 sm:h-2 rounded-full transition-all duration-500"
                                         style={{ width: `${stats?.overallProgress || 0}%` }}
                                     ></div>
                                 </div>
                             </div>
-                            <div className="p-4 bg-green-200 rounded-xl ml-4">
-                                <TrendingUp className="w-8 h-8 text-green-700" />
+                            <div className="p-2.5 sm:p-3 bg-green-200 rounded-lg flex-shrink-0">
+                                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-green-700" />
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Today's Task Statistics - NEW */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-                    <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-2xl p-6 border border-cyan-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600 mb-1">Tasks Assigned Today</p>
-                                <p className="text-3xl font-bold text-gray-900 mb-1">{taskStats.assignedToday}</p>
-                                <div className="mt-3 flex items-center gap-1">
-                                    <Calendar className="w-3 h-3 text-cyan-600" />
-                                    <span className="text-xs text-cyan-600 font-medium">Today's Activity</span>
-                                </div>
+                {/* Today's Task Statistics */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                    <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-cyan-200 shadow-sm">
+                        <div className="flex flex-col">
+                            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-700" />
                             </div>
-                            <div className="p-4 bg-cyan-200 rounded-xl">
-                                <Zap className="w-8 h-8 text-cyan-700" />
-                            </div>
+                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5">Assigned Today</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{taskStats.assignedToday}</p>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-6 border border-amber-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600 mb-1">Tasks Due Today</p>
-                                <p className="text-3xl font-bold text-gray-900 mb-1">{taskStats.dueToday}</p>
-                                <div className="mt-3 flex items-center gap-1">
-                                    <Clock className="w-3 h-3 text-amber-600" />
-                                    <span className="text-xs text-amber-600 font-medium">Needs Attention</span>
-                                </div>
+                    <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-amber-200 shadow-sm">
+                        <div className="flex flex-col">
+                            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700" />
                             </div>
-                            <div className="p-4 bg-amber-200 rounded-xl">
-                                <Calendar className="w-8 h-8 text-amber-700" />
-                            </div>
+                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5">Due Today</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{taskStats.dueToday}</p>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-6 border border-red-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600 mb-1">Overdue Tasks</p>
-                                <p className="text-3xl font-bold text-gray-900 mb-1">{taskStats.overdue}</p>
-                                <div className="mt-3 flex items-center gap-1">
-                                    <AlertCircle className="w-3 h-3 text-red-600" />
-                                    <span className="text-xs text-red-600 font-medium">Urgent Action</span>
-                                </div>
+                    <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-red-200 shadow-sm">
+                        <div className="flex flex-col">
+                            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-700" />
                             </div>
-                            <div className="p-4 bg-red-200 rounded-xl">
-                                <AlertCircle className="w-8 h-8 text-red-700" />
-                            </div>
+                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5">Overdue</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{taskStats.overdue}</p>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-6 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600 mb-1">Best Team Lead</p>
-                                {taskStats.bestTeamLead ? (
-                                    <>
-                                        <p className="text-lg font-bold text-gray-900 mb-1 truncate">{taskStats.bestTeamLead.teamLead}</p>
-                                        <div className="mt-2 flex items-center gap-1">
-                                            <Trophy className="w-3 h-3 text-emerald-600" />
-                                            <span className="text-xs text-emerald-600 font-medium">{taskStats.bestTeamLead.completionRate}% completion</span>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <p className="text-lg font-bold text-gray-500">No data yet</p>
-                                )}
+                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-emerald-200 shadow-sm">
+                        <div className="flex flex-col">
+                            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                                <Award className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700" />
                             </div>
-                            <div className="p-4 bg-emerald-200 rounded-xl">
-                                <Award className="w-8 h-8 text-emerald-700" />
-                            </div>
+                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5">Best Lead</p>
+                            {taskStats.bestTeamLead ? (
+                                <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 truncate">{taskStats.bestTeamLead.leadName}</p>
+                            ) : (
+                                <p className="text-sm font-bold text-gray-500">No data</p>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
                     {/* LEFT SIDE - Charts (8 columns) */}
-                    <div className="lg:col-span-8 space-y-5">
-                        {/* Task Completion Trend */}
-                        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
-                            <div className="mb-6">
-                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-blue-600" />
-                                    Task Completion Trend
+                    <div className="lg:col-span-8 space-y-3 sm:space-y-4">
+                        {/* Team Completion Rate Bar Chart */}
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-gray-200 shadow-sm">
+                            <div className="mb-3 sm:mb-4">
+                                <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-1.5 sm:gap-2">
+                                    <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
+                                    <span>Team Completion</span>
                                 </h3>
-                                <p className="text-sm text-gray-500 mt-1">Daily task completion over the last 7 days</p>
+                                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Completion % by team</p>
                             </div>
-                            <div className="h-48 sm:h-64">
+                            <div className="h-40 sm:h-48 lg:h-64">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={completionTrendData}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                        <XAxis
-                                            dataKey="date"
-                                            tick={{ fill: '#6B7280', fontSize: 12 }}
-                                            axisLine={{ stroke: '#E5E7EB' }}
-                                        />
-                                        <YAxis
-                                            tick={{ fill: '#6B7280', fontSize: 12 }}
-                                            axisLine={{ stroke: '#E5E7EB' }}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: 'white',
-                                                border: '1px solid #E5E7EB',
-                                                borderRadius: '8px',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                                            }}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="completed"
-                                            stroke="#3B82F6"
-                                            strokeWidth={3}
-                                            dot={{ fill: '#3B82F6', r: 5 }}
-                                            activeDot={{ r: 7 }}
-                                            name="Completed Tasks"
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        {/* Team Completion Rate */}
-                        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
-                            <div className="mb-6">
-                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                    <BarChart3 className="w-5 h-5 text-orange-600" />
-                                    Team Completion Rate
-                                </h3>
-                                <p className="text-sm text-gray-500 mt-1">Completion percentage and overdue tasks by team</p>
-                            </div>
-                            <div className="h-48 sm:h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={teamCompletionData} barGap={8}>
+                                    <BarChart data={teamCompletionData} barGap={4}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                         <XAxis
                                             dataKey="name"
-                                            tick={{ fill: '#6B7280', fontSize: 12 }}
+                                            tick={{ fill: '#6B7280', fontSize: 10 }}
                                             axisLine={{ stroke: '#E5E7EB' }}
                                         />
                                         <YAxis
-                                            tick={{ fill: '#6B7280', fontSize: 12 }}
+                                            tick={{ fill: '#6B7280', fontSize: 10 }}
                                             axisLine={{ stroke: '#E5E7EB' }}
                                         />
                                         <Tooltip
@@ -380,72 +301,60 @@ const AdminDashboard = () => {
                                                 backgroundColor: 'white',
                                                 border: '1px solid #E5E7EB',
                                                 borderRadius: '8px',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                                fontSize: '12px'
                                             }}
                                         />
                                         <Bar
                                             dataKey="completion"
                                             fill="#10B981"
                                             name="Completion %"
-                                            radius={[8, 8, 0, 0]}
-                                        />
-                                        <Bar
-                                            dataKey="overdue"
-                                            fill="#EF4444"
-                                            name="Overdue Tasks"
-                                            radius={[8, 8, 0, 0]}
+                                            radius={[6, 6, 0, 0]}
                                         />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
 
-                        {/* Task Status Distribution */}
-                        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
-                            <div className="mb-6">
-                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                    <Target className="w-5 h-5 text-purple-600" />
-                                    Task Status Distribution
+                        {/* Task Status Distribution Pie Chart */}
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-gray-200 shadow-sm">
+                            <div className="mb-3 sm:mb-4">
+                                <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-1.5 sm:gap-2">
+                                    <Target className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+                                    <span>Task Status</span>
                                 </h3>
-                                <p className="text-sm text-gray-500 mt-1">Overall task status breakdown</p>
+                                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Overall breakdown</p>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
-                                <div className="h-40 w-40 sm:h-48 sm:w-48">
+                            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
+                                <div className="h-32 w-32 sm:h-40 sm:w-40 lg:h-48 lg:w-48">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
                                                 data={taskStatusData}
                                                 cx="50%"
                                                 cy="50%"
-                                                innerRadius={50}
-                                                outerRadius={80}
-                                                paddingAngle={3}
+                                                innerRadius={40}
+                                                outerRadius={60}
+                                                paddingAngle={2}
                                                 dataKey="value"
                                             >
                                                 {taskStatusData.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip
-                                                contentStyle={{
-                                                    backgroundColor: 'white',
-                                                    border: '1px solid #E5E7EB',
-                                                    borderRadius: '8px'
-                                                }}
-                                            />
+                                            <Tooltip contentStyle={{ fontSize: '12px' }} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <div className="flex-1 w-full grid grid-cols-2 gap-3">
+                                <div className="flex-1 w-full grid grid-cols-2 gap-2 sm:gap-3">
                                     {taskStatusData.map((item) => (
-                                        <div key={item.name} className="flex items-center gap-2">
+                                        <div key={item.name} className="flex items-center gap-1.5 sm:gap-2">
                                             <div
-                                                className="w-4 h-4 rounded-full"
+                                                className="w-3 h-3 rounded-full flex-shrink-0"
                                                 style={{ backgroundColor: item.color }}
                                             ></div>
-                                            <div>
-                                                <p className="text-sm text-gray-700 font-medium">{item.name}</p>
-                                                <p className="text-lg font-bold text-gray-900">{item.value}</p>
+                                            <div className="min-w-0">
+                                                <p className="text-xs sm:text-sm text-gray-700 font-medium truncate">{item.name}</p>
+                                                <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">{item.value}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -455,31 +364,28 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* RIGHT SIDEBAR (4 columns) */}
-                    <div className="lg:col-span-4 space-y-5">
+                    <div className="lg:col-span-4 space-y-3 sm:space-y-4">
                         {/* Best Performing Teams */}
-                        <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                                    <Award className="w-5 h-5 text-orange-600" />
-                                    Top Teams
-                                </h3>
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-200 shadow-sm">
+                            <div className="flex items-center gap-1.5 sm:gap-2 mb-3">
+                                <Award className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
+                                <h3 className="text-sm sm:text-base font-bold text-gray-900">Top Teams</h3>
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {bestTeams.slice(0, 5).map((team, index) => (
                                     <div
                                         key={team.teamId}
-                                        className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl border border-orange-100 hover:shadow-sm transition-shadow cursor-pointer"
+                                        className="flex items-center gap-2 p-2 sm:p-2.5 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-100 hover:shadow-sm transition-shadow"
                                     >
-                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-orange-200 flex-shrink-0">
-                                            <span className="text-orange-600 font-bold text-sm">{getRankBadge(index)}</span>
+                                        <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white rounded-lg flex items-center justify-center shadow-sm border border-orange-200 flex-shrink-0">
+                                            <span className="text-orange-600 font-bold text-xs sm:text-sm">#{index + 1}</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm text-gray-900 truncate">{team.teamName || 'Unknown Team'}</p>
-                                            <p className="text-xs text-gray-600">{team.teamLead || 'Unknown'}</p>
+                                            <p className="font-semibold text-xs sm:text-sm text-gray-900 truncate">{team.teamName || 'Unknown'}</p>
+                                            <p className="text-xs text-gray-600 truncate">{team.leadName || 'Unknown'}</p>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <p className="text-sm font-bold text-green-600">{team.completionRate || 0}%</p>
-                                            <p className="text-xs text-gray-500">{team.avgResponseTime || 0}h avg</p>
+                                            <p className="text-xs sm:text-sm font-bold text-green-600">{team.completionRate || 0}%</p>
                                         </div>
                                     </div>
                                 ))}
@@ -487,125 +393,40 @@ const AdminDashboard = () => {
                         </div>
 
                         {/* Task Status Overview */}
-                        <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                            <h3 className="text-base font-bold text-gray-900 mb-4">Quick Stats</h3>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-100">
-                                    <div className="flex items-center gap-2">
-                                        <CheckCircle className="w-5 h-5 text-green-600" />
-                                        <span className="text-sm font-medium text-gray-700">Completed</span>
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-200 shadow-sm">
+                            <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-3">Quick Stats</h3>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-green-50 rounded-lg border border-green-100">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                                        <span className="text-xs sm:text-sm font-medium text-gray-700">Completed</span>
                                     </div>
-                                    <span className="text-lg font-bold text-green-600">{stats?.completedTasks || 0}</span>
+                                    <span className="text-base sm:text-lg font-bold text-green-600">{stats?.completedTasks || 0}</span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-xl border border-orange-100">
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="w-5 h-5 text-orange-600" />
-                                        <span className="text-sm font-medium text-gray-700">In Progress</span>
+                                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-orange-50 rounded-lg border border-orange-100">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
+                                        <span className="text-xs sm:text-sm font-medium text-gray-700">In Progress</span>
                                     </div>
-                                    <span className="text-lg font-bold text-orange-600">{stats?.inProgressTasks || 0}</span>
+                                    <span className="text-base sm:text-lg font-bold text-orange-600">{stats?.inProgressTasks || 0}</span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div className="flex items-center gap-2">
-                                        <AlertCircle className="w-5 h-5 text-gray-600" />
-                                        <span className="text-sm font-medium text-gray-700">Pending</span>
+                                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                                        <span className="text-xs sm:text-sm font-medium text-gray-700">Pending</span>
                                     </div>
-                                    <span className="text-lg font-bold text-gray-600">{stats?.pendingTasks || 0}</span>
+                                    <span className="text-base sm:text-lg font-bold text-gray-600">{stats?.pendingTasks || 0}</span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
-                                    <div className="flex items-center gap-2">
-                                        <AlertCircle className="w-5 h-5 text-red-600" />
-                                        <span className="text-sm font-medium text-gray-700">Overdue</span>
+                                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-red-50 rounded-lg border border-red-100">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+                                        <span className="text-xs sm:text-sm font-medium text-gray-700">Overdue</span>
                                     </div>
-                                    <span className="text-lg font-bold text-red-600">{stats?.overdueTasks || 0}</span>
+                                    <span className="text-base sm:text-lg font-bold text-red-600">{stats?.overdueTasks || 0}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                {/* Team Performance Leaderboard */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 lg:p-8">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                            <div className="p-2 bg-orange-100 rounded-lg">
-                                <Users className="w-6 h-6 text-orange-600" />
-                            </div>
-                            Team Lead Performance Evaluation
-                        </h2>
-                    </div>
-
-                    {teamPerformance.length === 0 ? (
-                        <div className="text-center py-16">
-                            <Users className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-xl font-bold text-gray-900">No Teams Yet</h3>
-                            <p className="text-gray-600 mt-2">Create teams and assign tasks to see performance data</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {teamPerformance.map((team, index) => (
-                                <div
-                                    key={team.teamId}
-                                    className="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 p-6 hover:shadow-lg transition-all"
-                                >
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="text-lg font-bold text-gray-900">{team.teamName || 'Unknown Team'}</h3>
-                                                <span className="text-xs font-bold text-gray-500">#{index + 1}</span>
-                                            </div>
-                                            <p className="text-sm text-gray-600 mt-1">Lead: {team.teamLead?.name || 'Unknown'}</p>
-                                            <p className="text-xs text-gray-500">{team.memberCount || 0} members</p>
-                                        </div>
-                                        <div className={`px-3 py-1.5 rounded-full border text-xs font-semibold ${getPerformanceColor(team.performanceStatus)}`}>
-                                            {getPerformanceLabel(team.performanceStatus)}
-                                        </div>
-                                    </div>
-
-                                    <div className="mb-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm font-medium text-gray-700">Completion Rate</span>
-                                            <span className="text-sm font-bold text-orange-600">{team.progressPercentage || 0}%</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-3">
-                                            <div
-                                                className={`h-3 rounded-full transition-all duration-500 ${team.performanceStatus === 'doing_great' ? 'bg-gradient-to-r from-green-500 to-green-600' :
-                                                    team.performanceStatus === 'average' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
-                                                        'bg-gradient-to-r from-red-500 to-red-600'
-                                                    }`}
-                                                style={{ width: `${team.progressPercentage || 0}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-3 mb-4">
-                                        <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
-                                            <p className="text-xs text-gray-600 font-medium">Total</p>
-                                            <p className="text-lg font-bold text-gray-900">{team.totalTasks || 0}</p>
-                                        </div>
-                                        <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                                            <p className="text-xs text-gray-600 font-medium">Done</p>
-                                            <p className="text-lg font-bold text-green-600">{team.completedTasks || 0}</p>
-                                        </div>
-                                        <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
-                                            <p className="text-xs text-gray-600 font-medium">Overdue</p>
-                                            <p className="text-lg font-bold text-red-600">{team.overdueTasks || 0}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-200">
-                                        <div>
-                                            <p className="text-xs text-gray-600 font-medium">Avg Completion</p>
-                                            <p className="text-sm font-bold text-gray-900">{team.avgCompletionTime || 0}h</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-600 font-medium">Recent Rate</p>
-                                            <p className="text-sm font-bold text-gray-900">{team.recentCompletionRate || 0} tasks/week</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
             </div>
         </Layout>
