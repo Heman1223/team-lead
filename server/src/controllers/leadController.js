@@ -194,8 +194,10 @@ const updateLead = async (req, res) => {
 
             // Add note to lead if provided
             if (statusNote && statusNote.trim()) {
-                lead.addNote(statusNote, req.user._id, 'status_changed');
-                await lead.save();
+                // Refetch the lead to get a proper Mongoose document with methods
+                const leadDoc = await Lead.findById(lead._id);
+                leadDoc.addNote(statusNote, req.user._id, 'status_changed');
+                await leadDoc.save();
             }
         } else {
             // General update log
