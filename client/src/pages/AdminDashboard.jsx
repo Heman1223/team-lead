@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Users, Briefcase, CheckCircle, TrendingUp, Award, BarChart3, RefreshCw, Clock, AlertCircle, Target, Activity, Calendar, Zap, Trophy } from 'lucide-react';
+import { Users, Briefcase, CheckCircle, TrendingUp, Award, BarChart3, Clock, AlertCircle, Target, Activity, Calendar, Zap, Trophy, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import Layout from '../components/Layout';
 import { adminAnalyticsAPI, adminTasksAPI } from '../services/adminApi';
+import { leadsAPI } from '../services/api';
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
     const [teamPerformance, setTeamPerformance] = useState([]);
     const [bestTeams, setBestTeams] = useState([]);
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [leadStats, setLeadStats] = useState({
+        total: 0,
+        converted: 0,
+        conversionRate: 0
+    });
+    const [leadChartData, setLeadChartData] = useState([]);
     const [taskStats, setTaskStats] = useState({
         assignedToday: 0,
         dueToday: 0,
@@ -15,65 +24,98 @@ const AdminDashboard = () => {
         bestTeamLead: null
     });
     const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         fetchDashboardData();
-        const interval = setInterval(fetchDashboardData, 30000);
-        return () => clearInterval(interval);
-    }, []);
+    }, [selectedMonth, selectedYear]); // Re-fetch when month or year changes
 
     const fetchDashboardData = async () => {
         try {
-            setRefreshing(true);
-            const [statsRes, performanceRes, bestTeamsRes, tasksRes] = await Promise.all([
+            setLoading(true);
+            
+            // Calculate date range for selected month
+            const startDate = new Date(selectedYear, selectedMonth, 1);
+            const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+            
+            const [statsRes, performanceRes, bestTeamsRes, tasksRes, leadsRes] = await Promise.all([
                 adminAnalyticsAPI.getDashboardStats(),
                 adminAnalyticsAPI.getTeamPerformance(),
                 adminAnalyticsAPI.getBestTeams(),
-                adminTasksAPI.getAll()
+                adminTasksAPI.getAll(),
+                leadsAPI.getStats()
             ]);
 
             console.log('Stats Response:', statsRes.data);
             console.log('Performance Response:', performanceRes.data);
             console.log('Best Teams Response:', bestTeamsRes.data);
+            console.log('Leads Response:', leadsRes.data);
 
             const statsData = statsRes.data.data || {};
 
-            // Transform stats data
+            // Get all tasks and filter by selected month
+            const allTasks = tasksRes.data.data || [];
+            const filteredTasks = allTasks.filter(t => {
+                const taskDate = new Date(t.createdAt);
+                return taskDate >= startDate && taskDate <= endDate;
+            });
+
+            // Transform stats data using filtered tasks
             const transformedStats = {
                 totalTeams: statsData.overview?.totalTeams || 0,
                 totalTeamLeads: statsData.overview?.totalUsers || 0,
                 totalMembers: statsData.overview?.totalUsers || 0,
-                totalTasks: statsData.tasks?.total || 0,
-                completedTasks: statsData.tasks?.completed || 0,
-                inProgressTasks: statsData.tasks?.inProgress || 0,
-                pendingTasks: (statsData.tasks?.total || 0) - (statsData.tasks?.completed || 0) - (statsData.tasks?.inProgress || 0),
-                overdueTasks: statsData.tasks?.overdue || 0,
-                overallProgress: statsData.tasks?.completionRate || 0
+                totalTasks: filteredTasks.length,
+                completedTasks: filteredTasks.filter(t => t.status === 'completed').length,
+                inProgressTasks: filteredTasks.filter(t => t.status === 'in_progress').length,
+                pendingTasks: filteredTasks.filter(t => t.status !== 'completed' && t.status !== 'in_progress').length,
+                overdueTasks: filteredTasks.filter(t => t.isOverdue && t.status !== 'completed').length,
+                overallProgress: filteredTasks.length > 0 
+                    ? Math.round((filteredTasks.filter(t => t.status === 'completed').length / filteredTasks.length) * 100)
+                    : 0
             };
 
             setStats(transformedStats);
             setTeamPerformance(performanceRes.data.data || []);
             setBestTeams(bestTeamsRes.data.data || []);
 
-            // Calculate today's task statistics
-            const tasks = tasksRes.data.data || [];
+            // Set lead statistics
+            if (leadsRes.data.data) {
+                const leadData = leadsRes.data.data;
+                setLeadStats({
+                    total: leadData.totalLeads || 0,
+                    converted: leadData.convertedLeads || 0,
+                    conversionRate: leadData.conversionRate || 0
+                });
+
+                // Prepare chart data for lead status distribution
+                const statusDist = leadData.statusDist || {};
+                setLeadChartData([
+                    { name: 'New', value: statusDist.new || 0, color: '#3b82f6' },
+                    { name: 'Contacted', value: statusDist.contacted || 0, color: '#6366f1' },
+                    { name: 'Interested', value: statusDist.interested || 0, color: '#8b5cf6' },
+                    { name: 'Follow Up', value: statusDist.follow_up || 0, color: '#f59e0b' },
+                    { name: 'Converted', value: statusDist.converted || 0, color: '#10b981' },
+                    { name: 'Not Interested', value: statusDist.not_interested || 0, color: '#ef4444' }
+                ].filter(item => item.value > 0));
+            }
+
+            // Calculate today's task statistics from filtered tasks
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            const assignedToday = tasks.filter(t => {
+            const assignedToday = filteredTasks.filter(t => {
                 const assignedDate = new Date(t.assignedAt || t.createdAt);
                 assignedDate.setHours(0, 0, 0, 0);
                 return assignedDate.getTime() === today.getTime();
             }).length;
 
-            const dueToday = tasks.filter(t => {
+            const dueToday = filteredTasks.filter(t => {
                 const dueDate = new Date(t.dueDate || t.deadline);
                 dueDate.setHours(0, 0, 0, 0);
                 return dueDate.getTime() === today.getTime() && t.status !== 'completed';
             }).length;
 
-            const overdue = tasks.filter(t => t.isOverdue && t.status !== 'completed').length;
+            const overdue = filteredTasks.filter(t => t.isOverdue && t.status !== 'completed').length;
             const bestTeamLead = bestTeamsRes.data.data?.[0] || null;
 
             setTaskStats({ assignedToday, dueToday, overdue, bestTeamLead });
@@ -81,7 +123,6 @@ const AdminDashboard = () => {
             console.error('Error fetching dashboard data:', error);
         } finally {
             setLoading(false);
-            setRefreshing(false);
         }
     };
 
@@ -141,24 +182,73 @@ const AdminDashboard = () => {
                         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
                         <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">Real-time analytics</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-green-50 text-green-700 rounded-lg text-xs sm:text-sm font-medium border border-green-200">
-                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span>Live</span>
-                        </div>
-                        <button
-                            onClick={fetchDashboardData}
-                            disabled={refreshing}
-                            className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 flex items-center gap-1.5 text-xs sm:text-sm"
+                    {/* Month Filter */}
+                    <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2">
+                        <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" />
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                            className="bg-transparent text-xs sm:text-sm font-medium text-gray-700 focus:outline-none cursor-pointer"
                         >
-                            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                            <span className="hidden sm:inline">Refresh</span>
-                        </button>
+                            <option value={0}>Jan</option>
+                            <option value={1}>Feb</option>
+                            <option value={2}>Mar</option>
+                            <option value={3}>Apr</option>
+                            <option value={4}>May</option>
+                            <option value={5}>Jun</option>
+                            <option value={6}>Jul</option>
+                            <option value={7}>Aug</option>
+                            <option value={8}>Sep</option>
+                            <option value={9}>Oct</option>
+                            <option value={10}>Nov</option>
+                            <option value={11}>Dec</option>
+                        </select>
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                            className="bg-transparent text-xs sm:text-sm font-medium text-gray-700 focus:outline-none cursor-pointer"
+                        >
+                            <option value={2024}>2024</option>
+                            <option value={2025}>2025</option>
+                            <option value={2026}>2026</option>
+                        </select>
                     </div>
                 </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    {/* Lead Stats */}
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Total Leads</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{leadStats?.total || 0}</p>
+                                <div className="mt-1.5 sm:mt-2">
+                                    <span className="text-xs text-gray-600">In pipeline</span>
+                                </div>
+                            </div>
+                            <div className="p-2.5 sm:p-3 bg-purple-200 rounded-lg flex-shrink-0 ml-2">
+                                <Target className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-purple-700" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Converted Leads</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{leadStats?.converted || 0}</p>
+                                <div className="mt-1.5 sm:mt-2">
+                                    <span className="text-xs text-green-600 font-medium">{leadStats?.conversionRate || 0}% rate</span>
+                                </div>
+                            </div>
+                            <div className="p-2.5 sm:p-3 bg-green-200 rounded-lg flex-shrink-0 ml-2">
+                                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-green-700" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Team Stats */}
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
@@ -174,21 +264,7 @@ const AdminDashboard = () => {
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Total Members</p>
-                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{stats?.totalMembers || 0}</p>
-                                <div className="mt-1.5 sm:mt-2">
-                                    <span className="text-xs text-green-600 font-medium">Active</span>
-                                </div>
-                            </div>
-                            <div className="p-2.5 sm:p-3 bg-purple-200 rounded-lg flex-shrink-0 ml-2">
-                                <Briefcase className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-purple-700" />
-                            </div>
-                        </div>
-                    </div>
-
+                    {/* Task Stats */}
                     <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-orange-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
@@ -200,24 +276,6 @@ const AdminDashboard = () => {
                             </div>
                             <div className="p-2.5 sm:p-3 bg-orange-200 rounded-lg flex-shrink-0 ml-2">
                                 <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-orange-700" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-green-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0 mr-2">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Progress</p>
-                                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats?.overallProgress || 0}%</p>
-                                <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 mt-1.5 sm:mt-2">
-                                    <div
-                                        className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 sm:h-2 rounded-full transition-all duration-500"
-                                        style={{ width: `${stats?.overallProgress || 0}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                            <div className="p-2.5 sm:p-3 bg-green-200 rounded-lg flex-shrink-0">
-                                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-green-700" />
                             </div>
                         </div>
                     </div>
@@ -274,6 +332,69 @@ const AdminDashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
                     {/* LEFT SIDE - Charts (8 columns) */}
                     <div className="lg:col-span-8 space-y-3 sm:space-y-4">
+                        {/* Lead Status Distribution Chart */}
+                        {leadChartData.length > 0 && (
+                            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border-2 border-purple-200 shadow-lg">
+                                <div className="mb-3 sm:mb-4">
+                                    <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-1.5 sm:gap-2">
+                                        <div className="p-1.5 sm:p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+                                            <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
+                                        </div>
+                                        <span>Lead Status Distribution</span>
+                                    </h3>
+                                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1 ml-8 sm:ml-10">Pipeline breakdown</p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
+                                    {/* Pie Chart */}
+                                    <div className="w-full sm:w-1/2 h-40 sm:h-48 lg:h-56 bg-white rounded-xl p-2 sm:p-3 shadow-sm border border-purple-100">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={leadChartData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    labelLine={false}
+                                                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                                                    outerRadius={60}
+                                                    fill="#8884d8"
+                                                    dataKey="value"
+                                                    strokeWidth={2}
+                                                    stroke="#fff"
+                                                >
+                                                    {leadChartData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip 
+                                                    contentStyle={{
+                                                        backgroundColor: 'white',
+                                                        border: '2px solid #e9d5ff',
+                                                        borderRadius: '8px',
+                                                        padding: '6px 10px',
+                                                        fontSize: '11px',
+                                                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                                    }}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    {/* Legend */}
+                                    <div className="w-full sm:w-1/2 grid grid-cols-2 gap-2">
+                                        {leadChartData.map((item, index) => (
+                                            <div key={index} className="flex items-center gap-2 p-2 bg-white rounded-lg border-2 border-gray-100 hover:border-purple-300 transition-all hover:shadow-md">
+                                                <div className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm" style={{ backgroundColor: item.color }}></div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
+                                                    <p className="text-sm font-bold" style={{ color: item.color }}>{item.value}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Team Completion Rate Bar Chart */}
                         <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-gray-200 shadow-sm">
                             <div className="mb-3 sm:mb-4">

@@ -52,14 +52,16 @@ const LeadsPage = () => {
                         <p className="text-gray-600 mt-0.5 sm:mt-1 text-xs sm:text-sm">Manage your sales pipeline</p>
                     </div>
                     <div className="flex gap-2 sm:gap-3">
-                        <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center gap-1.5 sm:gap-2 bg-orange-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold hover:bg-orange-700 transition-colors shadow-lg"
-                        >
-                            <Plus size={16} className="sm:w-5 sm:h-5" />
-                            <span className="hidden sm:inline">New Lead</span>
-                            <span className="sm:hidden">New</span>
-                        </button>
+                        {(isAdmin || isTeamLead) && (
+                            <button
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="flex items-center gap-1.5 sm:gap-2 bg-orange-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold hover:bg-orange-700 transition-colors shadow-lg"
+                            >
+                                <Plus size={16} className="sm:w-5 sm:h-5" />
+                                <span className="hidden sm:inline">New Lead</span>
+                                <span className="sm:hidden">New</span>
+                            </button>
+                        )}
                         {isAdmin && (
                             <button
                                 onClick={() => setActiveTab('import')}

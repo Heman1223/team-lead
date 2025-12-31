@@ -14,7 +14,8 @@ import {
     CheckCircle2,
     AlertCircle,
     Edit3,
-    Save
+    Save,
+    Plus
 } from 'lucide-react';
 import { leadsAPI, usersAPI, teamsAPI, followUpsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -56,7 +57,21 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     const fetchUsers = async () => {
         try {
             const response = await usersAPI.getAll();
-            setAllUsers(response.data.data || []);
+            let users = response.data.data || [];
+            
+            // If team leader, filter to show only their team members
+            if (isTeamLead && !isAdmin) {
+                // Get team members from the API
+                const teamsResponse = await teamsAPI.getAll();
+                const myTeam = teamsResponse.data.data?.find(t => t.leadId?._id === user._id || t.leadId === user._id);
+                
+                if (myTeam && myTeam.members) {
+                    const memberIds = myTeam.members.map(m => m._id || m);
+                    users = users.filter(u => memberIds.includes(u._id));
+                }
+            }
+            
+            setAllUsers(users);
         } catch (error) {
             console.error('Error fetching users:', error);
         }
@@ -280,17 +295,23 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 {/* Assigned To */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Assigned To</label>
-                                    <select
-                                        value={lead.assignedTo?._id || ''}
-                                        onChange={(e) => handleAssign(e.target.value)}
-                                        disabled={updating}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
-                                    >
-                                        <option value="">Unassigned</option>
-                                        {allUsers.map(u => (
-                                            <option key={u._id} value={u._id}>{u.name}</option>
-                                        ))}
-                                    </select>
+                                    {(isAdmin || isTeamLead) ? (
+                                        <select
+                                            value={lead.assignedTo?._id || ''}
+                                            onChange={(e) => handleAssign(e.target.value)}
+                                            disabled={updating}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
+                                        >
+                                            <option value="">Unassigned</option>
+                                            {allUsers.map(u => (
+                                                <option key={u._id} value={u._id}>{u.name}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                                            {lead.assignedTo?.name || 'Unassigned'}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Category */}
@@ -329,38 +350,133 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                             {/* Description */}
                             {lead.description && (
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-                                    <div className="px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-700">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Internal Notes</label>
+                                    <div className="px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 whitespace-pre-wrap">
                                         {lead.description}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Inquiry Message */}
+                            {lead.inquiryMessage && (
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Client Inquiry Message</label>
+                                    <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-700 whitespace-pre-wrap">
+                                        {lead.inquiryMessage}
                                     </div>
                                 </div>
                             )}
                         </div>
 
+                        {/* Important Notes Section - Highlighted */}
+                        {(lead.description || lead.inquiryMessage) && (
+                            <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 border-2 border-orange-200">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <MessageSquare className="w-5 h-5 text-orange-600" />
+                                    Important Information
+                                </h3>
+                                
+                                {lead.inquiryMessage && (
+                                    <div className="mb-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            <label className="text-sm font-bold text-gray-900">Client's Original Message:</label>
+                                        </div>
+                                        <div className="px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-700 whitespace-pre-wrap text-sm">
+                                            {lead.inquiryMessage}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {lead.description && (
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                            <label className="text-sm font-bold text-gray-900">Internal Notes:</label>
+                                        </div>
+                                        <div className="px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-700 whitespace-pre-wrap text-sm">
+                                            {lead.description}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Activity Timeline */}
                         <div className="bg-gray-50 rounded-xl p-6">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4">Activity Timeline</h3>
+                            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <Clock className="w-5 h-5 text-orange-600" />
+                                Activity History
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-4">Complete record of all actions taken on this lead</p>
                             
                             {activities.length === 0 ? (
                                 <p className="text-gray-500 text-center py-8">No activity yet</p>
                             ) : (
-                                <div className="space-y-3">
-                                    {activities.slice(0, 10).map((activity, index) => (
-                                        <div key={index} className="flex gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                                            <div className="flex-shrink-0">
-                                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                                                    <Clock size={16} className="text-orange-600" />
+                                <div className="space-y-3 max-h-96 overflow-y-auto">
+                                    {activities.map((activity, index) => {
+                                        const isAssignment = activity.action === 'lead_assigned';
+                                        const isStatusChange = activity.action === 'lead_status_changed';
+                                        const isCreated = activity.action === 'lead_created';
+                                        
+                                        return (
+                                            <div 
+                                                key={index} 
+                                                className={`flex gap-3 p-4 rounded-lg border-l-4 ${
+                                                    isAssignment ? 'bg-blue-50 border-blue-500' :
+                                                    isStatusChange ? 'bg-purple-50 border-purple-500' :
+                                                    isCreated ? 'bg-green-50 border-green-500' :
+                                                    'bg-white border-gray-300'
+                                                }`}
+                                            >
+                                                <div className="flex-shrink-0">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                        isAssignment ? 'bg-blue-200' :
+                                                        isStatusChange ? 'bg-purple-200' :
+                                                        isCreated ? 'bg-green-200' :
+                                                        'bg-orange-100'
+                                                    }`}>
+                                                        {isAssignment ? (
+                                                            <User size={18} className="text-blue-700" />
+                                                        ) : isStatusChange ? (
+                                                            <CheckCircle2 size={18} className="text-purple-700" />
+                                                        ) : isCreated ? (
+                                                            <Plus size={18} className="text-green-700" />
+                                                        ) : (
+                                                            <Clock size={18} className="text-orange-600" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-start justify-between mb-1">
+                                                        <p className="text-sm font-bold text-gray-900 capitalize">
+                                                            {activity.action?.replace('_', ' ')}
+                                                        </p>
+                                                        <span className="text-xs text-gray-500">
+                                                            {new Date(activity.createdAt).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-700 mb-1">{activity.details}</p>
+                                                    {activity.userId && (
+                                                        <p className="text-xs text-gray-600">
+                                                            By: <span className="font-semibold">{activity.userId.name || 'Unknown'}</span>
+                                                        </p>
+                                                    )}
+                                                    {activity.metadata && (
+                                                        <div className="mt-2 p-2 bg-white rounded border border-gray-200">
+                                                            <p className="text-xs text-gray-600">
+                                                                {activity.metadata.oldStatus && (
+                                                                    <span>
+                                                                        Status: <span className="font-semibold">{activity.metadata.oldStatus}</span> → <span className="font-semibold text-green-600">{activity.metadata.newStatus}</span>
+                                                                    </span>
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="flex-1">
-                                                <p className="text-sm font-semibold text-gray-900">{activity.action?.replace('_', ' ')}</p>
-                                                <p className="text-xs text-gray-600">{activity.details}</p>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    {new Date(activity.createdAt).toLocaleString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

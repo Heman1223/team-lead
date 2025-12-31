@@ -20,32 +20,41 @@ const Login = () => {
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
-        setError('');
+        // Clear error only when user starts typing in email or password fields
+        if (e.target.name === 'email' || e.target.name === 'password') {
+            setError('');
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        
         setLoading(true);
         setError('');
 
-        let result;
-        if (isLogin) {
-            result = await login(formData.email, formData.password);
-        } else {
-            result = await register(formData.name, formData.email, formData.password, formData.role);
-        }
-
-        setLoading(false);
-
-        if (result.success) {
-            const userData = JSON.parse(localStorage.getItem('user'));
-            if (userData?.role === 'admin') {
-                navigate('/admin/dashboard');
+        try {
+            let result;
+            if (isLogin) {
+                result = await login(formData.email, formData.password);
             } else {
-                navigate('/dashboard');
+                result = await register(formData.name, formData.email, formData.password, formData.role);
             }
-        } else {
-            setError(result.message);
+
+            if (result.success) {
+                const userData = JSON.parse(localStorage.getItem('user'));
+                if (userData?.role === 'admin') {
+                    navigate('/admin/dashboard');
+                } else {
+                    navigate('/dashboard');
+                }
+            } else {
+                setError(result.message || 'Invalid credentials. Please try again.');
+            }
+        } catch (err) {
+            setError('An error occurred. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 

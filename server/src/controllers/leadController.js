@@ -64,10 +64,28 @@ const getLeadById = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
-        // Check permissions
-        const canAccess = await checkLeadPermission(lead, req.user);
-        if (!canAccess && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized to view this lead' });
+        // Check permissions - Admins can see all
+        if (req.user.role !== 'admin') {
+            let hasAccess = false;
+            
+            if (req.user.role === 'team_lead') {
+                // Team leaders can see leads they created or leads assigned to their team
+                if (lead.createdBy?._id?.toString() === req.user._id.toString()) {
+                    hasAccess = true;
+                } else {
+                    const team = await Team.findOne({ leadId: req.user._id });
+                    if (team && lead.assignedTeam?._id?.toString() === team._id.toString()) {
+                        hasAccess = true;
+                    }
+                }
+            } else if (req.user.role === 'team_member') {
+                // Team members can only see leads assigned to them
+                hasAccess = lead.assignedTo?._id?.toString() === req.user._id.toString();
+            }
+            
+            if (!hasAccess) {
+                return res.status(403).json({ success: false, message: 'Not authorized to view this lead' });
+            }
         }
 
         // Get activity logs for this lead
@@ -90,9 +108,17 @@ const getLeadById = async (req, res) => {
 
 // @desc    Create lead
 // @route   POST /api/leads
-// @access  Private
+// @access  Private (Admin, Team Lead only)
 const createLead = async (req, res) => {
     try {
+        // Only admins and team leaders can create leads
+        if (req.user.role === 'team_member') {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Only admins and team leaders can create leads' 
+            });
+        }
+
         const leadData = {
             ...req.body,
             createdBy: req.user._id
@@ -194,25 +220,26 @@ const assignLead = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
-        // Check permissions - Ensure user has access to this lead
-        const canAccess = await checkLeadPermission(lead, req.user);
-        if (!canAccess) {
-             return res.status(403).json({ success: false, message: 'Not authorized to assign this lead' });
-        }
-
         // Role-based restrictions
         if (req.user.role === 'team_member') {
             return res.status(403).json({ success: false, message: 'Employees cannot reassign leads' });
         }
 
         if (req.user.role === 'team_lead') {
+            // Team leaders can assign their own leads or leads assigned to their team
             const team = await Team.findOne({ leadId: req.user._id });
-            if (!team || (assignedTeam && assignedTeam !== team._id.toString())) {
-                return res.status(403).json({ success: false, message: 'Team leads can only assign to their own team' });
+            
+            // Check if team leader has access to this lead
+            const hasAccess = lead.createdBy?.toString() === req.user._id.toString() ||
+                             (team && lead.assignedTeam?.toString() === team._id.toString());
+            
+            if (!hasAccess) {
+                return res.status(403).json({ success: false, message: 'Not authorized to assign this lead' });
             }
+
             // If assigning to an employee, ensure they are in the team
-            if (assignedTo) {
-                const isMember = team.members.includes(assignedTo);
+            if (assignedTo && team) {
+                const isMember = team.members.some(m => m.toString() === assignedTo.toString());
                 if (!isMember) {
                     return res.status(400).json({ success: false, message: 'User is not a member of your team' });
                 }
