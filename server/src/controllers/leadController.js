@@ -67,7 +67,7 @@ const getLeadById = async (req, res) => {
         // Check permissions - Admins can see all
         if (req.user.role !== 'admin') {
             let hasAccess = false;
-            
+
             if (req.user.role === 'team_lead') {
                 // Team leaders can see leads they created or leads assigned to their team
                 if (lead.createdBy?._id?.toString() === req.user._id.toString()) {
@@ -82,7 +82,7 @@ const getLeadById = async (req, res) => {
                 // Team members can only see leads assigned to them
                 hasAccess = lead.assignedTo?._id?.toString() === req.user._id.toString();
             }
-            
+
             if (!hasAccess) {
                 return res.status(403).json({ success: false, message: 'Not authorized to view this lead' });
             }
@@ -113,9 +113,9 @@ const createLead = async (req, res) => {
     try {
         // Only admins and team leaders can create leads
         if (req.user.role === 'team_member') {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Only admins and team leaders can create leads' 
+            return res.status(403).json({
+                success: false,
+                message: 'Only admins and team leaders can create leads'
             });
         }
 
@@ -167,6 +167,7 @@ const updateLead = async (req, res) => {
 
         const oldStatus = lead.status;
         const newStatus = req.body.status;
+        const statusNote = req.body.statusNote; // New: accept note with status change
 
         // Handle lost reason
         if (newStatus === 'lost' && !req.body.lostReason) {
@@ -181,13 +182,21 @@ const updateLead = async (req, res) => {
 
         // Log status change activity
         if (newStatus && newStatus !== oldStatus) {
+            const statusChangeDetails = `Status changed from ${oldStatus} to ${newStatus}${newStatus === 'lost' ? ' Reason: ' + req.body.lostReason : ''}${statusNote ? ' Note: ' + statusNote : ''}`;
+
             await ActivityLog.create({
                 action: 'lead_status_changed',
                 userId: req.user._id,
                 leadId: lead._id,
-                details: `Status changed from ${oldStatus} to ${newStatus}${newStatus === 'lost' ? ' Reason: ' + req.body.lostReason : ''}`,
+                details: statusChangeDetails,
                 metadata: { oldStatus, newStatus }
             });
+
+            // Add note to lead if provided
+            if (statusNote && statusNote.trim()) {
+                lead.addNote(statusNote, req.user._id, 'status_changed');
+                await lead.save();
+            }
         } else {
             // General update log
             await ActivityLog.create({
@@ -228,11 +237,11 @@ const assignLead = async (req, res) => {
         if (req.user.role === 'team_lead') {
             // Team leaders can assign their own leads or leads assigned to their team
             const team = await Team.findOne({ leadId: req.user._id });
-            
+
             // Check if team leader has access to this lead
             const hasAccess = lead.createdBy?.toString() === req.user._id.toString() ||
-                             (team && lead.assignedTeam?.toString() === team._id.toString());
-            
+                (team && lead.assignedTeam?.toString() === team._id.toString());
+
             if (!hasAccess) {
                 return res.status(403).json({ success: false, message: 'Not authorized to assign this lead' });
             }
@@ -459,7 +468,7 @@ const getLeadStats = async (req, res) => {
     try {
         console.log('=== GET LEAD STATS REQUEST ===');
         console.log('User:', req.user._id, req.user.role);
-        
+
         let query = { isActive: true, isDeleted: false };
 
         // Role-based filtering
@@ -707,10 +716,10 @@ const escalateLead = async (req, res) => {
         lead.escalatedBy = req.user._id;
         lead.escalationReason = reason;
         lead.lastUpdatedBy = req.user._id;
-        
+
         // Add note about escalation
         lead.addNote(`Lead escalated to Admin. Reason: ${reason}`, req.user._id, 'note');
-        
+
         await lead.save();
 
         // Log activity
@@ -748,11 +757,106 @@ const escalateLead = async (req, res) => {
     }
 };
 
+// @desc    Get lead activities (role-based)
+// @route   GET /api/leads/activities
+// @access  Private
+const getLeadActivities = async (req, res) => {
+    try {
+        let leadQuery = { isActive: true, isDeleted: false };
+
+        // Role-based filtering for leads
+        if (req.user.role === 'team_lead') {
+            const team = await Team.findOne({ leadId: req.user._id });
+            if (team) {
+                leadQuery.$or = [
+                    { assignedTeam: team._id },
+                    { createdBy: req.user._id }
+                ];
+            } else {
+                leadQuery.createdBy = req.user._id;
+            }
+        } else if (req.user.role === 'team_member') {
+            // Employees see activities on leads assigned to them
+            leadQuery.assignedTo = req.user._id;
+        }
+        // Admins see all (no extra filter)
+
+        // Get all leads matching the query
+        const leads = await Lead.find(leadQuery).select('_id');
+        const leadIds = leads.map(l => l._id);
+
+        // Get activities for these leads
+        const activities = await ActivityLog.find({
+            leadId: { $in: leadIds }
+        })
+            .populate('userId', 'name email role')
+            .populate('leadId', 'clientName email status')
+            .sort({ createdAt: -1 })
+            .limit(200); // Limit to recent 200 activities
+
+        res.json({
+            success: true,
+            count: activities.length,
+            data: activities
+        });
+    } catch (error) {
+        console.error('Get lead activities error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Add note to lead
+// @route   POST /api/leads/:id/notes
+// @access  Private
+const addLeadNote = async (req, res) => {
+    try {
+        const { content, type } = req.body;
+
+        if (!content || content.trim() === '') {
+            return res.status(400).json({ success: false, message: 'Note content is required' });
+        }
+
+        const lead = await Lead.findById(req.params.id);
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        // Check permissions
+        const canAccess = await checkLeadPermission(lead, req.user);
+        if (!canAccess && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized to add notes to this lead' });
+        }
+
+        // Add note using model method
+        lead.addNote(content, req.user._id, type || 'note');
+        await lead.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'lead_note_added',
+            userId: req.user._id,
+            leadId: lead._id,
+            details: `Note added: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
+        });
+
+        res.json({
+            success: true,
+            message: 'Note added successfully',
+            data: lead
+        });
+    } catch (error) {
+        console.error('Add lead note error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+
+
 
 // Helper to check permission
 const checkLeadPermission = async (lead, user) => {
     if (user.role === 'admin') return true;
-    
+
     if (user.role === 'team_lead') {
         // Check if lead is created by them
         if (lead.createdBy?.toString() === user._id.toString()) return true;
@@ -762,17 +866,17 @@ const checkLeadPermission = async (lead, user) => {
         if (team) {
             // Check if assigned to the team
             if (lead.assignedTeam?.toString() === team._id.toString()) return true;
-            
+
             // Check if assigned to a member of the team
             if (lead.assignedTo && team.members.includes(lead.assignedTo)) return true;
         }
         return false;
     }
-    
+
     if (user.role === 'team_member') {
         return lead.assignedTo?.toString() === user._id.toString();
     }
-    
+
     return false;
 };
 
@@ -788,5 +892,7 @@ module.exports = {
     getLeadStats,
     deleteLead,
     restoreLead,
-    escalateLead
+    escalateLead,
+    getLeadActivities,
+    addLeadNote
 };

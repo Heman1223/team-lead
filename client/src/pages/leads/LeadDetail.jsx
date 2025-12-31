@@ -53,6 +53,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         notes: '',
         priority: 'medium'
     });
+    const [statusNote, setStatusNote] = useState('');
 
     useEffect(() => {
         if (leadId) {
@@ -95,11 +96,13 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         try {
             await leadsAPI.update(leadId, {
                 status: newStatus,
-                lostReason: newStatus === 'lost' ? lostReason : ''
+                lostReason: newStatus === 'lost' ? lostReason : '',
+                statusNote: statusNote.trim() || undefined
             });
             await fetchLeadDetails();
             onUpdate();
             setShowLostReason(false);
+            setStatusNote(''); // Clear note after update
         } catch (error) {
             alert(error.response?.data?.message || 'Update failed');
         } finally {
@@ -290,6 +293,24 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 Delete
                             </button>
                         )}
+                    </div>
+
+                    {/* Note Input for Status Change */}
+                    <div className="bg-gray-900/50 border border-gray-700/50 rounded-2xl p-6">
+                        <label className="block text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
+                            <MessageSquare size={16} className="text-orange-500" />
+                            Add Note (Optional)
+                        </label>
+                        <textarea
+                            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-gray-200 focus:ring-2 focus:ring-orange-500 outline-none resize-none"
+                            placeholder="Add a note about this lead or status change..."
+                            rows="3"
+                            value={statusNote}
+                            onChange={(e) => setStatusNote(e.target.value)}
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                            This note will be saved when you change the status or can be saved separately
+                        </p>
                     </div>
 
                     {/* Assignment Controls */}

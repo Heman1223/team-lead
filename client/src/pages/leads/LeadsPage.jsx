@@ -5,12 +5,14 @@ import LeadList from './LeadListSimple';
 import LeadImport from './LeadImportSimple';
 import LeadDetail from './LeadDetailSimple';
 import CreateLeadModal from './CreateLeadModalSimple';
+import LeadActivities from './LeadActivities';
 import {
     LayoutDashboard,
     List,
     Upload,
     Plus,
-    Search
+    Search,
+    Activity
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSearchParams } from 'react-router-dom';
@@ -33,6 +35,7 @@ const LeadsPage = () => {
     const tabs = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'list', label: 'All Leads', icon: List },
+        { id: 'activities', label: 'Activities', icon: Activity },
         { id: 'import', label: 'Import Leads', icon: Upload, adminOnly: true }
     ];
 
@@ -100,6 +103,7 @@ const LeadsPage = () => {
                     <div className="p-3 sm:p-4 lg:p-6">
                         {activeTab === 'dashboard' && <LeadDashboard refreshTrigger={refreshKey} />}
                         {activeTab === 'list' && <LeadList key={refreshKey} onSelectLead={setSelectedLeadId} />}
+                        {activeTab === 'activities' && <LeadActivities key={refreshKey} />}
                         {activeTab === 'import' && <LeadImport onComplete={() => setActiveTab('list')} />}
                     </div>
                 </div>
