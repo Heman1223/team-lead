@@ -27,6 +27,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     const [updating, setUpdating] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
     const [note, setNote] = useState('');
+    const [statusNote, setStatusNote] = useState('');
     const [showFollowUpModal, setShowFollowUpModal] = useState(false);
     const [followUpData, setFollowUpData] = useState({
         title: '',
@@ -58,19 +59,19 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         try {
             const response = await usersAPI.getAll();
             let users = response.data.data || [];
-            
+
             // If team leader, filter to show only their team members
             if (isTeamLead && !isAdmin) {
                 // Get team members from the API
                 const teamsResponse = await teamsAPI.getAll();
                 const myTeam = teamsResponse.data.data?.find(t => t.leadId?._id === user._id || t.leadId === user._id);
-                
+
                 if (myTeam && myTeam.members) {
                     const memberIds = myTeam.members.map(m => m._id || m);
                     users = users.filter(u => memberIds.includes(u._id));
                 }
             }
-            
+
             setAllUsers(users);
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -80,9 +81,13 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     const handleUpdateStatus = async (newStatus) => {
         setUpdating(true);
         try {
-            await leadsAPI.update(leadId, { status: newStatus });
+            await leadsAPI.update(leadId, {
+                status: newStatus,
+                statusNote: statusNote.trim() || undefined
+            });
             await fetchLeadDetails();
             onUpdate();
+            setStatusNote(''); // Clear note after update
         } catch (error) {
             alert(error.response?.data?.message || 'Update failed');
         } finally {
@@ -113,7 +118,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             alert('Please select a date for the follow-up');
             return;
         }
-        
+
         setUpdating(true);
         try {
             const payload = {
@@ -124,19 +129,19 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                 priority: followUpData.priority || 'medium',
                 type: 'call'  // HARDCODED to 'call' - valid enum value
             };
-            
+
             // Add optional fields
             if (followUpData.scheduledTime) {
                 payload.scheduledTime = followUpData.scheduledTime;
             }
-            
+
             console.log('=== CLIENT: Scheduling follow-up ===');
             console.log('followUpData state:', followUpData);
             console.log('Payload being sent:', JSON.stringify(payload, null, 2));
-            
+
             const response = await followUpsAPI.create(payload);
             console.log('Follow-up created successfully:', response.data);
-            
+
             alert('Follow-up scheduled successfully!');
             setShowFollowUpModal(false);
             setFollowUpData({ title: '', scheduledDate: '', scheduledTime: '', priority: 'medium', type: 'call' });
@@ -144,13 +149,13 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         } catch (error) {
             console.error('Follow-up scheduling error:', error);
             console.error('Error response:', error.response?.data);
-            
+
             // Build detailed error message
             let errorMessage = 'Failed to schedule follow-up';
-            
+
             if (error.response?.data) {
                 const data = error.response.data;
-                
+
                 // Check for validation errors array
                 if (data.errors && Array.isArray(data.errors)) {
                     errorMessage = 'Validation Error:\n' + data.errors.join('\n');
@@ -166,7 +171,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             } else if (error.message) {
                 errorMessage = error.message;
             }
-            
+
             alert(errorMessage);
         } finally {
             setUpdating(false);
@@ -272,7 +277,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                         {/* Lead Information */}
                         <div className="bg-gray-50 rounded-xl p-6 space-y-4">
                             <h3 className="text-lg font-bold text-gray-900 mb-4">Lead Information</h3>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Status */}
                                 <div>
@@ -347,6 +352,24 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 </div>
                             </div>
 
+                            {/* Note Input for Status Change */}
+                            <div className="mt-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                    <MessageSquare size={16} className="text-orange-600" />
+                                    Add Note (Optional)
+                                </label>
+                                <textarea
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                                    placeholder="Add a note about this lead or status change..."
+                                    rows="3"
+                                    value={statusNote}
+                                    onChange={(e) => setStatusNote(e.target.value)}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    This note will be saved when you change the status
+                                </p>
+                            </div>
+
                             {/* Description */}
                             {lead.description && (
                                 <div>
@@ -375,7 +398,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                     <MessageSquare className="w-5 h-5 text-orange-600" />
                                     Important Information
                                 </h3>
-                                
+
                                 {lead.inquiryMessage && (
                                     <div className="mb-4">
                                         <div className="flex items-center gap-2 mb-2">
@@ -409,7 +432,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 Activity History
                             </h3>
                             <p className="text-sm text-gray-600 mb-4">Complete record of all actions taken on this lead</p>
-                            
+
                             {activities.length === 0 ? (
                                 <p className="text-gray-500 text-center py-8">No activity yet</p>
                             ) : (
@@ -418,24 +441,22 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                         const isAssignment = activity.action === 'lead_assigned';
                                         const isStatusChange = activity.action === 'lead_status_changed';
                                         const isCreated = activity.action === 'lead_created';
-                                        
+
                                         return (
-                                            <div 
-                                                key={index} 
-                                                className={`flex gap-3 p-4 rounded-lg border-l-4 ${
-                                                    isAssignment ? 'bg-blue-50 border-blue-500' :
+                                            <div
+                                                key={index}
+                                                className={`flex gap-3 p-4 rounded-lg border-l-4 ${isAssignment ? 'bg-blue-50 border-blue-500' :
                                                     isStatusChange ? 'bg-purple-50 border-purple-500' :
-                                                    isCreated ? 'bg-green-50 border-green-500' :
-                                                    'bg-white border-gray-300'
-                                                }`}
+                                                        isCreated ? 'bg-green-50 border-green-500' :
+                                                            'bg-white border-gray-300'
+                                                    }`}
                                             >
                                                 <div className="flex-shrink-0">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                        isAssignment ? 'bg-blue-200' :
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isAssignment ? 'bg-blue-200' :
                                                         isStatusChange ? 'bg-purple-200' :
-                                                        isCreated ? 'bg-green-200' :
-                                                        'bg-orange-100'
-                                                    }`}>
+                                                            isCreated ? 'bg-green-200' :
+                                                                'bg-orange-100'
+                                                        }`}>
                                                         {isAssignment ? (
                                                             <User size={18} className="text-blue-700" />
                                                         ) : isStatusChange ? (
