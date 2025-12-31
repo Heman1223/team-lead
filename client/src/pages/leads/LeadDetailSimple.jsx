@@ -28,6 +28,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     const [allUsers, setAllUsers] = useState([]);
     const [note, setNote] = useState('');
     const [statusNote, setStatusNote] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState('');
     const [showFollowUpModal, setShowFollowUpModal] = useState(false);
     const [followUpData, setFollowUpData] = useState({
         title: '',
@@ -48,6 +49,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         try {
             const response = await leadsAPI.getOne(leadId);
             setData(response.data.data);
+            setSelectedStatus(response.data.data.lead.status); // Set initial status
         } catch (error) {
             console.error('Error fetching lead details:', error);
         } finally {
@@ -78,11 +80,11 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         }
     };
 
-    const handleUpdateStatus = async (newStatus) => {
+    const handleSaveChanges = async () => {
         setUpdating(true);
         try {
             await leadsAPI.update(leadId, {
-                status: newStatus,
+                status: selectedStatus,
                 statusNote: statusNote.trim() || undefined
             });
             await fetchLeadDetails();
@@ -283,8 +285,8 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
                                     <select
-                                        value={lead.status || 'new'}
-                                        onChange={(e) => handleUpdateStatus(e.target.value)}
+                                        value={selectedStatus || 'new'}
+                                        onChange={(e) => setSelectedStatus(e.target.value)}
                                         disabled={updating}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
                                     >
@@ -365,9 +367,19 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                     value={statusNote}
                                     onChange={(e) => setStatusNote(e.target.value)}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    This note will be saved when you change the status
+                                <p className="text-xs text-gray-500 mt-1 mb-3">
+                                    This note will be saved when you click Save Changes
                                 </p>
+
+                                {/* Save Changes Button */}
+                                <button
+                                    onClick={handleSaveChanges}
+                                    disabled={updating || selectedStatus === lead.status}
+                                    className="w-full px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    <Save size={18} />
+                                    {updating ? 'Saving...' : 'Save Changes'}
+                                </button>
                             </div>
 
                             {/* Description */}
