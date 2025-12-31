@@ -6,7 +6,7 @@ const Task = require('../models/Task');
 // Helper to construct RBAC query
 const getRoleBasedQuery = async (user) => {
     let query = { isActive: true };
-    
+
     if (user.role === 'admin') {
         return query;
     }
@@ -24,7 +24,7 @@ const getRoleBasedQuery = async (user) => {
     } else if (user.role === 'team_member') {
         query.assignedTo = user._id;
     }
-    
+
     return query;
 };
 
@@ -114,10 +114,10 @@ const getConversionMetrics = async (req, res) => {
                     total: { $sum: 1 },
                     converted: { $sum: { $cond: [{ $eq: ["$status", "converted"] }, 1, 0] } },
                     lost: { $sum: { $cond: [{ $eq: ["$status", "lost"] }, 1, 0] } },
-                    active: { 
-                        $sum: { 
-                            $cond: [{ $in: ["$status", ["new", "contacted", "interested", "follow_up_required"]] }, 1, 0] 
-                        } 
+                    active: {
+                        $sum: {
+                            $cond: [{ $in: ["$status", ["new", "contacted", "interested", "follow_up_required"]] }, 1, 0]
+                        }
                     }
                 }
             }
@@ -170,16 +170,36 @@ const getTeamPerformance = async (req, res) => {
             }
         }
 
+        const { startDate, endDate } = req.query;
+        let lookupStage = {
+            from: 'leads',
+            localField: '_id',
+            foreignField: 'assignedTo',
+            as: 'leads'
+        };
+
+        if (startDate && endDate) {
+            lookupStage = {
+                from: 'leads',
+                let: { userId: '$_id' },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: { $eq: ['$assignedTo', '$$userId'] },
+                            createdAt: {
+                                $gte: new Date(startDate),
+                                $lte: new Date(endDate)
+                            }
+                        }
+                    }
+                ],
+                as: 'leads'
+            };
+        }
+
         const performance = await User.aggregate([
             { $match: matchQuery },
-            {
-                $lookup: {
-                    from: 'leads',
-                    localField: '_id',
-                    foreignField: 'assignedTo',
-                    as: 'leads'
-                }
-            },
+            { $lookup: lookupStage },
             {
                 $project: {
                     name: 1,
@@ -213,6 +233,15 @@ const getTeamPerformance = async (req, res) => {
 // @access  Private/Admin
 const getBestPerformingTeams = async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        const dateFilter = {};
+        if (startDate && endDate) {
+            dateFilter.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+
         const teams = await Team.find({ isActive: true })
             .populate('leadId', 'name email')
             .populate('members', 'name');
@@ -220,13 +249,13 @@ const getBestPerformingTeams = async (req, res) => {
         const teamsWithStats = await Promise.all(
             teams.map(async (team) => {
                 // Get team tasks
-                const tasks = await Task.find({ teamId: team._id });
+                const tasks = await Task.find({ teamId: team._id, ...dateFilter });
                 const completedTasks = tasks.filter(t => t.status === 'completed').length;
                 const totalTasks = tasks.length;
                 const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
                 // Get team leads (if they exist)
-                const leads = await Lead.find({ assignedTeam: team._id });
+                const leads = await Lead.find({ assignedTeam: team._id, ...dateFilter });
                 const convertedLeads = leads.filter(l => l.status === 'converted').length;
                 const leadConversionRate = leads.length > 0 ? (convertedLeads / leads.length) * 100 : 0;
 
@@ -272,11 +301,11 @@ const getTeamLeadEffectiveness = async (req, res) => {
         }
 
         const team = await Team.findOne({ leadId: leadId });
-        
+
         // Get tasks assigned to this team lead
         const tasks = await Task.find({ assignedTo: leadId });
         const completedTasks = tasks.filter(t => t.status === 'completed').length;
-        const overdueTasks = tasks.filter(t => 
+        const overdueTasks = tasks.filter(t =>
             t.status !== 'completed' && new Date(t.deadline) < new Date()
         ).length;
 
@@ -286,17 +315,17 @@ const getTeamLeadEffectiveness = async (req, res) => {
             teamMemberStats = await Promise.all(
                 team.members.map(async (memberId) => {
                     if (memberId.toString() === leadId) return null; // Skip the lead themselves
-                    
+
                     const member = await User.findById(memberId).select('name email');
                     const memberTasks = await Task.find({ assignedTo: memberId });
                     const memberCompleted = memberTasks.filter(t => t.status === 'completed').length;
-                    
+
                     return {
                         memberId,
                         memberName: member?.name || 'Unknown',
                         tasksAssigned: memberTasks.length,
                         tasksCompleted: memberCompleted,
-                        completionRate: memberTasks.length > 0 ? 
+                        completionRate: memberTasks.length > 0 ?
                             Math.round((memberCompleted / memberTasks.length) * 100) : 0
                     };
                 })
@@ -313,8 +342,8 @@ const getTeamLeadEffectiveness = async (req, res) => {
         const taskCompletionRate = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
         const overdueRate = tasks.length > 0 ? (overdueTasks / tasks.length) * 100 : 0;
         const effectivenessScore = Math.round(
-            (taskCompletionRate * 0.4) + 
-            (avgTeamCompletionRate * 0.4) + 
+            (taskCompletionRate * 0.4) +
+            (avgTeamCompletionRate * 0.4) +
             ((100 - overdueRate) * 0.2)
         );
 
@@ -343,8 +372,8 @@ const getTeamLeadEffectiveness = async (req, res) => {
                 },
                 effectivenessScore,
                 rating: effectivenessScore >= 80 ? 'Excellent' :
-                       effectivenessScore >= 60 ? 'Good' :
-                       effectivenessScore >= 40 ? 'Average' : 'Needs Improvement'
+                    effectivenessScore >= 60 ? 'Good' :
+                        effectivenessScore >= 40 ? 'Average' : 'Needs Improvement'
             }
         });
     } catch (error) {
@@ -358,24 +387,44 @@ const getTeamLeadEffectiveness = async (req, res) => {
 // @access  Private/Admin
 const getDashboardStats = async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
+        const dateFilter = {};
+        if (startDate && endDate) {
+            dateFilter.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+
         // Overview stats
         const totalUsers = await User.countDocuments({ isActive: true });
         const totalTeams = await Team.countDocuments({ isActive: true });
-        const totalTasks = await Task.countDocuments();
-        const totalLeads = await Lead.countDocuments({ isActive: true });
+        const totalTasks = await Task.countDocuments(dateFilter);
+        const totalLeads = await Lead.countDocuments({ isActive: true, ...dateFilter });
 
         // Task statistics
-        const completedTasks = await Task.countDocuments({ status: 'completed' });
-        const inProgressTasks = await Task.countDocuments({ status: 'in_progress' });
+        const completedTasks = await Task.countDocuments({
+            status: 'completed',
+            ...dateFilter
+        });
+        const inProgressTasks = await Task.countDocuments({
+            status: 'in_progress',
+            ...dateFilter
+        });
         const overdueTasks = await Task.countDocuments({
             status: { $ne: 'completed' },
-            deadline: { $lt: new Date() }
+            deadline: { $lt: new Date() },
+            ...dateFilter
         });
 
         // Lead statistics
-        const convertedLeads = await Lead.countDocuments({ status: 'converted' });
-        const activeLeads = await Lead.countDocuments({ 
-            status: { $in: ['new', 'contacted', 'interested', 'follow_up_required'] }
+        const convertedLeads = await Lead.countDocuments({
+            status: 'converted',
+            ...dateFilter
+        });
+        const activeLeads = await Lead.countDocuments({
+            status: { $in: ['new', 'contacted', 'interested', 'follow_up_required'] },
+            ...dateFilter
         });
 
         // Calculate rates
@@ -396,7 +445,7 @@ const getDashboardStats = async (req, res) => {
                 return {
                     teamId: team._id,
                     teamName: team.name,
-                    completionRate: teamTasks.length > 0 ? 
+                    completionRate: teamTasks.length > 0 ?
                         Math.round((completed / teamTasks.length) * 100) : 0
                 };
             })

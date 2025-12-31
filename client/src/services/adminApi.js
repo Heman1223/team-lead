@@ -2,10 +2,10 @@ import api from './api';
 
 // Admin Analytics API
 export const adminAnalyticsAPI = {
-    getTeamPerformance: () => api.get('/admin/analytics/team-performance'),
-    getBestTeams: () => api.get('/admin/analytics/best-teams'),
-    getTeamLeadEffectiveness: (leadId) => api.get(`/admin/analytics/team-lead-effectiveness/${leadId}`),
-    getDashboardStats: () => api.get('/admin/analytics/dashboard-stats')
+    getTeamPerformance: (params) => api.get('/admin/analytics/team-performance', { params }),
+    getBestTeams: (params) => api.get('/admin/analytics/best-teams', { params }),
+    getTeamLeadEffectiveness: (leadId, params) => api.get(`/admin/analytics/team-lead-effectiveness/${leadId}`, { params }),
+    getDashboardStats: (params) => api.get('/admin/analytics/dashboard-stats', { params })
 };
 
 // Admin User Management API

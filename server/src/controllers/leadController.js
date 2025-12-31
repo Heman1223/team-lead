@@ -471,7 +471,15 @@ const getLeadStats = async (req, res) => {
         console.log('=== GET LEAD STATS REQUEST ===');
         console.log('User:', req.user._id, req.user.role);
 
+        const { startDate, endDate } = req.query;
         let query = { isActive: true, isDeleted: false };
+
+        if (startDate && endDate) {
+            query.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
 
         // Role-based filtering
         if (req.user.role === 'team_lead') {

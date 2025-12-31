@@ -32,17 +32,22 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            
+
             // Calculate date range for selected month
             const startDate = new Date(selectedYear, selectedMonth, 1);
             const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
-            
+
+            const params = {
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString()
+            };
+
             const [statsRes, performanceRes, bestTeamsRes, tasksRes, leadsRes] = await Promise.all([
-                adminAnalyticsAPI.getDashboardStats(),
-                adminAnalyticsAPI.getTeamPerformance(),
-                adminAnalyticsAPI.getBestTeams(),
+                adminAnalyticsAPI.getDashboardStats(params),
+                adminAnalyticsAPI.getTeamPerformance(params),
+                adminAnalyticsAPI.getBestTeams(params),
                 adminTasksAPI.getAll(),
-                leadsAPI.getStats()
+                leadsAPI.getStats(params)
             ]);
 
             console.log('Stats Response:', statsRes.data);
@@ -69,7 +74,7 @@ const AdminDashboard = () => {
                 inProgressTasks: filteredTasks.filter(t => t.status === 'in_progress').length,
                 pendingTasks: filteredTasks.filter(t => t.status !== 'completed' && t.status !== 'in_progress').length,
                 overdueTasks: filteredTasks.filter(t => t.isOverdue && t.status !== 'completed').length,
-                overallProgress: filteredTasks.length > 0 
+                overallProgress: filteredTasks.length > 0
                     ? Math.round((filteredTasks.filter(t => t.status === 'completed').length / filteredTasks.length) * 100)
                     : 0
             };
@@ -365,7 +370,7 @@ const AdminDashboard = () => {
                                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                                     ))}
                                                 </Pie>
-                                                <Tooltip 
+                                                <Tooltip
                                                     contentStyle={{
                                                         backgroundColor: 'white',
                                                         border: '2px solid #e9d5ff',
