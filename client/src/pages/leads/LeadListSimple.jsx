@@ -7,9 +7,12 @@ import {
     Eye,
     RefreshCw,
     AlertCircle,
-    User
+    User,
+    LayoutGrid,
+    List
 } from 'lucide-react';
 import { leadsAPI } from '../../services/api';
+import LeadKanbanBoard from './LeadKanbanBoard';
 
 const LeadList = ({ onSelectLead }) => {
     const [leads, setLeads] = useState([]);
@@ -17,6 +20,7 @@ const LeadList = ({ onSelectLead }) => {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [viewMode, setViewMode] = useState('list'); // 'list' or 'kanban'
 
     useEffect(() => {
         fetchLeads();
@@ -131,6 +135,31 @@ const LeadList = ({ onSelectLead }) => {
                     </select>
                 </div>
 
+
+                {/* View Toggle */}
+                <div className="flex items-center bg-gray-100 rounded-xl p-1 border border-gray-200">
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`p-2 rounded-lg transition-all ${viewMode === 'list'
+                            ? 'bg-white text-orange-600 shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                        title="List View"
+                    >
+                        <List className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('kanban')}
+                        className={`p-2 rounded-lg transition-all ${viewMode === 'kanban'
+                            ? 'bg-white text-orange-600 shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                        title="Kanban View"
+                    >
+                        <LayoutGrid className="w-5 h-5" />
+                    </button>
+                </div>
+
                 {/* Refresh Button */}
                 <button
                     onClick={fetchLeads}
@@ -148,17 +177,23 @@ const LeadList = ({ onSelectLead }) => {
                 </p>
             </div>
 
-            {/* Leads List */}
+            {/* Leads List / Kanban */}
             {filteredLeads.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                     <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No leads found</h3>
                     <p className="text-gray-600">
-                        {searchTerm || filterStatus !== 'all' 
-                            ? 'Try adjusting your search or filters' 
+                        {searchTerm || filterStatus !== 'all'
+                            ? 'Try adjusting your search or filters'
                             : 'Create your first lead to get started'}
                     </p>
                 </div>
+            ) : viewMode === 'kanban' ? (
+                <LeadKanbanBoard
+                    leads={filteredLeads}
+                    onLeadUpdate={fetchLeads}
+                    onSelectLead={onSelectLead}
+                />
             ) : (
                 <div className="grid grid-cols-1 gap-4">
                     {filteredLeads.map((lead) => (
@@ -173,7 +208,7 @@ const LeadList = ({ onSelectLead }) => {
                                     <div className="flex items-center gap-3 mb-3">
                                         {/* Priority Indicator */}
                                         <div className={`w-1 h-12 rounded-full ${getPriorityColor(lead.priority)}`}></div>
-                                        
+
                                         <div className="flex-1">
                                             <h3 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
                                                 {lead.clientName || 'Unknown'}

@@ -333,98 +333,77 @@ const convertToProject = async (req, res) => {
     }
 };
 
-// @desc    Preview leads from CSV
+// @desc    Preview leads from CSV/Excel (Raw data for mapping)
 // @route   POST /api/leads/preview
 // @access  Private (Admin)
 const previewLeads = async (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ success: false, message: 'Please upload a CSV file' });
+        return res.status(400).json({ success: false, message: 'Please upload a CSV or Excel file' });
     }
 
-    const leads = [];
-    const errors = [];
     const filePath = req.file.path;
-    const validCategories = ['web_development', 'mobile_app', 'ui_ux_design', 'digital_marketing', 'seo', 'content_writing', 'consulting', 'other'];
+    const ext = path.extname(req.file.originalname).toLowerCase();
 
-    console.log(`Starting CSV preview for file: ${req.file.filename}`);
+    try {
+        let rawData = [];
 
-    fs.createReadStream(filePath)
-        .pipe(csv())
-        .on('data', (row) => {
-            // Clean keys (remove BOM or weird chars)
-            const cleanRow = {};
-            Object.keys(row).forEach(key => {
-                const cleanKey = key.replace(/^\uFEFF/, '').trim().toLowerCase();
-                cleanRow[cleanKey] = row[key];
-            });
-
-            const clientName = cleanRow.client_name || cleanRow['client name'] || cleanRow.name || cleanRow.customer;
-            const email = cleanRow.email || cleanRow['e-mail'] || cleanRow.email_address;
-            const phone = cleanRow.phone || cleanRow['phone number'] || cleanRow.mobile || cleanRow.contact;
-            const category = cleanRow.project_category || cleanRow.category || cleanRow.type || 'other';
-
-            if (!clientName || !email || !phone) {
-                errors.push({ row, error: 'Missing critical fields (Name, Email, or Phone)' });
-            } else {
-                leads.push({
-                    clientName,
-                    email: email.toString().toLowerCase().trim(),
-                    phone: phone.toString().trim(),
-                    category: validCategories.includes(category) ? category : 'other',
-                    description: cleanRow.description || cleanRow.details || cleanRow.notes || '',
-                    source: cleanRow.source || 'csv_import',
-                    estimatedValue: parseFloat(cleanRow.estimated_value || cleanRow.value || cleanRow.revenue || cleanRow.budget || 0) || 0
+        // Parse File based on extension
+        if (ext === '.csv') {
+            const results = [];
+            fs.createReadStream(filePath)
+                .pipe(csv())
+                .on('data', (data) => results.push(data))
+                .on('end', () => {
+                    processRawData(results, filePath, res);
+                })
+                .on('error', (err) => {
+                    throw err;
                 });
-            }
-        })
-        .on('end', async () => {
-            try {
-                console.log(`CSV parsed. Found ${leads.length} potential leads and ${errors.length} errors.`);
+            return; // processRawData will handle response
+        } else if (ext === '.xlsx' || ext === '.xls') {
+            const XLSX = require('xlsx');
+            const workbook = XLSX.readFile(filePath);
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            rawData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            processRawData(rawData, filePath, res);
+        } else {
+            throw new Error('Unsupported file format');
+        }
 
-                // Check for duplicates in DB
-                const emails = leads.map(l => l.email);
-                const phones = leads.map(l => l.phone);
+    } catch (err) {
+        console.error('Error in previewLeads:', err);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        res.status(500).json({ success: false, message: 'Error processing file' });
+    }
+};
 
-                const existingLeads = await Lead.find({
-                    isActive: true,
-                    $or: [
-                        { email: { $in: emails } },
-                        { phone: { $in: phones } }
-                    ]
-                });
+const processRawData = (data, filePath, res) => {
+    if (!data || data.length === 0) {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        return res.status(400).json({ success: false, message: 'File is empty' });
+    }
 
-                const existingEmails = new Set(existingLeads.map(l => l.email));
-                const existingPhones = new Set(existingLeads.map(l => l.phone));
+    // Extract headers from the first row keys
+    const headers = Object.keys(data[0]);
 
-                const leadsWithValidation = leads.map(l => {
-                    const isDuplicate = existingEmails.has(l.email) || existingPhones.has(l.phone);
-                    return {
-                        ...l,
-                        isValid: !isDuplicate,
-                        error: isDuplicate ? 'Record already exists in pipeline' : null
-                    };
-                });
+    // Send back raw data for frontend mapping
+    // Limit to first 10 rows for preview to save bandwidth, but send total count
+    res.json({
+        success: true,
+        data: {
+            headers: headers,
+            sampleData: data.slice(0, 5),
+            totalRows: data.length,
+            // Check for potential duplicate count (users will map first, then we validate on import or client side)
+            // Ideally we'd send all data or save temp file ID, but for now let's send all data if it's not huge
+            // If huge, we might need a better strategy. For now assuming < 1000 rows usually.
+            allData: data
+        }
+    });
 
-                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-
-                res.json({
-                    success: true,
-                    data: {
-                        leads: leadsWithValidation,
-                        errors,
-                        summary: {
-                            total: leads.length,
-                            valid: leadsWithValidation.filter(l => l.isValid).length,
-                            invalid: leadsWithValidation.filter(l => !l.isValid).length + errors.length
-                        }
-                    }
-                });
-            } catch (err) {
-                console.error('Error in previewLeads:', err);
-                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                res.status(500).json({ success: false, message: 'Error processing CSV' });
-            }
-        });
+    // Clean up file immediately as we sent data back
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 };
 
 // @desc    Confirm and import leads

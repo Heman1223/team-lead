@@ -38,10 +38,16 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage,
     fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'text/csv' || path.extname(file.originalname).toLowerCase() === '.csv') {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (file.mimetype === 'text/csv' ||
+            file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+            file.mimetype === 'application/vnd.ms-excel' ||
+            ext === '.csv' ||
+            ext === '.xlsx' ||
+            ext === '.xls') {
             cb(null, true);
         } else {
-            cb(new Error('Only CSV files are allowed'), false);
+            cb(new Error('Only CSV and Excel files are allowed'), false);
         }
     }
 });

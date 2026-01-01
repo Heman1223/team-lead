@@ -10,19 +10,16 @@ const leadSchema = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: [true, 'Email is required'],
+        trim: true,
         lowercase: true,
         match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
     },
     phone: {
         type: String,
-        required: [true, 'Phone number is required'],
         trim: true
     },
     category: {
         type: String,
-        required: [true, 'Category is required'],
-        enum: ['web_development', 'mobile_app', 'ui_ux_design', 'digital_marketing', 'seo', 'content_writing', 'consulting', 'other'],
         default: 'other'
     },
     description: {
@@ -108,7 +105,6 @@ const leadSchema = new mongoose.Schema({
     // Lead Source & Tracking
     source: {
         type: String,
-        enum: ['manual', 'website', 'referral', 'social_media', 'email_campaign', 'cold_call', 'trade_show', 'linkedin', 'csv_import', 'other'],
         default: 'manual'
     },
     sourceDetails: {
