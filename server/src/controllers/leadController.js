@@ -219,6 +219,49 @@ const updateLead = async (req, res) => {
     }
 };
 
+// @desc    Add a note to a lead without changing status
+// @route   POST /api/leads/:id/notes
+// @access  Private
+const addNote = async (req, res) => {
+    try {
+        const lead = await Lead.findById(req.params.id);
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+
+        // Check permissions
+        const canAccess = await checkLeadPermission(lead, req.user);
+        if (!canAccess && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized' });
+        }
+
+        const { note } = req.body;
+        if (!note || !note.trim()) {
+            return res.status(400).json({ success: false, message: 'Note content is required' });
+        }
+
+        // Add note to lead using schema method
+        lead.addNote(note, req.user._id, 'note');
+        await lead.save();
+
+        // Create activity log
+        await ActivityLog.create({
+            action: 'note_added',
+            userId: req.user._id,
+            leadId: lead._id,
+            details: note.substring(0, 100) + (note.length > 100 ? '...' : '')
+        });
+
+        res.json({
+            success: true,
+            data: lead
+        });
+    } catch (error) {
+        console.error('Add note error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
 // @desc    Assign lead
 // @route   PUT /api/leads/:id/assign
 // @access  Private (Admin, Team Lead)
@@ -883,5 +926,5 @@ module.exports = {
     restoreLead,
     escalateLead,
     getLeadActivities,
-    addLeadNote
+    addNote
 };

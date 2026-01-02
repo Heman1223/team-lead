@@ -152,6 +152,7 @@ export const leadsAPI = {
     create: (data) => api.post('/leads', data),
     update: (id, data) => api.put(`/leads/${id}`, data),
     delete: (id) => api.delete(`/leads/${id}`),
+    addNote: (id, data) => api.post(`/leads/${id}/notes`, data),
     assign: (id, data) => api.put(`/leads/${id}/assign`, data),
     convertToProject: (id) => api.post(`/leads/${id}/convert`),
     escalate: (id, reason) => api.post(`/leads/${id}/escalate`, { reason }),

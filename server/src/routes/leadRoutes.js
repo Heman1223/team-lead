@@ -14,7 +14,7 @@ const {
     restoreLead,
     escalateLead,
     getLeadActivities,
-    addLeadNote
+    addNote
 } = require('../controllers/leadController');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require('multer');
@@ -65,11 +65,10 @@ router.post('/preview', authorize('admin'), upload.single('file'), previewLeads)
 router.post('/import', authorize('admin'), importLeads);
 
 router.route('/:id')
-    .get(getLeadById)
-    .put(updateLead)
-    .delete(authorize('admin'), deleteLead);
-
-router.post('/:id/notes', addLeadNote);
+    .get(protect, getLeadById)
+    .put(protect, updateLead)
+    .delete(protect, deleteLead);
+router.route('/:id/notes').post(protect, addNote);
 router.put('/:id/restore', authorize('admin'), restoreLead);
 router.put('/:id/assign', authorize('admin', 'team_lead'), assignLead);
 router.post('/:id/convert', authorize('admin', 'team_lead'), convertToProject);

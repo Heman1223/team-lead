@@ -26,8 +26,8 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
+    const [activeTab, setActiveTab] = useState('history');
     const [note, setNote] = useState('');
-    const [statusNote, setStatusNote] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
     const [showFollowUpModal, setShowFollowUpModal] = useState(false);
     const [followUpData, setFollowUpData] = useState({
@@ -35,7 +35,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         scheduledDate: '',
         scheduledTime: '',
         priority: 'medium',
-        type: 'call'  // Add type field with default value
+        type: 'call'
     });
 
     useEffect(() => {
@@ -62,9 +62,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             const response = await usersAPI.getAll();
             let users = response.data.data || [];
 
-            // If team leader, filter to show only their team members
             if (isTeamLead && !isAdmin) {
-                // Get team members from the API
                 const teamsResponse = await teamsAPI.getAll();
                 const myTeam = teamsResponse.data.data?.find(t => t.leadId?._id === user._id || t.leadId === user._id);
 
@@ -80,18 +78,30 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         }
     };
 
-    const handleSaveChanges = async () => {
+    const handleUpdateStatus = async (newStatus) => {
+        if (newStatus === data.lead.status) return;
         setUpdating(true);
         try {
-            await leadsAPI.update(leadId, {
-                status: selectedStatus,
-                statusNote: statusNote.trim() || undefined
-            });
+            await leadsAPI.update(leadId, { status: newStatus });
             await fetchLeadDetails();
             onUpdate();
-            setStatusNote(''); // Clear note after update
         } catch (error) {
             alert(error.response?.data?.message || 'Update failed');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleSaveNote = async () => {
+        if (!note.trim()) return;
+        setUpdating(true);
+        try {
+            await leadsAPI.addNote(leadId, { note: note.trim() });
+            await fetchLeadDetails();
+            setNote('');
+            setActiveTab('history'); // Switch to history to see the new note
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to add note');
         } finally {
             setUpdating(false);
         }
@@ -111,7 +121,6 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     };
 
     const handleScheduleFollowUp = async () => {
-        // Validate required fields
         if (!followUpData.title || !followUpData.title.trim()) {
             alert('Please select a title for the follow-up');
             return;
@@ -129,52 +138,21 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                 title: followUpData.title.trim(),
                 scheduledDate: followUpData.scheduledDate,
                 priority: followUpData.priority || 'medium',
-                type: 'call'  // HARDCODED to 'call' - valid enum value
+                type: followUpData.type || 'call'
             };
 
-            // Add optional fields
             if (followUpData.scheduledTime) {
                 payload.scheduledTime = followUpData.scheduledTime;
             }
 
-            console.log('=== CLIENT: Scheduling follow-up ===');
-            console.log('followUpData state:', followUpData);
-            console.log('Payload being sent:', JSON.stringify(payload, null, 2));
-
-            const response = await followUpsAPI.create(payload);
-            console.log('Follow-up created successfully:', response.data);
-
+            await followUpsAPI.create(payload);
             alert('Follow-up scheduled successfully!');
             setShowFollowUpModal(false);
             setFollowUpData({ title: '', scheduledDate: '', scheduledTime: '', priority: 'medium', type: 'call' });
             await fetchLeadDetails();
         } catch (error) {
             console.error('Follow-up scheduling error:', error);
-            console.error('Error response:', error.response?.data);
-
-            // Build detailed error message
-            let errorMessage = 'Failed to schedule follow-up';
-
-            if (error.response?.data) {
-                const data = error.response.data;
-
-                // Check for validation errors array
-                if (data.errors && Array.isArray(data.errors)) {
-                    errorMessage = 'Validation Error:\n' + data.errors.join('\n');
-                }
-                // Check for single message
-                else if (data.message) {
-                    errorMessage = data.message;
-                }
-                // Check for error string
-                else if (data.error) {
-                    errorMessage = data.error;
-                }
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-
-            alert(errorMessage);
+            alert('Failed to schedule follow-up');
         } finally {
             setUpdating(false);
         }
@@ -254,41 +232,21 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                        {/* Quick Actions */}
-                        <div className="flex flex-wrap gap-3">
-                            <button
-                                onClick={() => setShowFollowUpModal(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
-                            >
-                                <Bell size={16} />
-                                Schedule Follow-Up
-                            </button>
-                            {isAdmin && (
-                                <button
-                                    onClick={handleDelete}
-                                    disabled={updating}
-                                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold disabled:opacity-50"
-                                >
-                                    <Trash2 size={16} />
-                                    Delete
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Lead Information */}
-                        <div className="bg-gray-50 rounded-xl p-6 space-y-4">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4">Lead Information</h3>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Status */}
+                    <div className="flex-1 overflow-y-auto bg-gray-50 flex flex-col md:flex-row">
+                        {/* Left Column: Lead Info */}
+                        <div className="w-full md:w-1/3 border-r border-gray-200 bg-white p-6 overflow-y-auto">
+                            <div className="space-y-6">
+                                {/* Status Checker */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Current Status</label>
                                     <select
                                         value={selectedStatus || 'new'}
-                                        onChange={(e) => setSelectedStatus(e.target.value)}
+                                        onChange={(e) => handleUpdateStatus(e.target.value)}
                                         disabled={updating}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
+                                        className={`w-full px-4 py-3 border-2 rounded-xl font-bold text-sm focus:outline-none transition-all ${selectedStatus === 'converted' ? 'border-green-500 text-green-700 bg-green-50' :
+                                            selectedStatus === 'lost' ? 'border-red-300 text-red-700 bg-red-50' :
+                                                'border-orange-500 text-gray-900'
+                                            }`}
                                     >
                                         <option value="new">New</option>
                                         <option value="contacted">Contacted</option>
@@ -299,15 +257,15 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                     </select>
                                 </div>
 
-                                {/* Assigned To */}
+                                {/* Assignee */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Assigned To</label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Assigned To</label>
                                     {(isAdmin || isTeamLead) ? (
                                         <select
                                             value={lead.assignedTo?._id || ''}
                                             onChange={(e) => handleAssign(e.target.value)}
                                             disabled={updating}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                                         >
                                             <option value="">Unassigned</option>
                                             {allUsers.map(u => (
@@ -315,203 +273,187 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                             ))}
                                         </select>
                                     ) : (
-                                        <div className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                                        <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm font-medium flex items-center gap-2">
+                                            <User size={16} className="text-gray-400" />
                                             {lead.assignedTo?.name || 'Unassigned'}
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Category */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                                    <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 capitalize">
-                                        {(lead.category || 'other').replace('_', ' ')}
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Category</label>
+                                        <div className="text-sm font-medium text-gray-900 capitalize">{(lead.category || 'other').replace('_', ' ')}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Estimated Value</label>
+                                        <div className="text-sm font-medium text-gray-900">${(lead.estimatedValue || 0).toLocaleString()}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Source</label>
+                                        <div className="text-sm font-medium text-gray-900 capitalize">{(lead.source || 'unknown').replace('_', ' ')}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Priority</label>
+                                        <div className="text-sm font-medium text-gray-900 capitalize">{lead.priority || 'medium'}</div>
                                     </div>
                                 </div>
 
-                                {/* Estimated Value */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Estimated Value</label>
-                                    <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-semibold">
-                                        ${(lead.estimatedValue || 0).toLocaleString()}
+                                {/* Client Inquiry */}
+                                {lead.inquiryMessage && (
+                                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                                        <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-2">Inquiry Message</label>
+                                        <p className="text-sm text-blue-900 whitespace-pre-wrap leading-relaxed">{lead.inquiryMessage}</p>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Source */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Source</label>
-                                    <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 capitalize">
-                                        {(lead.source || 'unknown').replace('_', ' ')}
+                                {/* Internal Description */}
+                                {lead.description && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Original Notes</label>
+                                        <p className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg border border-gray-200">{lead.description}</p>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Priority */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
-                                    <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 capitalize">
-                                        {lead.priority || 'medium'}
-                                    </div>
-                                </div>
+                                {/* Admin Actions */}
+                                {isAdmin && (
+                                    <button
+                                        onClick={handleDelete}
+                                        className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-semibold"
+                                    >
+                                        <Trash2 size={16} />
+                                        Delete Lead
+                                    </button>
+                                )}
                             </div>
+                        </div>
 
-                            {/* Note Input for Status Change */}
-                            <div className="mt-4">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                    <MessageSquare size={16} className="text-orange-600" />
-                                    Add Note (Optional)
-                                </label>
-                                <textarea
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
-                                    placeholder="Add a note about this lead or status change..."
-                                    rows="3"
-                                    value={statusNote}
-                                    onChange={(e) => setStatusNote(e.target.value)}
-                                />
-                                <p className="text-xs text-gray-500 mt-1 mb-3">
-                                    This note will be saved when you click Save Changes
-                                </p>
-
-                                {/* Save Changes Button */}
+                        {/* Right Column: Activity & Notes */}
+                        <div className="w-full md:w-2/3 p-6 flex flex-col h-full overflow-hidden">
+                            {/* Activity Header */}
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex bg-gray-200 p-1 rounded-lg">
+                                    <button
+                                        onClick={() => setActiveTab('history')}
+                                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        Activity Log
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('notes')}
+                                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'notes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        Notes
+                                    </button>
+                                </div>
                                 <button
-                                    onClick={handleSaveChanges}
-                                    disabled={updating || selectedStatus === lead.status}
-                                    className="w-full px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    onClick={() => setShowFollowUpModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-bold shadow-sm"
                                 >
-                                    <Save size={18} />
-                                    {updating ? 'Saving...' : 'Save Changes'}
+                                    <Bell size={16} />
+                                    Schedule Follow-Up
                                 </button>
                             </div>
 
-                            {/* Description */}
-                            {lead.description && (
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Internal Notes</label>
-                                    <div className="px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 whitespace-pre-wrap">
-                                        {lead.description}
+                            {/* New Note & Timeline Container */}
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                                {/* Add Note Input Area */}
+                                <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                    <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <Edit3 size={16} className="text-orange-500" />
+                                        Add a Note
+                                    </label>
+                                    <textarea
+                                        value={note}
+                                        onChange={(e) => setNote(e.target.value)}
+                                        placeholder="Type a note about this lead..."
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[80px] text-sm mb-3 resize-none"
+                                    />
+                                    <div className="flex justify-end">
+                                        <button
+                                            onClick={handleSaveNote}
+                                            disabled={!note.trim() || updating}
+                                            className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                                        >
+                                            {updating ? 'Saving...' : 'Post Note'}
+                                        </button>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Inquiry Message */}
-                            {lead.inquiryMessage && (
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Client Inquiry Message</label>
-                                    <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-700 whitespace-pre-wrap">
-                                        {lead.inquiryMessage}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Important Notes Section - Highlighted */}
-                        {(lead.description || lead.inquiryMessage) && (
-                            <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 border-2 border-orange-200">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <MessageSquare className="w-5 h-5 text-orange-600" />
-                                    Important Information
-                                </h3>
-
-                                {lead.inquiryMessage && (
-                                    <div className="mb-4">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                            <label className="text-sm font-bold text-gray-900">Client's Original Message:</label>
+                                {/* Activities Timeline */}
+                                <div className="space-y-4">
+                                    {activities.length === 0 ? (
+                                        <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
+                                            <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500 font-medium">No activity recorded yet</p>
+                                            <p className="text-xs text-gray-400 mt-1">Notes and status changes will appear here</p>
                                         </div>
-                                        <div className="px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-700 whitespace-pre-wrap text-sm">
-                                            {lead.inquiryMessage}
-                                        </div>
-                                    </div>
-                                )}
+                                    ) : (
+                                        activities.filter(a => activeTab === 'notes' ? a.action === 'note_added' || a.action === 'lead_status_changed' : true).map((activity, index) => {
+                                            const isNote = activity.action === 'note_added';
+                                            const isStatusChange = activity.action === 'lead_status_changed';
+                                            const isAssignment = activity.action === 'lead_assigned';
 
-                                {lead.description && (
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                            <label className="text-sm font-bold text-gray-900">Internal Notes:</label>
-                                        </div>
-                                        <div className="px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-700 whitespace-pre-wrap text-sm">
-                                            {lead.description}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Activity Timeline */}
-                        <div className="bg-gray-50 rounded-xl p-6">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <Clock className="w-5 h-5 text-orange-600" />
-                                Activity History
-                            </h3>
-                            <p className="text-sm text-gray-600 mb-4">Complete record of all actions taken on this lead</p>
-
-                            {activities.length === 0 ? (
-                                <p className="text-gray-500 text-center py-8">No activity yet</p>
-                            ) : (
-                                <div className="space-y-3 max-h-96 overflow-y-auto">
-                                    {activities.map((activity, index) => {
-                                        const isAssignment = activity.action === 'lead_assigned';
-                                        const isStatusChange = activity.action === 'lead_status_changed';
-                                        const isCreated = activity.action === 'lead_created';
-
-                                        return (
-                                            <div
-                                                key={index}
-                                                className={`flex gap-3 p-4 rounded-lg border-l-4 ${isAssignment ? 'bg-blue-50 border-blue-500' :
-                                                    isStatusChange ? 'bg-purple-50 border-purple-500' :
-                                                        isCreated ? 'bg-green-50 border-green-500' :
-                                                            'bg-white border-gray-300'
-                                                    }`}
-                                            >
-                                                <div className="flex-shrink-0">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isAssignment ? 'bg-blue-200' :
-                                                        isStatusChange ? 'bg-purple-200' :
-                                                            isCreated ? 'bg-green-200' :
-                                                                'bg-orange-100'
-                                                        }`}>
-                                                        {isAssignment ? (
-                                                            <User size={18} className="text-blue-700" />
-                                                        ) : isStatusChange ? (
-                                                            <CheckCircle2 size={18} className="text-purple-700" />
-                                                        ) : isCreated ? (
-                                                            <Plus size={18} className="text-green-700" />
-                                                        ) : (
-                                                            <Clock size={18} className="text-orange-600" />
+                                            return (
+                                                <div key={index} className="flex gap-4 group">
+                                                    {/* Icon Column */}
+                                                    <div className="flex flex-col items-center">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-gray-50 shadow-sm z-10 ${isNote ? 'bg-orange-100 text-orange-600' :
+                                                            isStatusChange ? 'bg-blue-100 text-blue-600' :
+                                                                'bg-gray-100 text-gray-500'
+                                                            }`}>
+                                                            {isNote ? <MessageSquare size={18} /> :
+                                                                isStatusChange ? <CheckCircle2 size={18} /> :
+                                                                    <Clock size={18} />}
+                                                        </div>
+                                                        {index < activities.length - 1 && (
+                                                            <div className="w-0.5 h-full bg-gray-200 -my-2"></div>
                                                         )}
                                                     </div>
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-start justify-between mb-1">
-                                                        <p className="text-sm font-bold text-gray-900 capitalize">
-                                                            {activity.action?.replace('_', ' ')}
-                                                        </p>
-                                                        <span className="text-xs text-gray-500">
-                                                            {new Date(activity.createdAt).toLocaleString()}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-700 mb-1">{activity.details}</p>
-                                                    {activity.userId && (
-                                                        <p className="text-xs text-gray-600">
-                                                            By: <span className="font-semibold">{activity.userId.name || 'Unknown'}</span>
-                                                        </p>
-                                                    )}
-                                                    {activity.metadata && (
-                                                        <div className="mt-2 p-2 bg-white rounded border border-gray-200">
-                                                            <p className="text-xs text-gray-600">
-                                                                {activity.metadata.oldStatus && (
-                                                                    <span>
-                                                                        Status: <span className="font-semibold">{activity.metadata.oldStatus}</span> → <span className="font-semibold text-green-600">{activity.metadata.newStatus}</span>
+
+                                                    {/* Content */}
+                                                    <div className="flex-1 pb-6">
+                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative hover:shadow-md transition-shadow">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-gray-900 text-sm">
+                                                                        {activity.userId?.name || 'System'}
                                                                     </span>
-                                                                )}
+                                                                    <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-100 rounded-full capitalize">
+                                                                        {activity.action?.replace(/_/g, ' ')}
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-xs text-gray-400 font-medium font-mono">
+                                                                    {new Date(activity.createdAt).toLocaleString()}
+                                                                </span>
+                                                            </div>
+
+                                                            <p className={`text-sm ${isNote ? 'text-gray-800' : 'text-gray-600'}`}>
+                                                                {activity.details}
                                                             </p>
+
+                                                            {/* Status Change Metadata */}
+                                                            {isStatusChange && activity.metadata?.oldStatus && (
+                                                                <div className="mt-3 flex items-center gap-2 text-xs font-semibold bg-gray-50 p-2 rounded-lg inline-flex">
+                                                                    <span className="text-gray-500 uppercase">{activity.metadata.oldStatus}</span>
+                                                                    <span className="text-gray-400">→</span>
+                                                                    <span className={`uppercase ${activity.metadata.newStatus === 'converted' ? 'text-green-600' :
+                                                                        activity.metadata.newStatus === 'lost' ? 'text-red-600' :
+                                                                            'text-blue-600'
+                                                                        }`}>{activity.metadata.newStatus}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -568,7 +510,6 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
                                     <select
                                         value={followUpData.priority}
                                         onChange={(e) => setFollowUpData({ ...followUpData, priority: e.target.value })}
@@ -578,6 +519,21 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                         <option value="medium">Medium</option>
                                         <option value="high">High</option>
                                         <option value="urgent">Urgent</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
+                                    <select
+                                        value={followUpData.type}
+                                        onChange={(e) => setFollowUpData({ ...followUpData, type: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    >
+                                        <option value="call">Call</option>
+                                        <option value="email">Email</option>
+                                        <option value="meeting">Meeting</option>
+                                        <option value="demo">Demo</option>
+                                        <option value="proposal">Proposal</option>
+                                        <option value="other">Other</option>
                                     </select>
                                 </div>
                             </div>
