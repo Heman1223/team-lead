@@ -145,6 +145,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                 payload.scheduledTime = followUpData.scheduledTime;
             }
 
+            console.log('Sending Follow-up Payload:', payload);
             await followUpsAPI.create(payload);
             alert('Follow-up scheduled successfully!');
             setShowFollowUpModal(false);
@@ -152,7 +153,9 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             await fetchLeadDetails();
         } catch (error) {
             console.error('Follow-up scheduling error:', error);
-            alert('Failed to schedule follow-up');
+            const errorMsg = error.response?.data?.message || 'Failed to schedule follow-up';
+            const validationErrors = error.response?.data?.errors?.join('\n');
+            alert(validationErrors ? `${errorMsg}:\n${validationErrors}` : errorMsg);
         } finally {
             setUpdating(false);
         }
@@ -546,8 +549,8 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 </button>
                                 <button
                                     onClick={handleScheduleFollowUp}
-                                    disabled={updating}
-                                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold disabled:opacity-50"
+                                    disabled={updating || !followUpData.title || !followUpData.scheduledDate}
+                                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Schedule
                                 </button>

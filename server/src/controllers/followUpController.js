@@ -63,17 +63,13 @@ const createFollowUp = async (req, res) => {
         console.log('=== CREATE FOLLOW-UP REQUEST ===');
         console.log('Request body:', JSON.stringify(req.body, null, 2));
         console.log('User:', req.user._id, req.user.role);
-        
+
         const { leadId, assignedTo, scheduledDate, title, notes, priority, scheduledTime } = req.body;
 
         // Validate required fields
         if (!leadId) {
             console.log('Validation failed: Missing leadId');
             return res.status(400).json({ success: false, message: 'Lead ID is required' });
-        }
-        if (!assignedTo) {
-            console.log('Validation failed: Missing assignedTo');
-            return res.status(400).json({ success: false, message: 'Assigned user is required' });
         }
         if (!scheduledDate) {
             console.log('Validation failed: Missing scheduledDate');
@@ -104,10 +100,13 @@ const createFollowUp = async (req, res) => {
         }
         console.log('Permission check passed');
 
+        // Default assignedTo to current user if not provided
+        const finalAssignedTo = assignedTo || req.user._id;
+
         // Verify assignedTo user exists
-        const assignedUser = await User.findById(assignedTo);
+        const assignedUser = await User.findById(finalAssignedTo);
         if (!assignedUser) {
-            console.log('Assigned user not found:', assignedTo);
+            console.log('Assigned user not found:', finalAssignedTo);
             return res.status(404).json({ success: false, message: 'Assigned user not found' });
         }
         console.log('Assigned user found:', assignedUser.name);
@@ -115,7 +114,7 @@ const createFollowUp = async (req, res) => {
         // Create follow-up with all fields
         const followUpData = {
             leadId,
-            assignedTo,
+            assignedTo: finalAssignedTo,
             scheduledDate,
             title,
             priority: priority || 'medium',
@@ -133,17 +132,17 @@ const createFollowUp = async (req, res) => {
 
         // Update lead's followUpDate
         lead.followUpDate = scheduledDate;
-        
+
         // Add note to lead (with error handling)
         try {
             if (typeof lead.addNote === 'function') {
-                lead.addNote(`Follow-up scheduled for ${new Date(scheduledDate).toLocaleDateString()}`, req.user._id, 'follow_up');
+                lead.addNote(`Follow-up scheduled for ${new Date(scheduledDate).toLocaleDateString()}`, req.user._id, 'follow_up_scheduled');
             }
         } catch (noteError) {
             console.error('Error adding note to lead:', noteError);
             // Continue even if note fails
         }
-        
+
         await lead.save();
         console.log('Lead updated with follow-up date');
 
@@ -162,9 +161,9 @@ const createFollowUp = async (req, res) => {
 
         // Create notification for assigned user
         try {
-            if (assignedTo !== req.user._id.toString()) {
+            if (finalAssignedTo.toString() !== req.user._id.toString()) {
                 await Notification.create({
-                    userId: assignedTo,
+                    userId: finalAssignedTo,
                     type: 'follow_up_assigned',
                     title: 'New Follow-up Scheduled',
                     message: `A follow-up has been scheduled for ${lead.clientName}`,
@@ -192,31 +191,31 @@ const createFollowUp = async (req, res) => {
         console.error('Error name:', error.name);
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
-        
+
         // Handle validation errors
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map(err => err.message);
             console.error('Validation errors:', messages);
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Validation error', 
-                errors: messages 
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                errors: messages
             });
         }
-        
+
         // Handle cast errors (invalid ObjectId)
         if (error.name === 'CastError') {
             console.error('Cast error - Invalid ID format');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Invalid ID format' 
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid ID format'
             });
         }
-        
-        res.status(500).json({ 
-            success: false, 
-            message: 'Server error while creating follow-up', 
-            error: error.message 
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error while creating follow-up',
+            error: error.message
         });
     }
 };
@@ -241,7 +240,7 @@ const updateFollowUp = async (req, res) => {
             req.body,
             { new: true, runValidators: true }
         ).populate('leadId', 'clientName email phone')
-         .populate('assignedTo', 'name email');
+            .populate('assignedTo', 'name email');
 
         res.json({
             success: true,
@@ -260,7 +259,7 @@ const markFollowUpComplete = async (req, res) => {
     try {
         const { notes } = req.body;
         let followUp = await FollowUp.findById(req.params.id);
-        
+
         if (!followUp) {
             return res.status(404).json({ success: false, message: 'Follow-up not found' });
         }
@@ -302,7 +301,7 @@ const rescheduleFollowUp = async (req, res) => {
     try {
         const { newDate, notes } = req.body;
         let followUp = await FollowUp.findById(req.params.id);
-        
+
         if (!followUp) {
             return res.status(404).json({ success: false, message: 'Follow-up not found' });
         }
@@ -397,14 +396,14 @@ const getOverdueFollowUps = async (req, res) => {
         // Filter out follow-ups with deleted/inactive leads or users
         const validFollowUps = overdueFollowUps.filter(followUp => {
             // Check if lead exists and is active
-            const hasValidLead = followUp.leadId && 
-                                 followUp.leadId.isActive !== false && 
-                                 followUp.leadId.isDeleted !== true;
-            
+            const hasValidLead = followUp.leadId &&
+                followUp.leadId.isActive !== false &&
+                followUp.leadId.isDeleted !== true;
+
             // Check if assigned user exists and is active
-            const hasValidUser = followUp.assignedTo && 
-                                 followUp.assignedTo.isActive !== false;
-            
+            const hasValidUser = followUp.assignedTo &&
+                followUp.assignedTo.isActive !== false;
+
             return hasValidLead && hasValidUser;
         });
 
@@ -454,14 +453,14 @@ const getUpcomingFollowUps = async (req, res) => {
         // Filter out follow-ups with deleted/inactive leads or users
         const validFollowUps = upcomingFollowUps.filter(followUp => {
             // Check if lead exists and is active
-            const hasValidLead = followUp.leadId && 
-                                 followUp.leadId.isActive !== false && 
-                                 followUp.leadId.isDeleted !== true;
-            
+            const hasValidLead = followUp.leadId &&
+                followUp.leadId.isActive !== false &&
+                followUp.leadId.isDeleted !== true;
+
             // Check if assigned user exists and is active
-            const hasValidUser = followUp.assignedTo && 
-                                 followUp.assignedTo.isActive !== false;
-            
+            const hasValidUser = followUp.assignedTo &&
+                followUp.assignedTo.isActive !== false;
+
             return hasValidLead && hasValidUser;
         });
 
