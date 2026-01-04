@@ -4,6 +4,7 @@ const Team = require('../models/Team');
 const Task = require('../models/Task');
 const ActivityLog = require('../models/ActivityLog');
 const FollowUp = require('../models/FollowUp');
+const { sendLeadStatusChangeEmail } = require('../services/emailService');
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
@@ -198,6 +199,14 @@ const updateLead = async (req, res) => {
                 const leadDoc = await Lead.findById(lead._id);
                 leadDoc.addNote(statusNote, req.user._id, 'status_changed');
                 await leadDoc.save();
+            }
+
+            // Send email notification for status change
+            try {
+                await sendLeadStatusChangeEmail(lead, oldStatus, newStatus, req.user);
+            } catch (emailError) {
+                console.error('Email notification failed:', emailError);
+                // Continue even if email fails
             }
         } else {
             // General update log

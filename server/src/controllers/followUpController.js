@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const ActivityLog = require('../models/ActivityLog');
 const Notification = require('../models/Notification');
+const { sendFollowUpCreatedEmail } = require('../services/emailService');
 
 // @desc    Get all follow-ups (role-based filtering)
 // @route   GET /api/follow-ups
@@ -179,6 +180,14 @@ const createFollowUp = async (req, res) => {
         const populatedFollowUp = await FollowUp.findById(followUp._id)
             .populate('leadId', 'clientName email phone')
             .populate('assignedTo', 'name email');
+
+        // Send email notification for follow-up creation
+        try {
+            await sendFollowUpCreatedEmail(populatedFollowUp, lead, req.user);
+        } catch (emailError) {
+            console.error('Email notification failed:', emailError);
+            // Continue even if email fails
+        }
 
         console.log('=== FOLLOW-UP CREATED SUCCESSFULLY ===');
         res.status(201).json({

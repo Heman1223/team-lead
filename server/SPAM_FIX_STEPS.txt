@@ -1,0 +1,39 @@
+PERMANENT FIX FOR SPAM ISSUE
+=============================
+
+Do these 3 steps in harleenk7209@gmail.com:
+
+STEP 1: Mark as "Not Spam"
+---------------------------
+1. Open harleenk7209@gmail.com
+2. Go to Spam folder
+3. Select CRM emails
+4. Click "Not Spam" button
+
+STEP 2: Create Gmail Filter (MOST IMPORTANT!)
+----------------------------------------------
+1. In Gmail search box, type: from:pikabhu31st@gmail.com
+2. Click the filter icon (three lines)
+3. Click "Create filter"
+4. Check these boxes:
+   - Never send it to Spam
+   - Always mark it as important
+   - Categorize as: Primary
+5. Click "Create filter"
+
+STEP 3: Add to Contacts
+------------------------
+1. Go to Gmail Contacts
+2. Create new contact
+3. Email: pikabhu31st@gmail.com
+4. Name: CRM System
+5. Save
+
+DONE! All future emails will go to inbox!
+
+Test:
+-----
+cd server
+node test-email.js
+
+Check harleenk7209@gmail.com inbox (not spam!)
