@@ -106,6 +106,7 @@ const startServer = async () => {
 
     // Try loading other routes (with error handling)
     const otherRoutes = [
+      { path: "/api/setup", file: "./routes/setupRoutes", name: "Setup" },
       { path: "/api/admin", file: "./routes/adminRoutes", name: "Admin" },
       { path: "/api/users", file: "./routes/userRoutes", name: "User" },
       { path: "/api/teams", file: "./routes/teamRoutes", name: "Team" },
