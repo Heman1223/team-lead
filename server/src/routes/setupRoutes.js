@@ -112,4 +112,49 @@ router.get('/create-admin', async (req, res) => {
     }
 });
 
+// Reset admin password
+router.get('/reset-admin-password', async (req, res) => {
+    try {
+        console.log('Setup: Resetting admin password...');
+        
+        // Find admin user
+        const admin = await User.findOne({ email: 'admin@teamlead.com' });
+        if (!admin) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Admin user not found'
+            });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash('admin123', salt);
+
+        // Update password directly (bypass pre-save hook)
+        await User.updateOne(
+            { email: 'admin@teamlead.com' },
+            { $set: { password: hashedPassword, isActive: true } }
+        );
+
+        console.log('Setup: Password reset successfully!');
+
+        res.json({
+            success: true,
+            message: 'Admin password reset successfully!',
+            credentials: {
+                email: 'admin@teamlead.com',
+                password: 'admin123'
+            },
+            note: 'You can now login with these credentials'
+        });
+    } catch (error) {
+        console.error('Setup error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error resetting password',
+            error: error.message 
+        });
+    }
+});
+
 module.exports = router;
