@@ -199,14 +199,29 @@ const updateUser = async (req, res) => {
             });
         }
 
+        // Check if email is being changed and if it's already taken
+        if (email && email !== user.email) {
+            const emailExists = await User.findOne({ email: email.toLowerCase() });
+            if (emailExists) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Email already in use' 
+                });
+            }
+            user.email = email;
+        }
+
         // Update fields
         if (name) user.name = name;
-        if (email) user.email = email;
         if (role && ['admin', 'team_lead', 'team_member'].includes(role)) user.role = role;
         if (phone !== undefined) user.phone = phone;
         if (designation !== undefined) user.designation = designation;
         if (coreField !== undefined) user.coreField = coreField;
-        if (teamId !== undefined) user.teamId = teamId;
+        
+        // Handle teamId - convert empty string to null
+        if (teamId !== undefined) {
+            user.teamId = teamId === '' || teamId === null ? null : teamId;
+        }
 
         await user.save();
 
@@ -226,6 +241,24 @@ const updateUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Update user error:', error);
+        
+        // Handle duplicate key error
+        if (error.code === 11000) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Email already exists' 
+            });
+        }
+        
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({ 
+                success: false, 
+                message: messages.join(', ') 
+            });
+        }
+        
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };
