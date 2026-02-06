@@ -163,16 +163,6 @@ const AdminUserManagement = () => {
         }
     };
 
-    const handleToggleActive = async (userId) => {
-        try {
-            await adminUsersAPI.toggleActive(userId);
-            alert('✅ User status updated!');
-            fetchUsers();
-        } catch (error) {
-            console.error('Error toggling user status:', error);
-            alert('❌ Failed to update status');
-        }
-    };
 
     const handleDeleteUser = async (userId) => {
         const deleteType = window.confirm('⚠️ Choose delete type:\n\nOK = Soft Delete (can be restored)\nCancel = Abort');
@@ -298,7 +288,7 @@ const AdminUserManagement = () => {
                         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm font-semibold text-gray-600">Active Users</p>
+                                     <p className="text-sm font-semibold text-gray-600">Total Users</p>
                                     <p className="text-3xl font-bold text-orange-600 mt-2">
                                         {users.filter(u => u.isActive).length}
                                     </p>
@@ -399,7 +389,7 @@ const AdminUserManagement = () => {
                                                         ? 'bg-green-100 text-green-700 border border-green-200'
                                                         : 'bg-red-100 text-red-700 border border-red-200'
                                                     }`}>
-                                                    {user.isActive ? '● Active' : '○ Inactive'}
+                                                     {user.isActive ? '● Active' : '○ Active'}
                                                 </span>
                                             </td>
                                             <td className="hidden lg:table-cell px-6 py-4 text-sm text-gray-600 font-medium">
@@ -457,19 +447,6 @@ const AdminUserManagement = () => {
 
                                                             <div className="border-t border-gray-200 my-1"></div>
 
-                                                            <button
-                                                                onClick={() => {
-                                                                    handleToggleActive(user._id);
-                                                                    setOpenMenuId(null);
-                                                                }}
-                                                                className={`w-full px-4 py-2.5 text-left text-sm text-gray-700 ${user.isActive ? 'hover:bg-orange-50' : 'hover:bg-green-50'
-                                                                    } flex items-center gap-3 transition-colors`}
-                                                            >
-                                                                <Power className={`w-4 h-4 ${user.isActive ? 'text-orange-600' : 'text-green-600'}`} />
-                                                                <span className="font-medium">
-                                                                    {user.isActive ? 'Deactivate' : 'Activate'}
-                                                                </span>
-                                                            </button>
 
                                                             <div className="border-t border-gray-200 my-1"></div>
 
@@ -741,7 +718,7 @@ const AdminUserManagement = () => {
                                                             ? 'bg-green-100 text-green-700 border border-green-200'
                                                             : 'bg-red-100 text-red-700 border border-red-200'
                                                         }`}>
-                                                        {userDetails.user.isActive ? '● Active' : '○ Inactive'}
+                                                         {userDetails.user.isActive ? '● Active' : '○ Active'}
                                                     </span>
                                                 </div>
                                             </div>

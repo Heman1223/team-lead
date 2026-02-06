@@ -28,17 +28,24 @@ const MySubtasks = () => {
             const response = await tasksAPI.getMyTasks();
             const allTasks = response.data.data || [];
             
-            // Filter tasks that have subtasks assigned to current user
+            // Filter tasks that have subtasks assigned to current user OR user is main assignee
             const tasksWithMySubtasks = allTasks.map(task => {
                 const mySubtasks = task.subtasks?.filter(
-                    st => st.assignedTo?._id === user._id || st.assignedTo === user._id
+                    st => {
+                        const assigneeId = st.assignedTo?._id || st.assignedTo;
+                        return String(assigneeId) === String(user._id);
+                    }
                 ) || [];
+                
+                // Check if user is the main assignee of the parent task
+                const isMainAssignee = String(task.assignedTo?._id || task.assignedTo) === String(user._id);
                 
                 return {
                     ...task,
-                    mySubtasks
+                    mySubtasks,
+                    isMainAssignee
                 };
-            }).filter(task => task.mySubtasks.length > 0);
+            }).filter(task => task.mySubtasks.length > 0 || task.isMainAssignee);
 
             setTasks(tasksWithMySubtasks);
         } catch (error) {

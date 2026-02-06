@@ -124,10 +124,12 @@ const Dashboard = () => {
                 
                 const tasks = tasksRes.data.data || [];
                 
-                // Filter tasks by selected month
+                // Filter tasks: include those created in selected month OR those currently active (not completed)
                 const filteredTasks = tasks.filter(t => {
                     const taskDate = new Date(t.createdAt);
-                    return taskDate >= startDate && taskDate <= endDate;
+                    const isInRange = taskDate >= startDate && taskDate <= endDate;
+                    const isActive = t.status !== 'completed';
+                    return isInRange || isActive;
                 });
                 
                 setMyTasks(filteredTasks);

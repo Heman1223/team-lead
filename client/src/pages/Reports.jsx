@@ -238,7 +238,6 @@ const Reports = () => {
                                                 const colors = {
                                                     assigned: 'bg-blue-500',
                                                     in_progress: 'bg-yellow-500',
-                                                    blocked: 'bg-red-500',
                                                     overdue: 'bg-red-600',
                                                     completed: 'bg-green-500'
                                                 };

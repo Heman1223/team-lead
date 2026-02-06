@@ -78,22 +78,19 @@ const MemberProfile = () => {
                     }
                     const project = projectMap.get(task._id);
                     
-                    // If user is main assignee but has no subtasks assigned specifically, 
-                    // maybe we should show ALL subtasks? Or just treat the task itself as the item?
-                    // For now, let's add the relevant subtasks. 
-                    // If there are NONE, but they are main assignee, effectively they own the whole breakdown.
-                    // Let's add all subtasks if they are the main assignee, OR just the ones assigned to them?
-                    // User request: "leader maker the subtask and assign to the meneber" -> implicates filtering subtasks.
-                    // If I am main assignee, I likely want all subtasks or I am responsible for them.
-                    // Let's stick to showing relevant subtasks. If length is 0 but main assignee, we show the project with empty/all subtasks?
-                    // Let's push relevant ones. If main assignee, maybe push a placeholder or all?
-                    // Let's stick to PUSHING RELEVANT SUBTASKS. If array is empty, the chart will handle it (0% completion or empty).
-                    
-                    // However, if I am the main assignee, likely I am supervising. 
-                    // But if this is a "Member" profile, they are likely receiving subtasks.
-                    // I will stick to pushing relevant subtasks.
-                    
-                    project.subtasks.push(...relevantSubtasks);
+                    if (relevantSubtasks.length > 0) {
+                        project.subtasks.push(...relevantSubtasks);
+                    } else if (isMainAssignee) {
+                        // If user is main assignee but has no subtasks assigned specifically,
+                        // treat the main task as a subtask item for status/stats purposes
+                        project.subtasks.push({
+                            _id: task._id,
+                            title: "Main Task Assignment",
+                            status: task.status,
+                            deadline: task.deadline || task.dueDate,
+                            isMainTask: true
+                        });
+                    }
                 }
             });
 

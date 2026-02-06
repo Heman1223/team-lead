@@ -211,7 +211,6 @@ const AdminTaskAssignment = () => {
         switch (status) {
             case 'completed': return 'bg-green-100 text-green-700 border-green-200';
             case 'in_progress': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'blocked': return 'bg-red-100 text-red-700 border-red-200';
             default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
@@ -361,7 +360,6 @@ const AdminTaskAssignment = () => {
                             <option value="not_started">Not Started</option>
                             <option value="in_progress">In Progress</option>
                             <option value="completed">Completed</option>
-                            <option value="blocked">Blocked</option>
                         </select>
                         <select
                             value={filterPriority}
@@ -611,7 +609,6 @@ const AdminTaskAssignment = () => {
                                                 <div className={`w-4 h-4 flex-shrink-0 rounded-full ring-4 ring-opacity-20 ${
                                                     subtask.status === 'completed' ? 'bg-green-500 ring-green-500' :
                                                     subtask.status === 'in_progress' ? 'bg-blue-500 ring-blue-500' :
-                                                    subtask.status === 'blocked' ? 'bg-red-500 ring-red-500' :
                                                     'bg-gray-400 ring-gray-400'
                                                 }`}></div>
                                                 <div className="flex-1">

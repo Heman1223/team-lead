@@ -66,12 +66,7 @@ const TaskManagement = () => {
                 const tasksRes = await tasksAPI.getMyTasks();
                 const allTasks = tasksRes.data.data || [];
                 
-                // Filter to show only parent tasks (tasks assigned to team lead that have subtasks)
-                const parentTasks = allTasks.filter(task => 
-                    task.subtasks && task.subtasks.length > 0
-                );
-                
-                setTasks(parentTasks);
+                setTasks(allTasks);
             }
         } catch (err) {
             console.error('Failed to fetch data:', err);
@@ -226,7 +221,6 @@ const TaskManagement = () => {
     const statusColors = {
         assigned: 'info',
         in_progress: 'primary',
-        blocked: 'warning',
         overdue: 'error',
         completed: 'success'
     };
@@ -359,7 +353,6 @@ const TaskManagement = () => {
                                     <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${task.status === 'completed' ? 'bg-green-100 text-green-700' :
                                             task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
                                                 task.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                                                    task.status === 'blocked' ? 'bg-yellow-100 text-yellow-700' :
                                                         'bg-gray-100 text-gray-700'
                                         }`}>
                                         {task.status.replace('_', ' ')}
@@ -633,7 +626,6 @@ const TaskManagement = () => {
                                         >
                                             <option value="assigned">Assigned</option>
                                             <option value="in_progress">In Progress</option>
-                                            <option value="blocked">Blocked</option>
                                             <option value="completed">Completed</option>
                                         </select>
                                     </div>
@@ -799,7 +791,6 @@ const TaskManagement = () => {
                                                             <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
                                                                 subtask.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200' :
                                                                 subtask.status === 'in_progress' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                                                subtask.status === 'blocked' ? 'bg-red-100 text-red-700 border-red-200' :
                                                                 'bg-gray-100 text-gray-700 border-gray-200'
                                                             }`}>
                                                                 {subtask.status?.replace('_', ' ').toUpperCase()}

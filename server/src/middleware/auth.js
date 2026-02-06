@@ -20,10 +20,7 @@ const protect = async (req, res, next) => {
                 return res.status(401).json({ success: false, message: 'User not found' });
             }
 
-            // Check if user is active
-            if (!req.user.isActive) {
-                return res.status(403).json({ success: false, message: 'Account has been deactivated' });
-            }
+            // req.user.isActive check removed to eliminate "block" feature
 
             next();
         } catch (error) {

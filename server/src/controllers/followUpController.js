@@ -11,7 +11,7 @@ const { sendFollowUpCreatedEmail } = require('../services/emailService');
 // @access  Private
 const getFollowUps = async (req, res) => {
     try {
-        let query = { isActive: true };
+        let query = {};
         const { status, leadId, startDate, endDate } = req.query;
 
         // Role-based filtering
@@ -379,7 +379,6 @@ const cancelFollowUp = async (req, res) => {
 const getOverdueFollowUps = async (req, res) => {
     try {
         let query = {
-            isActive: true,
             status: 'pending',
             scheduledDate: { $lt: new Date() }
         };
@@ -404,14 +403,11 @@ const getOverdueFollowUps = async (req, res) => {
 
         // Filter out follow-ups with deleted/inactive leads or users
         const validFollowUps = overdueFollowUps.filter(followUp => {
-            // Check if lead exists and is active
-            const hasValidLead = followUp.leadId &&
-                followUp.leadId.isActive !== false &&
-                followUp.leadId.isDeleted !== true;
+            // Check if lead exists
+            const hasValidLead = !!followUp.leadId;
 
-            // Check if assigned user exists and is active
-            const hasValidUser = followUp.assignedTo &&
-                followUp.assignedTo.isActive !== false;
+            // Check if assigned user exists
+            const hasValidUser = !!followUp.assignedTo;
 
             return hasValidLead && hasValidUser;
         });
@@ -436,7 +432,6 @@ const getUpcomingFollowUps = async (req, res) => {
         const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
         let query = {
-            isActive: true,
             status: 'pending',
             scheduledDate: { $gte: now, $lte: sevenDaysLater }
         };
@@ -461,14 +456,11 @@ const getUpcomingFollowUps = async (req, res) => {
 
         // Filter out follow-ups with deleted/inactive leads or users
         const validFollowUps = upcomingFollowUps.filter(followUp => {
-            // Check if lead exists and is active
-            const hasValidLead = followUp.leadId &&
-                followUp.leadId.isActive !== false &&
-                followUp.leadId.isDeleted !== true;
+            // Check if lead exists
+            const hasValidLead = !!followUp.leadId;
 
-            // Check if assigned user exists and is active
-            const hasValidUser = followUp.assignedTo &&
-                followUp.assignedTo.isActive !== false;
+            // Check if assigned user exists
+            const hasValidUser = !!followUp.assignedTo;
 
             return hasValidLead && hasValidUser;
         });

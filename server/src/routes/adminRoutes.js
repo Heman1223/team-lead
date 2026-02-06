@@ -6,7 +6,6 @@ const {
     createUser,
     updateUser,
     deleteUser,
-    toggleUserActive,
     resetUserPassword,
     getAllTeams,
     getTeamDetails,
@@ -51,7 +50,6 @@ router.route('/users/:id')
     .put(updateUser)
     .delete(deleteUser);
 
-router.put('/users/:id/toggle-active', toggleUserActive);
 router.put('/users/:id/reset-password', resetUserPassword);
 
 // Team management routes

@@ -14,7 +14,7 @@ const path = require('path');
 // @access  Private
 const getLeads = async (req, res) => {
     try {
-        let query = { isActive: true };
+        let query = {};
 
         // Role-based filtering
         if (req.user.role === 'team_lead') {
@@ -503,7 +503,7 @@ const getLeadStats = async (req, res) => {
         console.log('User:', req.user._id, req.user.role);
 
         const { startDate, endDate } = req.query;
-        let query = { isActive: true, isDeleted: false };
+        let query = { isDeleted: false };
 
         if (startDate && endDate) {
             query.createdAt = {
@@ -571,7 +571,7 @@ const getLeadStats = async (req, res) => {
                 : {};
 
             const performance = await Lead.aggregate([
-                { $match: { ...performanceQuery, isActive: true, isDeleted: false, assignedTo: { $ne: null } } },
+                { $match: { ...performanceQuery, isDeleted: false, assignedTo: { $ne: null } } },
                 {
                     $group: {
                         _id: '$assignedTo',
@@ -772,7 +772,7 @@ const escalateLead = async (req, res) => {
         });
 
         // Create notification for all admins
-        const admins = await User.find({ role: 'admin', isActive: true });
+        const admins = await User.find({ role: 'admin' });
         const Notification = require('../models/Notification');
         const notificationPromises = admins.map(admin =>
             Notification.create({

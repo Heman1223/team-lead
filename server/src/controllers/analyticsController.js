@@ -5,7 +5,7 @@ const Task = require('../models/Task');
 
 // Helper to construct RBAC query
 const getRoleBasedQuery = async (user) => {
-    let query = { isActive: true };
+    let query = {};
 
     if (user.role === 'admin') {
         return query;
@@ -156,7 +156,7 @@ const getTeamPerformance = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        let matchQuery = { role: 'team_member', isActive: true };
+        let matchQuery = { role: 'team_member' };
 
         // If Team Lead, only show their team members
         if (req.user.role === 'team_lead') {
@@ -242,7 +242,7 @@ const getBestPerformingTeams = async (req, res) => {
             };
         }
 
-        const teams = await Team.find({ isActive: true })
+        const teams = await Team.find()
             .populate('leadId', 'name email')
             .populate('members', 'name');
 
@@ -397,10 +397,10 @@ const getDashboardStats = async (req, res) => {
         }
 
         // Overview stats
-        const totalUsers = await User.countDocuments({ isActive: true });
-        const totalTeams = await Team.countDocuments({ isActive: true });
+        const totalUsers = await User.countDocuments();
+        const totalTeams = await Team.countDocuments();
         const totalTasks = await Task.countDocuments(dateFilter);
-        const totalLeads = await Lead.countDocuments({ isActive: true, ...dateFilter });
+        const totalLeads = await Lead.countDocuments(dateFilter);
 
         // Task statistics
         const completedTasks = await Task.countDocuments({
@@ -437,7 +437,7 @@ const getDashboardStats = async (req, res) => {
         const recentLeads = await Lead.countDocuments({ createdAt: { $gte: sevenDaysAgo } });
 
         // Team performance summary
-        const teams = await Team.find({ isActive: true }).limit(5);
+        const teams = await Team.find().limit(5);
         const topTeams = await Promise.all(
             teams.map(async (team) => {
                 const teamTasks = await Task.find({ teamId: team._id });

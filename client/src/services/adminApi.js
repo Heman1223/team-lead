@@ -15,7 +15,6 @@ export const adminUsersAPI = {
     create: (data) => api.post('/admin/users', data),
     update: (id, data) => api.put(`/admin/users/${id}`, data),
     delete: (id, permanent = false) => api.delete(`/admin/users/${id}${permanent ? '?permanent=true' : ''}`),
-    toggleActive: (id) => api.put(`/admin/users/${id}/toggle-active`),
     resetPassword: (id, newPassword, forceChange = false) => api.put(`/admin/users/${id}/reset-password`, { newPassword, forceChange })
 };
 

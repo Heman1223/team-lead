@@ -347,44 +347,6 @@ const deleteUser = async (req, res) => {
     }
 };
 
-// @desc    Activate/Deactivate a user
-// @route   PUT /api/admin/users/:id/toggle-active
-// @access  Private/Admin
-const toggleUserActive = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
-
-        // Prevent admin from deactivating themselves
-        if (user._id.toString() === req.user._id.toString()) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Cannot deactivate your own account' 
-            });
-        }
-
-        user.isActive = !user.isActive;
-        await user.save();
-
-        // Log activity
-        await ActivityLog.create({
-            action: 'user_updated',
-            userId: req.user._id,
-            targetUserId: user._id,
-            details: `Admin ${user.isActive ? 'activated' : 'deactivated'} user: ${user.name}`
-        });
-
-        res.json({
-            success: true,
-            data: user
-        });
-    } catch (error) {
-        console.error('Toggle user active error:', error);
-        res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
-};
 
 // @desc    Reset user password
 // @route   PUT /api/admin/users/:id/reset-password
@@ -707,7 +669,7 @@ const getAllActivities = async (req, res) => {
 const getDashboardStats = async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();
-        const activeUsers = await User.countDocuments({ isActive: true });
+        const activeUsersCount = await User.countDocuments(); // Count all as active
         const totalTeams = await Team.countDocuments();
         const totalTasks = await Task.countDocuments();
         const completedTasks = await Task.countDocuments({ status: 'completed' });
@@ -724,7 +686,7 @@ const getDashboardStats = async (req, res) => {
             success: true,
             data: {
                 totalUsers,
-                activeUsers,
+                activeUsers: activeUsersCount,
                 totalTeams,
                 totalTasks,
                 completedTasks,
@@ -859,7 +821,7 @@ const assignTaskToTeamLead = async (req, res) => {
 // @access  Private/Admin
 const getAllTeamLeads = async (req, res) => {
     try {
-        const teamLeads = await User.find({ role: 'team_lead', isActive: true })
+        const teamLeads = await User.find({ role: 'team_lead' })
             .populate('teamId', 'name')
             .select('-password');
         
@@ -1495,7 +1457,6 @@ module.exports = {
     createUser,
     updateUser,
     deleteUser,
-    toggleUserActive,
     resetUserPassword,
     getAllTeams,
     getTeamDetails,
