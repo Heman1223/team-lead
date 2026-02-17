@@ -24,6 +24,7 @@ app.use(
       "https://team-lead-gamma.vercel.app",
       "http://localhost:5174",
       "http://localhost:5175",
+      "https://gurukripaprojectmanagement.avanienterprises.in",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -32,8 +33,8 @@ app.use(
     optionsSuccessStatus: 200
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 console.log("Middleware configured");
 
