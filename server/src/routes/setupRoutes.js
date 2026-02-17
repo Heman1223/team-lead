@@ -157,4 +157,49 @@ router.get('/reset-admin-password', async (req, res) => {
     }
 });
 
+// CREATE SPECIFIC ADMIN
+router.get('/setup-gurukripa-admin', async (req, res) => {
+    try {
+        const email = 'Gurukripaimmigrations@gmail.com';
+        const password = 'gurukripa@123';
+        const name = 'Gurukripa Admin';
+
+        console.log(`Setup: Checking for user ${email}...`);
+        
+        let user = await User.findOne({ email: email.toLowerCase() });
+
+        if (user) {
+            console.log('Setup: User already exists. Updating role and password...');
+            user.password = password; // Hashing handled by model pre-save hook
+            user.role = 'admin';
+            user.isActive = true;
+            await user.save();
+        } else {
+            console.log('Setup: Creating new admin user...');
+            await User.create({
+                name,
+                email: email.toLowerCase(),
+                password, // Hashing handled by model pre-save hook
+                role: 'admin',
+                isActive: true
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Admin account processed successfully!',
+            email: email,
+            role: 'admin',
+            note: 'You can now login with the provided credentials.'
+        });
+    } catch (error) {
+        console.error('Setup error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error setting up admin user',
+            error: error.message 
+        });
+    }
+});
+
 module.exports = router;
