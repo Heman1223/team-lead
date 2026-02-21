@@ -13,7 +13,7 @@ const ProfileSettings = ({ profileData, setProfileData, handleProfileUpdate, sav
                         type="text"
                         value={profileData.name}
                         onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                         required
                     />
                 </div>
@@ -39,7 +39,7 @@ const ProfileSettings = ({ profileData, setProfileData, handleProfileUpdate, sav
                         type="tel"
                         value={profileData.phone}
                         onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                         placeholder="+1 (555) 000-0000"
                     />
                 </div>
@@ -47,7 +47,7 @@ const ProfileSettings = ({ profileData, setProfileData, handleProfileUpdate, sav
                 <button
                     type="submit"
                     disabled={saving}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all font-semibold disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white rounded-xl hover:from-[#3E2723] hover:to-[#3E2723] transition-all font-semibold disabled:opacity-50"
                 >
                     <Save className="w-5 h-5" />
                     {saving ? 'Saving...' : 'Save Changes'}

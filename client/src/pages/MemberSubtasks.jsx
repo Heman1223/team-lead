@@ -117,7 +117,7 @@ const MySubtasks = () => {
             <Layout title="My Subtasks">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723] mx-auto"></div>
                         <p className="mt-4 text-gray-700 font-semibold">Loading your subtasks...</p>
                     </div>
                 </div>
@@ -130,9 +130,9 @@ const MySubtasks = () => {
             <Layout title="My Subtasks">
                 <div className="space-y-6">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl shadow-lg p-6 text-white">
+                    <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] rounded-2xl shadow-lg p-6 text-white">
                         <h2 className="text-2xl font-bold mb-2">My Subtasks 📋</h2>
-                        <p className="text-orange-100">
+                        <p className="text-[#EFEBE9]">
                             Track your assigned subtasks and submit daily progress reports
                         </p>
                     </div>
@@ -241,7 +241,7 @@ const MySubtasks = () => {
                                                     </div>
                                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                                         <div
-                                                            className="bg-orange-500 h-2 rounded-full transition-all"
+                                                            className="bg-[#3E2723] h-2 rounded-full transition-all"
                                                             style={{ width: `${subtask.progressPercentage || 0}%` }}
                                                         ></div>
                                                     </div>
@@ -259,7 +259,7 @@ const MySubtasks = () => {
                                                 {subtask.status !== 'completed' && (
                                                     <button
                                                         onClick={() => openEODModal(subtask, task._id)}
-                                                        className="w-full mt-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all font-semibold text-sm flex items-center justify-center gap-2"
+                                                        className="w-full mt-2 px-4 py-2 bg-[#3E2723] text-white rounded-xl hover:bg-[#3E2723] transition-all font-semibold text-sm flex items-center justify-center gap-2"
                                                     >
                                                         <Send className="w-4 h-4" />
                                                         Submit EOD Report
@@ -279,12 +279,12 @@ const MySubtasks = () => {
             {showEODModal && selectedSubtask && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-hidden">
-                        <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 rounded-t-2xl">
+                        <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] px-6 py-5 rounded-t-2xl">
                             <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                 <FileText className="w-6 h-6" />
                                 Submit EOD Report
                             </h3>
-                            <p className="text-orange-100 text-sm mt-1">{selectedSubtask.title}</p>
+                            <p className="text-[#EFEBE9] text-sm mt-1">{selectedSubtask.title}</p>
                         </div>
 
                         <form onSubmit={handleSubmitEOD} className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
@@ -295,7 +295,7 @@ const MySubtasks = () => {
                                 <textarea
                                     value={eodFormData.workCompleted}
                                     onChange={(e) => setEodFormData({ ...eodFormData, workCompleted: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                     placeholder="Describe what you accomplished today..."
                                     rows="4"
                                     required
@@ -316,7 +316,7 @@ const MySubtasks = () => {
                                         max="24"
                                         value={eodFormData.hoursSpent}
                                         onChange={(e) => setEodFormData({ ...eodFormData, hoursSpent: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                         placeholder="e.g., 8"
                                     />
                                 </div>
@@ -331,7 +331,7 @@ const MySubtasks = () => {
                                         max="100"
                                         value={eodFormData.progressUpdate}
                                         onChange={(e) => setEodFormData({ ...eodFormData, progressUpdate: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                         placeholder="e.g., 75"
                                     />
                                 </div>
@@ -344,7 +344,7 @@ const MySubtasks = () => {
                                 <textarea
                                     value={eodFormData.blockers}
                                     onChange={(e) => setEodFormData({ ...eodFormData, blockers: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                     placeholder="Any blockers or issues you're facing..."
                                     rows="3"
                                     maxLength="1000"
@@ -358,7 +358,7 @@ const MySubtasks = () => {
                                 <textarea
                                     value={eodFormData.nextDayPlan}
                                     onChange={(e) => setEodFormData({ ...eodFormData, nextDayPlan: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                     placeholder="What do you plan to work on tomorrow..."
                                     rows="3"
                                     maxLength="1000"
@@ -375,7 +375,7 @@ const MySubtasks = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white font-semibold rounded-xl hover:from-[#3E2723] hover:to-[#3E2723] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                                 >
                                     <Send className="w-5 h-5" />
                                     Submit Report

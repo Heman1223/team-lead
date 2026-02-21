@@ -36,7 +36,7 @@ class PageWrapper extends Component {
                         </p>
                         <button
                             onClick={this.handleRetry}
-                            className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors font-semibold flex items-center justify-center gap-2 mx-auto"
+                            className="px-6 py-3 bg-[#3E2723] text-white rounded-xl hover:bg-[#3E2723] transition-colors font-semibold flex items-center justify-center gap-2 mx-auto"
                         >
                             <RefreshCw className="w-4 h-4" />
                             Try Again

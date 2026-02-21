@@ -114,7 +114,7 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-gradient-to-b from-gray-900 to-gray-950 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-300 relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-orange-600" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#3E2723] to-[#3E2723]" />
 
                 <div className="flex items-center justify-between p-5 border-b border-white/5 bg-gray-900/50">
                     <div>
@@ -136,46 +136,46 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-orange-500">Client Name</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Client Name</label>
                             <input
                                 required
                                 name="clientName"
                                 value={formData.clientName}
                                 onChange={handleChange}
-                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all placeholder:text-gray-600"
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none transition-all placeholder:text-gray-600"
                                 placeholder="Enter client name"
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-orange-500">Email</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Email</label>
                             <input
                                 required
                                 type="email"
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all placeholder:text-gray-600"
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none transition-all placeholder:text-gray-600"
                                 placeholder="client@domain.com"
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-orange-500">Phone</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Phone</label>
                             <input
                                 required
                                 name="phone"
                                 value={formData.phone}
                                 onChange={handleChange}
-                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all placeholder:text-gray-600"
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none transition-all placeholder:text-gray-600"
                                 placeholder="+1 (000) 000-0000"
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-orange-500">Category</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Category</label>
                             <select
                                 name="category"
                                 value={formData.category}
                                 onChange={handleChange}
-                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none appearance-none cursor-pointer"
                             >
                                 <option value="web_development">Web Development</option>
                                 <option value="mobile_app">Mobile App</option>
@@ -187,33 +187,33 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-orange-500">Estimated Value ($)</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Estimated Value ($)</label>
                             <input
                                 type="number"
                                 name="estimatedValue"
                                 value={formData.estimatedValue}
                                 onChange={handleChange}
-                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none transition-all"
                                 placeholder="0"
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-orange-500">Expected Close Date</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Expected Close Date</label>
                             <input
                                 type="date"
                                 name="expectedCloseDate"
                                 value={formData.expectedCloseDate}
                                 onChange={handleChange}
-                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none transition-all"
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-orange-500">Source</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Source</label>
                             <select
                                 name="source"
                                 value={formData.source}
                                 onChange={handleChange}
-                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none appearance-none cursor-pointer"
                             >
                                 <option value="manual">Manual Entry</option>
                                 <option value="website">Website Form</option>
@@ -224,12 +224,12 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-orange-500">Priority</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Priority</label>
                             <select
                                 name="priority"
                                 value={formData.priority}
                                 onChange={handleChange}
-                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none appearance-none cursor-pointer"
                             >
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
@@ -241,7 +241,7 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
 
                     {(isAdmin || isTeamLead) && (
                         <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-800 space-y-3">
-                            <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider">
+                            <div className="flex items-center gap-2 text-[#5D4037] text-xs font-bold uppercase tracking-wider">
                                 <UserPlus size={14} />
                                 Immediate Assignment
                             </div>
@@ -252,7 +252,7 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
                                         name="assignedTeam"
                                         value={formData.assignedTeam}
                                         onChange={handleChange}
-                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none appearance-none cursor-pointer"
                                     >
                                         <option value="">-- No Team --</option>
                                         {teams.map(team => (
@@ -266,7 +266,7 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
                                         name="assignedTo"
                                         value={formData.assignedTo}
                                         onChange={handleChange}
-                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none appearance-none cursor-pointer"
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none appearance-none cursor-pointer"
                                     >
                                         <option value="">-- No User --</option>
                                         {users.map(u => (
@@ -279,25 +279,25 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
                     )}
 
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-orange-500">Inquiry Message</label>
+                        <label className="text-xs font-semibold text-[#3E2723]">Inquiry Message</label>
                         <textarea
                             name="inquiryMessage"
                             value={formData.inquiryMessage}
                             onChange={handleChange}
                             rows="2"
-                            className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all resize-none placeholder:text-gray-600"
+                            className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none transition-all resize-none placeholder:text-gray-600"
                             placeholder="Paste the initial inquiry message or notes here..."
                         />
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-orange-500">Internal Description / Notes</label>
+                        <label className="text-xs font-semibold text-[#3E2723]">Internal Description / Notes</label>
                         <textarea
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
                             rows="3"
-                            className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all resize-none placeholder:text-gray-600"
+                            className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-[#3E2723] outline-none transition-all resize-none placeholder:text-gray-600"
                             placeholder="Enter any internal notes or additional requirements..."
                         />
                     </div>
@@ -313,7 +313,7 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold text-sm shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex-1 py-2.5 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white rounded-lg font-semibold text-sm shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {loading ? (
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

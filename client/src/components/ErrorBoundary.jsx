@@ -55,7 +55,7 @@ class ErrorBoundary extends Component {
                         <div className="flex gap-3">
                             <button
                                 onClick={this.handleReset}
-                                className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors font-semibold flex items-center justify-center gap-2"
+                                className="flex-1 px-4 py-3 bg-[#3E2723] text-white rounded-xl hover:bg-[#3E2723] transition-colors font-semibold flex items-center justify-center gap-2"
                             >
                                 <RefreshCw className="w-4 h-4" />
                                 Reload Page

@@ -2,21 +2,24 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
     CheckCircle, Clock, AlertCircle, Users, TrendingUp, 
-    Calendar, Phone, Bell, Activity, Target, BarChart3,
-    ChevronRight, Plus, Filter
+    Calendar, Phone, Bell, Activity, Target, BarChart3, PieChart,
+    ChevronRight, Plus, Filter, Trophy, Briefcase, FileCheck,
+    ArrowUpRight, Mail, MapPin, Search, MoreVertical,
+    MessageSquare, ListTodo, Zap
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { tasksAPI, teamsAPI, usersAPI, leadsAPI } from '../services/api';
+import { useFilters } from '../context/FilterContext';
+import { tasksAPI, teamsAPI, usersAPI, leadsAPI, analyticsAPI, reportsAPI } from '../services/api';
+import { 
+    BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    PieChart as RePieChart, Pie, Cell, Legend
+} from 'recharts';
 
 const Dashboard = () => {
     const { user, isTeamLead } = useAuth();
+    const { selectedMonth, selectedYear, dateRange } = useFilters();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
-    const [myTasks, setMyTasks] = useState([]);
-    const [teamMembers, setTeamMembers] = useState([]);
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [leadStats, setLeadStats] = useState({
         total: 0,
         new: 0,
@@ -31,21 +34,32 @@ const Dashboard = () => {
         completed: 0,
         inProgress: 0,
         overdue: 0,
-        notStarted: 0
+        notStarted: 0,
+        subtasksPending: 0,
+        activeProjects: 0
     });
     const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [myTasks, setMyTasks] = useState([]);
+    const [teamMembers, setTeamMembers] = useState([]);
+    const [allLeads, setAllLeads] = useState([]);
+    const [alerts, setAlerts] = useState([]);
+    const [teamLeadStats, setTeamLeadStats] = useState({
+        performance: 0,
+        teamLeadsStats: []
+    });
 
     useEffect(() => {
         fetchDashboardData();
-    }, [selectedMonth, selectedYear]); // Re-fetch when month or year changes
+    }, [dateRange]); // Re-fetch when global date range changes
 
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
             
-            // Calculate date range for selected month
-            const startDate = new Date(selectedYear, selectedMonth, 1);
-            const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+            // Use global date range
+            const startDate = dateRange.startDate;
+            const endDate = dateRange.endDate;
             
             if (isTeamLead) {
                 // Fetch team lead specific data
@@ -70,8 +84,11 @@ const Dashboard = () => {
                     total: filteredTasks.length,
                     completed: filteredTasks.filter(t => t.status === 'completed').length,
                     inProgress: filteredTasks.filter(t => t.status === 'in_progress').length,
+                    onHold: filteredTasks.filter(t => t.status === 'on_hold').length,
                     overdue: filteredTasks.filter(t => t.status === 'overdue' || (t.status !== 'completed' && new Date(t.deadline || t.dueDate) < new Date())).length,
-                    notStarted: filteredTasks.filter(t => t.status === 'not_started' || t.status === 'assigned').length
+                    notStarted: filteredTasks.filter(t => t.status === 'pending').length,
+                    subtasksPending: filteredTasks.reduce((acc, t) => acc + (t.subtasks?.filter(st => st.status !== 'completed').length || 0), 0),
+                    activeProjects: filteredTasks.filter(t => t.taskType === 'project_task' && t.status !== 'completed').length
                 };
                 setTaskStats(stats);
 
@@ -82,24 +99,59 @@ const Dashboard = () => {
                         total: leadData.totalLeads || 0,
                         new: leadData.statusDist?.new || 0,
                         contacted: leadData.statusDist?.contacted || 0,
-                        interested: leadData.statusDist?.interested || 0,
+                        qualified: leadData.statusDist?.qualified || 0,
+                        proposal: leadData.statusDist?.proposal || 0,
                         converted: leadData.convertedLeads || 0,
+                        lost: leadData.lostLeads || 0,
+                        followUpsToday: leadData.followUpsToday || 0,
+                        highValueLeads: leadData.highValueLeads || 0,
+                        inactiveLeads: leadData.inactiveLeads || 0,
                         conversionRate: leadData.conversionRate || 0
                     });
 
-                    // Prepare chart data for lead status distribution
+                    // Prepare chart data with new statuses
                     const statusDist = leadData.statusDist || {};
                     setLeadChartData([
                         { name: 'New', value: statusDist.new || 0, color: '#3b82f6' },
                         { name: 'Contacted', value: statusDist.contacted || 0, color: '#6366f1' },
-                        { name: 'Interested', value: statusDist.interested || 0, color: '#8b5cf6' },
-                        { name: 'Follow Up', value: statusDist.follow_up || 0, color: '#f59e0b' },
+                        { name: 'Qualified', value: statusDist.qualified || 0, color: '#8b5cf6' },
+                        { name: 'Proposal', value: statusDist.proposal || 0, color: '#f59e0b' },
                         { name: 'Converted', value: statusDist.converted || 0, color: '#10b981' },
-                        { name: 'Not Interested', value: statusDist.not_interested || 0, color: '#ef4444' }
+                        { name: 'Lost', value: statusDist.lost || 0, color: '#ef4444' }
                     ].filter(item => item.value > 0));
                 }
 
-                // Get upcoming deadlines (next 7 days) from filtered tasks
+                // Fetch actual leads for Kanban
+                const allLeadsRes = await leadsAPI.getAll();
+                setAllLeads(allLeadsRes.data.data || []);
+
+                // Prepare alerts
+                const newAlerts = [];
+                if (leadsRes.data.data?.followUpsToday > 0) {
+                    newAlerts.push({ type: 'lead', message: `${leadsRes.data.data.followUpsToday} follow-ups due today`, severity: 'high', icon: Phone });
+                }
+                if (leadsRes.data.data?.highValueLeads > 0) {
+                    newAlerts.push({ type: 'lead', message: `${leadsRes.data.data.highValueLeads} high-value leads need attention`, severity: 'urgent', icon: Zap });
+                }
+                if (leadsRes.data.data?.inactiveLeads > 0) {
+                    newAlerts.push({ type: 'lead', message: `${leadsRes.data.data.inactiveLeads} leads inactive for 7+ days`, severity: 'medium', icon: Clock });
+                }
+                if (stats.overdue > 0) {
+                    newAlerts.push({ type: 'task', message: `${stats.overdue} tasks are overdue`, severity: 'urgent', icon: AlertCircle });
+                }
+                setAlerts(newAlerts);
+
+                // Team Performance
+                const performanceRes = await reportsAPI.getTeamPerformance();
+                if (performanceRes.data.data) {
+                    const perfData = performanceRes.data.data;
+                    setTeamLeadStats({
+                        performance: perfData.averagePerformance || 0,
+                        teamLeadsStats: perfData.memberStats || []
+                    });
+                }
+
+                // Get upcoming deadlines
                 const now = new Date();
                 const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
                 const upcoming = filteredTasks
@@ -111,7 +163,6 @@ const Dashboard = () => {
                     .slice(0, 5);
                 setUpcomingDeadlines(upcoming);
 
-                // Set team members
                 if (teamRes.data.data) {
                     setTeamMembers(teamRes.data.data.members || []);
                 }
@@ -184,14 +235,16 @@ const Dashboard = () => {
     };
 
     const getTaskProgress = (task) => {
+        if (!task) return 0;
         if (task.subtasks && task.subtasks.length > 0) {
-            const completed = task.subtasks.filter(st => st.status === 'completed').length;
-            return Math.round((completed / task.subtasks.length) * 100);
+            const totalProgress = task.subtasks.reduce((sum, st) => sum + (st.progressPercentage || 0), 0);
+            return Math.round(totalProgress / task.subtasks.length);
         }
         return task.progressPercentage || 0;
     };
 
     const formatDeadline = (deadline) => {
+        if (!deadline) return 'No deadline';
         const now = new Date();
         const due = new Date(deadline);
         const diffTime = due - now;
@@ -203,8 +256,22 @@ const Dashboard = () => {
         return `${diffDays} days left`;
     };
 
+    const handleConvertLead = async (leadId) => {
+        try {
+            const res = await leadsAPI.convertToProject(leadId);
+            if (res.data.success) {
+                alert('Lead converted to project task successfully!');
+                fetchDashboardData();
+            }
+        } catch (error) {
+            console.error('Conversion error:', error);
+            alert('Failed to convert lead to project.');
+        }
+    };
+
     const getPriorityColor = (priority) => {
         switch (priority) {
+            case 'critical': return 'text-red-700 bg-red-100 border-red-300 font-black animate-pulse';
             case 'high': return 'text-red-600 bg-red-50 border-red-200';
             case 'medium': return 'text-amber-600 bg-amber-50 border-amber-200';
             case 'low': return 'text-green-600 bg-green-50 border-green-200';
@@ -216,7 +283,9 @@ const Dashboard = () => {
         switch (status) {
             case 'completed': return 'bg-green-500';
             case 'in_progress': return 'bg-blue-500';
+            case 'on_hold': return 'bg-amber-500';
             case 'overdue': return 'bg-red-500';
+            case 'pending': return 'bg-purple-500';
             default: return 'bg-gray-400';
         }
     };
@@ -226,7 +295,7 @@ const Dashboard = () => {
             <Layout title="Dashboard">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723] mx-auto"></div>
                         <p className="mt-4 text-gray-700 font-semibold">Loading dashboard...</p>
                     </div>
                 </div>
@@ -237,341 +306,353 @@ const Dashboard = () => {
     return (
         <Layout title="Dashboard">
             <div className="space-y-6">
-                {/* Welcome Section */}
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl shadow-lg p-6 text-white">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-2xl font-bold mb-2">
-                                Welcome back, {user?.name?.split(' ')[0]}! 👋
+                {/* Welcome & Alerts Section */}
+                <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex-1 bg-gradient-to-r from-[#3E2723] to-[#5D4037] rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+                        <div className="relative z-10">
+                            <h2 className="text-3xl font-semibold mb-2">
+                                Welcome back, {user?.name?.split(' ')[0]}
                             </h2>
-                            <p className="text-orange-100">
+                            <p className="text-[#EFEBE9] text-lg opacity-90">
                                 {isTeamLead 
-                                    ? "Here's an overview of your team's activity and performance." 
-                                    : "Here's an overview of your tasks and progress."}
+                                    ? "Your team's performance is at " + teamLeadStats.performance + "% today." 
+                                    : "You have " + taskStats.inProgress + " tasks in progress."}
                             </p>
-                        </div>
-                        {/* Month Filter */}
-                        <div className="flex items-center gap-2 bg-white bg-opacity-20 rounded-xl px-3 py-2">
-                            <Filter className="w-4 h-4" />
-                            <select
-                                value={selectedMonth}
-                                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                                className="bg-transparent text-white text-sm font-semibold focus:outline-none cursor-pointer"
-                            >
-                                <option value={0} className="text-gray-900">January</option>
-                                <option value={1} className="text-gray-900">February</option>
-                                <option value={2} className="text-gray-900">March</option>
-                                <option value={3} className="text-gray-900">April</option>
-                                <option value={4} className="text-gray-900">May</option>
-                                <option value={5} className="text-gray-900">June</option>
-                                <option value={6} className="text-gray-900">July</option>
-                                <option value={7} className="text-gray-900">August</option>
-                                <option value={8} className="text-gray-900">September</option>
-                                <option value={9} className="text-gray-900">October</option>
-                                <option value={10} className="text-gray-900">November</option>
-                                <option value={11} className="text-gray-900">December</option>
-                            </select>
-                            <select
-                                value={selectedYear}
-                                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                                className="bg-transparent text-white text-sm font-semibold focus:outline-none cursor-pointer"
-                            >
-                                <option value={2024} className="text-gray-900">2024</option>
-                                <option value={2025} className="text-gray-900">2025</option>
-                                <option value={2026} className="text-gray-900">2026</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Lead Stats */}
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Total Leads</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">{leadStats.total}</p>
-                                <p className="text-xs text-gray-500 mt-1">In pipeline</p>
-                            </div>
-                            <div className="p-4 bg-purple-100 rounded-xl">
-                                <Users className="w-8 h-8 text-purple-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Converted</p>
-                                <p className="text-3xl font-bold text-green-600 mt-2">{leadStats.converted}</p>
-                                <p className="text-xs text-gray-500 mt-1">{leadStats.conversionRate}% conversion</p>
-                            </div>
-                            <div className="p-4 bg-green-100 rounded-xl">
-                                <TrendingUp className="w-8 h-8 text-green-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Task Stats */}
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Total Tasks</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">{taskStats.total}</p>
-                                <p className="text-xs text-gray-500 mt-1">Assigned to you</p>
-                            </div>
-                            <div className="p-4 bg-blue-100 rounded-xl">
-                                <Target className="w-8 h-8 text-blue-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Completed</p>
-                                <p className="text-3xl font-bold text-green-600 mt-2">{taskStats.completed}</p>
-                                <p className="text-xs text-gray-500 mt-1">{getCompletionRate()}% completion rate</p>
-                            </div>
-                            <div className="p-4 bg-green-100 rounded-xl">
-                                <CheckCircle className="w-8 h-8 text-green-600" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Main Content - Lead Pipeline & My Tasks */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Lead Pipeline */}
-                    {leadChartData.length > 0 && (
-                        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
-                            <div className="flex items-center justify-between mb-6">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900">Lead Pipeline</h3>
-                                    <p className="text-sm text-gray-500 mt-1">Status overview</p>
-                                </div>
-                            </div>
-                            
-                            {/* Simple Bar Visualization */}
-                            <div className="space-y-4">
-                                {leadChartData.map((item, index) => (
-                                    <div key={index} className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                                <span className="text-sm font-semibold text-gray-700">{item.name}</span>
-                                            </div>
-                                            <span className="text-sm font-bold text-gray-900">{item.value}</span>
-                                        </div>
-                                        <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                            <div
-                                                className="h-2.5 rounded-full transition-all duration-500"
-                                                style={{ 
-                                                    width: `${(item.value / leadStats.total) * 100}%`,
-                                                    backgroundColor: item.color
-                                                }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Summary */}
-                            <div className="mt-6 pt-6 border-t border-gray-200">
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="text-center">
-                                        <p className="text-2xl font-bold text-gray-900">{leadStats.total}</p>
-                                        <p className="text-xs text-gray-600 mt-1">Total</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-2xl font-bold text-green-600">{leadStats.converted}</p>
-                                        <p className="text-xs text-gray-600 mt-1">Converted</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-2xl font-bold text-orange-600">{leadStats.conversionRate}%</p>
-                                        <p className="text-xs text-gray-600 mt-1">Rate</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* My Tasks */}
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900">
-                                    {isTeamLead ? 'My Assigned Tasks' : 'My Tasks'}
-                                </h3>
-                                <p className="text-sm text-gray-500 mt-1">Recent activities</p>
-                            </div>
-                            <button
-                                onClick={() => navigate('/tasks')}
-                                className="text-sm text-orange-600 hover:text-orange-700 font-semibold flex items-center gap-1"
-                            >
-                                View All
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        {myTasks.length === 0 ? (
-                            <div className="text-center py-12">
-                                <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                                <p className="text-gray-600">No tasks assigned yet</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                                {myTasks.slice(0, 5).map((task) => (
-                                    <div
-                                        key={task._id}
-                                        onClick={() => navigate(isTeamLead ? '/task-breakdown' : '/tasks')}
-                                        className="p-4 border border-gray-200 rounded-xl hover:shadow-md transition-all cursor-pointer hover:border-orange-300"
-                                    >
-                                        <div className="flex items-start justify-between mb-2">
-                                            <div className="flex-1">
-                                                <h4 className="font-semibold text-gray-900 mb-1">{task.title}</h4>
-                                                <p className="text-sm text-gray-600 line-clamp-1">{task.description}</p>
-                                            </div>
-                                            <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${getPriorityColor(task.priority)}`}>
-                                                {task.priority}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex items-center justify-between mt-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${getStatusColor(task.status)}`}></div>
-                                                <span className="text-xs text-gray-600 capitalize">{task.status?.replace('_', ' ')}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                <Calendar className="w-3 h-3" />
-                                                {formatDeadline(task.deadline || task.dueDate)}
-                                            </div>
-                                        </div>
-
-                                        {/* Progress Bar */}
-                                        <div className="mt-3">
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                                <div
-                                                    className="bg-orange-500 h-2 rounded-full transition-all"
-                                                    style={{ width: `${getTaskProgress(task)}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Team Lead Specific Section */}
-                {isTeamLead && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Team Status */}
-                        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-bold text-gray-900">Team Overview</h3>
-                                <Users className="w-5 h-5 text-gray-400" />
-                            </div>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl border border-green-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                                        <span className="text-sm font-semibold text-gray-700">Online Members</span>
-                                    </div>
-                                    <span className="text-2xl font-bold text-green-600">{getOnlineMembers()}</span>
-                                </div>
-                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                                        <span className="text-sm font-semibold text-gray-700">Total Members</span>
-                                    </div>
-                                    <span className="text-2xl font-bold text-gray-900">{teamMembers.length}</span>
-                                </div>
-                                <button
-                                    onClick={() => navigate('/team')}
-                                    className="w-full mt-2 px-4 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all font-semibold text-sm flex items-center justify-center gap-2"
-                                >
-                                    View Team Details
-                                    <ChevronRight className="w-4 h-4" />
+                            <div className="mt-6 flex gap-3">
+                                <button onClick={() => navigate('/leads')} className="px-5 py-2.5 bg-white text-[#3E2723] rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all flex items-center gap-2">
+                                    <Plus className="w-4 h-4" /> New Lead
+                                </button>
+                                <button onClick={() => navigate('/tasks')} className="px-5 py-2.5 bg-[#5D4037] bg-opacity-50 border border-white border-opacity-20 text-white rounded-xl font-bold text-sm hover:bg-opacity-70 transition-all flex items-center gap-2">
+                                    <ListTodo className="w-4 h-4" /> My Tasks
                                 </button>
                             </div>
                         </div>
+                        <Activity className="absolute right-[-20px] bottom-[-20px] w-64 h-64 text-white opacity-5 rotate-12" />
+                    </div>
 
-                        {/* Task Progress */}
-                        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-bold text-gray-900">Task Progress</h3>
-                                <Activity className="w-5 h-5 text-gray-400" />
-                            </div>
-                            <div className="space-y-4">
-                                <div className="text-center py-4">
-                                    <p className="text-5xl font-bold text-gray-900">{getCompletionRate()}%</p>
-                                    <p className="text-sm text-gray-600 mt-2">Completion Rate</p>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3">
-                                    <div
-                                        className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500"
-                                        style={{ width: `${getCompletionRate()}%` }}
-                                    ></div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 pt-4">
-                                    <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                                        <p className="text-xl font-bold text-green-600">{taskStats.completed}</p>
-                                        <p className="text-xs text-gray-600 mt-1">Completed</p>
+                    {/* Alerts Section */}
+                    <div className="lg:w-1/3 bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                                <Bell className="w-5 h-5 text-amber-500" />
+                                Action Alerts
+                            </h3>
+                            <span className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                                {alerts.length} New
+                            </span>
+                        </div>
+                        <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                            {alerts.length > 0 ? alerts.map((alert, idx) => (
+                                <div key={idx} className={`flex items-start gap-3 p-3 rounded-2xl border ${
+                                    alert.severity === 'urgent' ? 'bg-red-50 border-red-100 text-red-700' : 
+                                    alert.severity === 'high' ? 'bg-amber-50 border-amber-100 text-amber-700' : 
+                                    'bg-blue-50 border-blue-100 text-blue-700'
+                                }`}>
+                                    <div className="p-2 bg-white rounded-xl shadow-sm">
+                                        <alert.icon className="w-4 h-4" />
                                     </div>
-                                    <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                        <p className="text-xl font-bold text-gray-900">{taskStats.total - taskStats.completed}</p>
-                                        <p className="text-xs text-gray-600 mt-1">Remaining</p>
-                                    </div>
+                                    <p className="text-sm font-medium leading-tight pt-1">{alert.message}</p>
                                 </div>
-                            </div>
+                            )) : (
+                                <div className="text-center py-6 text-gray-400 italic text-sm">
+                                    All clear for now
+                                </div>
+                            )}
                         </div>
                     </div>
-                )}
+                </div>
 
-                {/* Upcoming Deadlines - Team Lead Only */}
-                {isTeamLead && upcomingDeadlines.length > 0 && (
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                <Clock className="w-5 h-5 text-orange-600" />
-                                Upcoming Deadlines
-                            </h3>
-                            <span className="text-sm text-gray-600">Next 7 days</span>
+                {/* 1️⃣ Top Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    {[
+                        { label: 'Assigned Tasks', value: taskStats.total, icon: ListTodo, color: 'blue', sub: 'My queue' },
+                        { label: 'Active Projects', value: taskStats.activeProjects, icon: Briefcase, color: 'indigo', sub: 'In progress' },
+                        { label: 'Assigned Leads', value: leadStats.total, icon: Target, color: 'purple', sub: 'Pipeline' },
+                        { label: 'Leads Converted', value: leadStats.converted, icon: Trophy, color: 'green', sub: 'Won leads' },
+                        { label: 'Overdue Tasks', value: taskStats.overdue, icon: AlertCircle, color: 'red', sub: 'Needs action' },
+                        { label: 'Team Performance', value: `${teamLeadStats.performance}%`, icon: TrendingUp, color: 'amber', sub: 'Average %' }
+                    ].map((card, i) => (
+                        <div key={i} className="bg-[#F5E6D3] p-5 rounded-3xl border border-[#EBD9C1] hover:shadow-xl transition-all group cursor-pointer overflow-hidden relative">
+                            <div className={`absolute top-0 right-0 w-16 h-16 bg-white/50 rounded-bl-full flex items-center justify-center -mr-4 -mt-4 group-hover:bg-white transition-colors`}>
+                                <card.icon className={`w-5 h-5 text-amber-600/60`} />
+                            </div>
+                            <p className="text-[10px] font-medium text-gray-500 tracking-wider mb-1">{card.label}</p>
+                            <h4 className="text-2xl font-semibold text-gray-900 leading-none mb-1">{card.value}</h4>
+                            <p className="text-[10px] text-gray-400 font-medium">{card.sub}</p>
                         </div>
-                        <div className="space-y-3">
-                            {upcomingDeadlines.map((task) => (
-                                <div
-                                    key={task._id}
-                                    className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-1 h-12 rounded-full ${task.priority === 'high' ? 'bg-red-500' : task.priority === 'medium' ? 'bg-amber-500' : 'bg-green-500'}`}></div>
+                    ))}
+                </div>
+
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Project Progress Bar Chart */}
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                            <BarChart3 className="w-5 h-5 text-blue-500" />
+                            Project Progress
+                        </h3>
+                        <div className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ReBarChart data={myTasks.filter(t => t.taskType === 'project_task').slice(0, 6)}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                    <XAxis dataKey="title" fontSize={10} tick={{ fill: '#666' }} axisLine={false} tickLine={false} />
+                                    <YAxis fontSize={10} tick={{ fill: '#666' }} axisLine={false} tickLine={false} />
+                                    <Tooltip 
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Bar dataKey="progressPercentage" name="Progress %" radius={[4, 4, 0, 0]}>
+                                        {myTasks.filter(t => t.taskType === 'project_task').slice(0, 6).map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={['#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'][index % 6]} />
+                                        ))}
+                                    </Bar>
+                                </ReBarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Task Status Pie Chart */}
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                            <PieChart className="w-5 h-5 text-purple-500" />
+                            Task Status Distribution
+                        </h3>
+                        <div className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RePieChart>
+                                    <Pie
+                                        data={[
+                                            { name: 'Completed', value: taskStats.completed, color: '#10b981' },
+                                            { name: 'Overdue', value: taskStats.overdue, color: '#ef4444' },
+                                            { name: 'Pending', value: taskStats.notStarted, color: '#8b5cf6' },
+                                            { name: 'In Progress', value: taskStats.inProgress, color: '#3b82f6' }
+                                        ].filter(d => d.value > 0)}
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {[
+                                            { name: 'Completed', value: taskStats.completed, color: '#10b981' },
+                                            { name: 'Overdue', value: taskStats.overdue, color: '#ef4444' },
+                                            { name: 'Pending', value: taskStats.notStarted, color: '#8b5cf6' },
+                                            { name: 'In Progress', value: taskStats.inProgress, color: '#3b82f6' }
+                                        ].filter(d => d.value > 0).map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend verticalAlign="bottom" height={36}/>
+                                </RePieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Left -> My Tasks (4 cols) */}
+                    <div className="lg:col-span-4 bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <ListTodo className="w-5 h-5 text-blue-500" />
+                                My Assigned Tasks
+                            </h3>
+                            <button onClick={() => navigate('/tasks')} className="text-[#3E2723] hover:underline font-bold text-xs">View All</button>
+                        </div>
+                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                            {myTasks.length > 0 ? myTasks.slice(0, 5).map(task => (
+                                <div key={task._id} className="p-4 rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all group bg-gray-50/50">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${getPriorityColor(task.priority)}`}>
+                                            {task.priority}
+                                        </span>
+                                        <span className="text-[10px] font-bold text-gray-400">
+                                            {formatDeadline(task.deadline || task.dueDate)}
+                                        </span>
+                                    </div>
+                                    <h4 className="font-semibold text-gray-900 text-sm mb-2 group-hover:text-blue-600 transition-colors leading-tight">{task.title}</h4>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2 overflow-hidden shadow-inner">
+                                        <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${getTaskProgress(task)}%` }}></div>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                                        <span>{getTaskProgress(task)}% COMPLETE</span>
+                                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {task.subtasks?.length || 0}</span>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="text-center py-12 text-gray-400 italic">No tasks assigned.</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right -> My Leads (8 cols) */}
+                    <div className="lg:col-span-8 bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <Phone className="w-5 h-5 text-indigo-500" />
+                                My Leads Overview
+                            </h3>
+                            <div className="flex gap-4">
+                                <div className="text-center">
+                                    <p className="text-xs font-medium text-gray-400">Follow-up Today</p>
+                                    <p className="text-xl font-serif italic text-amber-500">{leadStats.followUpsToday}</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-xs font-medium text-gray-400">Lost</p>
+                                    <p className="text-xl font-semibold text-red-500">{leadStats.lost}</p>
+                                </div>
+                                <button onClick={() => navigate('/leads')} className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all">Full CRM</button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {allLeads.filter(l => l.assignedTo?._id === user._id || !l.assignedTo).slice(0, 4).map(lead => (
+                                <div key={lead._id} className="p-4 rounded-3xl border border-gray-100 hover:shadow-xl transition-all bg-white group border-l-4" style={{ borderColor: lead.status === 'converted' ? '#10b981' : lead.status === 'lost' ? '#ef4444' : '#6366f1' }}>
+                                    <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            <p className="font-semibold text-gray-900">{task.title}</p>
-                                            <p className="text-xs text-gray-600">
-                                                {task.assignedTo?.name || 'Unassigned'}
-                                            </p>
+                                            <h4 className="font-semibold text-gray-900 text-base leading-none mb-1 group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => navigate(`/leads/${lead._id}`)}>{lead.clientName}</h4>
+                                            <p className="text-[10px] text-gray-500 font-medium tracking-widest">{lead.source} • {lead.category}</p>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            {lead.status === 'proposal' && (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); handleConvertLead(lead._id); }}
+                                                    title="Convert to Project Task"
+                                                    className="p-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                                                >
+                                                    <Zap className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            <button className="p-1 hover:bg-gray-50 rounded-lg"><MoreVertical className="w-4 h-4 text-gray-400" /></button>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-semibold text-orange-600">
-                                            {formatDeadline(task.deadline || task.dueDate)}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {new Date(task.deadline || task.dueDate).toLocaleDateString()}
-                                        </p>
+                                    <div className="space-y-2 mb-4">
+                                        <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                                            <Mail className="w-3.5 h-3.5 text-indigo-400" /> {lead.email || 'No email'}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                                            <Phone className="w-3.5 h-3.5 text-indigo-400" /> {lead.phone || 'No phone'}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100 overflow-hidden">
+                                                <span className="text-[10px] font-black text-indigo-600">{lead.assignedTo?.name?.charAt(0) || '?'}</span>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-medium text-gray-400 leading-none">Status</p>
+                                                <p className="text-[10px] font-semibold text-indigo-600 leading-tight">{lead.status}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[9px] font-medium text-gray-400 leading-none">Next Follow-up</p>
+                                            <p className="text-[10px] font-semibold text-amber-600 leading-tight">
+                                                {lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString() : 'TBD'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                )}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Bottom Left -> Projects (Existing Task Logic) */}
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                        <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-6">
+                            <Briefcase className="w-5 h-5 text-indigo-500" />
+                            Active Projects Overview
+                        </h3>
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            {myTasks.filter(t => t.taskType === 'project_task').length > 0 ? (
+                                myTasks.filter(t => t.taskType === 'project_task').map(proj => (
+                                    <div key={proj._id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/30">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h4 className="font-semibold text-gray-900 text-sm">{proj.title}</h4>
+                                            <span className="text-[10px] font-medium px-2 py-0.5 bg-green-100 text-green-700 rounded-lg">Live</span>
+                                        </div>
+                                        <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
+                                            <span className="flex items-center gap-1"><FileCheck className="w-3.5 h-3.5" /> {proj.progressPercentage}% Progress</span>
+                                            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatDeadline(proj.deadline)}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100 italic">
+                                    No active projects tagged.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Bottom Right -> Team Performance Section */}
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <Trophy className="w-5 h-5 text-amber-500" />
+                                Team performance Stats
+                            </h3>
+                            <button onClick={() => navigate('/team')} className="text-xs font-bold text-amber-600 hover:underline">Full Leaderboard</button>
+                        </div>
+                        <div className="space-y-1">
+                            <div className="grid grid-cols-12 gap-2 pb-3 mb-2 border-b border-gray-50 text-[10px] font-medium text-gray-400 tracking-widest">
+                                <div className="col-span-5">Member</div>
+                                <div className="col-span-2 text-center">Assigned</div>
+                                <div className="col-span-2 text-center">Converted</div>
+                                <div className="col-span-3 text-right">Performance</div>
+                            </div>
+                            {teamLeadStats.teamLeadsStats.slice(0, 5).map((member, idx) => (
+                                <div key={idx} className="grid grid-cols-12 gap-2 py-3 items-center hover:bg-gray-50 rounded-2xl transition-all px-2">
+                                    <div className="col-span-1">
+                                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-black text-blue-600 border-2 border-white shadow-sm">
+                                            {member.name?.charAt(0)}
+                                        </div>
+                                    </div>
+                                    <div className="col-span-4">
+                                        <p className="font-semibold text-gray-900 text-sm leading-none">{member.name}</p>
+                                        <p className="text-[10px] text-gray-400 font-medium">Team Alpha</p>
+                                    </div>
+                                    <div className="col-span-2 text-center font-bold text-gray-600">{member.assignedLeads || 0}</div>
+                                    <div className="col-span-2 text-center font-black text-green-600">{member.convertedLeads || 0}</div>
+                                    <div className="col-span-3 text-right">
+                                        <span className="px-2.5 py-1 bg-green-50 text-green-700 rounded-xl font-black text-xs">
+                                            {member.efficiencyScore || 0}%
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom -> Activity Feed (Simplified from Upcoming Deadlines / Global Feed) */}
+                <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex-1">
+                            <h3 className="text-xl font-semibold mb-2">Activity Feed & Deadlines</h3>
+                            <p className="text-[#EFEBE9] opacity-80 text-sm leading-relaxed max-w-xl text-balance">
+                                You have {upcomingDeadlines.length} critical deadlines in the next 7 days. 
+                                Make sure to check follow-ups for {leadStats.followUpsToday} leads today.
+                            </p>
+                        </div>
+                        <div className="flex gap-4">
+                            {upcomingDeadlines.slice(0, 2).map((item, i) => (
+                                <div key={i} className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 min-w-[200px]">
+                                    <p className="text-[10px] font-medium text-white/50 mb-1">{formatDeadline(item.deadline)}</p>
+                                    <p className="font-semibold text-sm text-white line-clamp-1">{item.title}</p>
+                                </div>
+                            ))}
+                            <button onClick={() => navigate('/notifications')} className="h-full px-6 bg-white text-[#3E2723] rounded-2xl font-semibold text-xs hover:bg-opacity-90 transition-all flex items-center gap-2">
+                                All Alerts <ArrowUpRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                    <Activity className="absolute left-[-10px] top-[-10px] w-48 h-48 text-white opacity-5" />
+                </div>
             </div>
         </Layout>
     );
 };
 
 export default Dashboard;
+

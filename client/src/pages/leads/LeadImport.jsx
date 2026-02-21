@@ -122,7 +122,7 @@ const LeadImport = ({ onComplete }) => {
                         <button
                             onClick={handleConfirmImport}
                             disabled={uploading || previewData.summary.valid === 0}
-                            className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold shadow-xl shadow-orange-500/20 disabled:opacity-50"
+                            className="px-6 py-2.5 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white rounded-xl font-bold shadow-xl shadow-[#3E2723]/20 disabled:opacity-50"
                         >
                             {uploading ? 'Importing...' : `Confirm Import (${previewData.summary.valid} Leads)`}
                         </button>
@@ -173,14 +173,14 @@ const LeadImport = ({ onComplete }) => {
         <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="bg-gradient-to-br from-gray-800 to-gray-900/50 border border-gray-700/50 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
                 {/* Decorative Background Element */}
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl" />
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#3E2723]/10 rounded-full blur-3xl" />
 
                 <div className="relative z-10 text-center space-y-6 mb-12">
-                    <div className="w-24 h-24 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-8 border border-orange-500/20 shadow-[0_0_30px_rgba(249,115,22,0.15)]">
-                        <Upload className="text-orange-500 w-12 h-12" />
+                    <div className="w-24 h-24 bg-[#3E2723]/10 rounded-full flex items-center justify-center mx-auto mb-8 border border-[#3E2723]/20 shadow-[0_0_30px_rgba(249,115,22,0.15)]">
+                        <Upload className="text-[#3E2723] w-12 h-12" />
                     </div>
                     <div className="space-y-4">
-                        <h2 className="text-5xl font-black text-white tracking-tighter">Bulk Lead <span className="text-orange-500">Intake</span></h2>
+                        <h2 className="text-5xl font-black text-white tracking-tighter">Bulk Lead <span className="text-[#3E2723]">Intake</span></h2>
                         <p className="text-gray-400 text-xl max-w-2xl mx-auto font-medium">
                             Scale your pipeline by importing large datasets. Our system validates every record
                             in real-time to ensure data integrity.
@@ -192,8 +192,8 @@ const LeadImport = ({ onComplete }) => {
                     className={`
                         group relative border-2 border-dashed rounded-[2.5rem] p-24 text-center transition-all duration-500 mb-12 cursor-pointer
                         ${file
-                            ? 'border-orange-500 bg-orange-500/10 shadow-[0_0_50px_rgba(249,115,22,0.1)]'
-                            : 'border-gray-700 hover:border-orange-500/50 hover:bg-orange-500/5'}
+                            ? 'border-[#3E2723] bg-[#3E2723]/10 shadow-[0_0_50px_rgba(249,115,22,0.1)]'
+                            : 'border-gray-700 hover:border-[#3E2723]/50 hover:bg-[#3E2723]/5'}
                     `}
                 >
                     <input
@@ -203,7 +203,7 @@ const LeadImport = ({ onComplete }) => {
                         accept=".csv"
                     />
                     <div className="space-y-6 relative z-10">
-                        <div className={`p-6 bg-gray-900/80 rounded-3xl inline-block group-hover:scale-110 transition-transform duration-500 border border-white/5 ${file ? 'text-orange-500' : 'text-gray-600'}`}>
+                        <div className={`p-6 bg-gray-900/80 rounded-3xl inline-block group-hover:scale-110 transition-transform duration-500 border border-white/5 ${file ? 'text-[#3E2723]' : 'text-gray-600'}`}>
                             <FileText className="w-16 h-16" />
                         </div>
                         <div>
@@ -227,7 +227,7 @@ const LeadImport = ({ onComplete }) => {
                             flex-1 py-6 rounded-[2rem] font-black text-2xl shadow-2xl transition-all flex items-center justify-center gap-4
                             ${!file || uploading
                                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-95'
+                                : 'bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white hover:shadow-[#3E2723]/40 hover:scale-[1.02] active:scale-95'
                             }
                         `}
                     >

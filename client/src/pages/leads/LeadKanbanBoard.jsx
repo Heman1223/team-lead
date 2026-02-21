@@ -18,16 +18,16 @@ const LeadKanbanBoard = ({ leads, onLeadUpdate, onSelectLead }) => {
     const columns = [
         { id: 'new', title: 'New', color: 'bg-blue-50 border-blue-200 text-blue-700' },
         { id: 'contacted', title: 'Contacted', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-        { id: 'interested', title: 'Interested / Demo', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-        { id: 'follow_up', title: 'Follow Up', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+        { id: 'qualified', title: 'Qualified', color: 'bg-purple-50 border-purple-200 text-purple-700' },
+        { id: 'proposal', title: 'Proposal', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
         { id: 'converted', title: 'Converted', color: 'bg-green-50 border-green-200 text-green-700' },
-        { id: 'not_interested', title: 'Not Interested', color: 'bg-red-50 border-red-200 text-red-700' }
+        { id: 'lost', title: 'Lost', color: 'bg-red-50 border-red-200 text-red-700' }
     ];
 
     const getPriorityColor = (priority) => {
         const colors = {
             urgent: 'bg-red-500',
-            high: 'bg-orange-500',
+            high: 'bg-[#3E2723]',
             medium: 'bg-yellow-500',
             low: 'bg-green-500'
         };
@@ -98,7 +98,7 @@ const LeadKanbanBoard = ({ leads, onLeadUpdate, onSelectLead }) => {
                 return (
                     <div
                         key={column.id}
-                        className={`flex-shrink-0 w-80 flex flex-col rounded-xl bg-gray-50 border-2 transition-colors ${isDragOver ? 'border-orange-400 bg-orange-50' : 'border-transparent'
+                        className={`flex-shrink-0 w-80 flex flex-col rounded-xl bg-gray-50 border-2 transition-colors ${isDragOver ? 'border-[#5D4037] bg-[#FAF7F2]' : 'border-transparent'
                             }`}
                         onDragOver={(e) => handleDragOver(e, column.id)}
                         onDragLeave={handleDragLeave}
@@ -124,7 +124,7 @@ const LeadKanbanBoard = ({ leads, onLeadUpdate, onSelectLead }) => {
                                     onClick={() => onSelectLead(lead._id)}
                                     className={`
                                         bg-white p-3 rounded-lg shadow-sm border border-gray-200 cursor-move 
-                                        hover:shadow-md hover:border-orange-300 transition-all group relative
+                                        hover:shadow-md hover:border-[#BCAAA4] transition-all group relative
                                         ${updatingLeadId === lead._id ? 'opacity-50 pointer-events-none' : ''}
                                     `}
                                 >
@@ -133,11 +133,11 @@ const LeadKanbanBoard = ({ leads, onLeadUpdate, onSelectLead }) => {
 
                                     <div className="pl-3">
                                         <div className="flex justify-between items-start mb-2">
-                                            <h4 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-orange-600 transition-colors">
+                                            <h4 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-[#3E2723] transition-colors">
                                                 {lead.clientName}
                                             </h4>
                                             {updatingLeadId === lead._id && (
-                                                <div className="animate-spin h-4 w-4 border-2 border-orange-500 rounded-full border-t-transparent"></div>
+                                                <div className="animate-spin h-4 w-4 border-2 border-[#3E2723] rounded-full border-t-transparent"></div>
                                             )}
                                         </div>
 

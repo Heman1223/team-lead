@@ -30,7 +30,7 @@ const activityColors = {
     lead_created: 'text-blue-600 bg-blue-50',
     lead_status_changed: 'text-purple-600 bg-purple-50',
     lead_assigned: 'text-green-600 bg-green-50',
-    lead_updated: 'text-orange-600 bg-orange-50',
+    lead_updated: 'text-[#3E2723] bg-[#FAF7F2]',
     lead_note_added: 'text-cyan-600 bg-cyan-50',
     lead_escalated: 'text-yellow-600 bg-yellow-50',
     lead_converted: 'text-emerald-600 bg-emerald-50',
@@ -92,7 +92,7 @@ const LeadActivities = () => {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <div className="w-12 h-12 border-4 border-[#3E2723] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-gray-600">Loading activities...</p>
                 </div>
             </div>
@@ -119,7 +119,7 @@ const LeadActivities = () => {
                         placeholder="Search activities..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white border border-gray-300 text-gray-900 pl-10 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-sm sm:text-base"
+                        className="w-full bg-white border border-gray-300 text-gray-900 pl-10 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 rounded-lg focus:ring-2 focus:ring-[#3E2723] focus:border-transparent outline-none text-sm sm:text-base"
                     />
                 </div>
 
@@ -129,7 +129,7 @@ const LeadActivities = () => {
                     <select
                         value={filterAction}
                         onChange={(e) => setFilterAction(e.target.value)}
-                        className="w-full bg-white border border-gray-300 text-gray-900 pl-10 sm:pl-12 pr-8 sm:pr-10 py-2 sm:py-2.5 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none appearance-none cursor-pointer text-sm sm:text-base"
+                        className="w-full bg-white border border-gray-300 text-gray-900 pl-10 sm:pl-12 pr-8 sm:pr-10 py-2 sm:py-2.5 rounded-lg focus:ring-2 focus:ring-[#3E2723] focus:border-transparent outline-none appearance-none cursor-pointer text-sm sm:text-base"
                     >
                         <option value="all">All Actions</option>
                         {uniqueActions.map(action => (
@@ -145,8 +145,8 @@ const LeadActivities = () => {
                 <button
                     onClick={() => setGroupByLead(!groupByLead)}
                     className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg font-semibold text-sm sm:text-base transition-all ${groupByLead
-                            ? 'bg-orange-600 text-white'
-                            : 'bg-white text-gray-700 border border-gray-300 hover:border-orange-500'
+                            ? 'bg-[#3E2723] text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:border-[#3E2723]'
                         }`}
                 >
                     {groupByLead ? 'Grouped by Lead' : 'Timeline View'}
@@ -214,7 +214,7 @@ const ActivityItem = ({ activity, showLead }) => {
 
     return (
         <div className="relative group">
-            <div className="absolute -left-[21px] top-3 w-2 h-2 rounded-full bg-orange-500 shadow-sm hidden sm:block" />
+            <div className="absolute -left-[21px] top-3 w-2 h-2 rounded-full bg-[#3E2723] shadow-sm hidden sm:block" />
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4 hover:bg-gray-100 transition-all border border-gray-100">
                 <div className="flex items-start gap-3 sm:gap-4">
                     <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${colorClass} flex-shrink-0`}>
@@ -228,7 +228,7 @@ const ActivityItem = ({ activity, showLead }) => {
                                 </p>
                                 {showLead && activity.leadId && (
                                     <p className="text-xs sm:text-sm text-gray-600 mt-0.5 truncate">
-                                        Lead: <span className="text-orange-600 font-medium">{activity.leadId.clientName}</span>
+                                        Lead: <span className="text-[#3E2723] font-medium">{activity.leadId.clientName}</span>
                                     </p>
                                 )}
                             </div>

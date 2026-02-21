@@ -58,7 +58,7 @@ const LeadsPage = () => {
                         {(isAdmin || isTeamLead) && (
                             <button
                                 onClick={() => setIsCreateModalOpen(true)}
-                                className="flex items-center gap-1.5 sm:gap-2 bg-orange-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold hover:bg-orange-700 transition-colors shadow-lg"
+                                className="flex items-center gap-1.5 sm:gap-2 bg-[#3E2723] text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold hover:bg-[#2E1B17] transition-colors shadow-lg"
                             >
                                 <Plus size={16} className="sm:w-5 sm:h-5" />
                                 <span className="hidden sm:inline">New Lead</span>
@@ -88,7 +88,7 @@ const LeadsPage = () => {
                                 className={`
                                     flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 text-sm sm:text-base font-semibold transition-all relative whitespace-nowrap
                                     ${activeTab === tab.id
-                                        ? 'text-orange-600 border-b-2 border-orange-600'
+                                        ? 'text-[#3E2723] border-b-2 border-[#3E2723]'
                                         : 'text-gray-600 hover:text-gray-900'
                                     }
                                 `}

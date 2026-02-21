@@ -53,7 +53,7 @@ const TeamPerformanceTable = () => {
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
                                             index === 0 ? 'bg-yellow-500 text-black' : 
                                             index === 1 ? 'bg-gray-400 text-black' :
-                                            index === 2 ? 'bg-orange-700 text-white' : 'bg-gray-700 text-gray-400'
+                                            index === 2 ? 'bg-[#3E2723] text-white' : 'bg-gray-700 text-gray-400'
                                         }`}>
                                             {index + 1}
                                         </div>

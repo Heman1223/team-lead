@@ -40,7 +40,7 @@ const LeadInflowChart = () => {
                             key={range}
                             onClick={() => setTimeRange(range)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                                timeRange === range ? 'bg-orange-500 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                                timeRange === range ? 'bg-[#3E2723] text-white shadow-lg' : 'text-gray-400 hover:text-white'
                             }`}
                         >
                             {range}
@@ -51,7 +51,7 @@ const LeadInflowChart = () => {
 
             {loading ? (
                 <div className="h-64 flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-8 h-8 border-2 border-[#3E2723] border-t-transparent rounded-full animate-spin" />
                 </div>
             ) : data.length === 0 ? (
                 <div className="h-64 flex items-center justify-center text-gray-500">No data available</div>
@@ -67,8 +67,8 @@ const LeadInflowChart = () => {
                                 onMouseLeave={() => setHoveredIndex(null)}
                             >
                                 <div
-                                    className={`w-full max-w-[20px] rounded-t-lg transition-all duration-500 hover:bg-orange-400 ${
-                                        hoveredIndex === index ? 'bg-orange-500 scale-y-110 shadow-[0_0_20px_rgba(249,115,22,0.5)]' : 'bg-gray-800'
+                                    className={`w-full max-w-[20px] rounded-t-lg transition-all duration-500 hover:bg-[#5D4037] ${
+                                        hoveredIndex === index ? 'bg-[#3E2723] scale-y-110 shadow-[0_0_20px_rgba(249,115,22,0.5)]' : 'bg-gray-800'
                                     }`}
                                     style={{ height: `${heightPercent}%`, minHeight: '4px' }}
                                 />
@@ -79,7 +79,7 @@ const LeadInflowChart = () => {
                                 }`}>
                                     <div className="text-gray-400 text-[10px] mb-0.5">{new Date(item._id).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-orange-500">{item.count} Leads</span>
+                                        <span className="text-[#3E2723]">{item.count} Leads</span>
                                         {item.value > 0 && <span className="text-emerald-400">${item.value.toLocaleString()}</span>}
                                     </div>
                                 </div>
@@ -91,7 +91,7 @@ const LeadInflowChart = () => {
             
             <div className="mt-6 pt-6 border-t border-gray-800 flex items-center justify-between">
                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500">
+                    <div className="w-10 h-10 bg-[#3E2723]/10 rounded-xl flex items-center justify-center text-[#3E2723]">
                         <TrendingUp size={20} />
                     </div>
                     <div>

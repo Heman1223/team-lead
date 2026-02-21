@@ -14,7 +14,10 @@ const {
     getMyTasks,
     uploadAttachment,
     deleteAttachment,
-    submitEODReport
+    submitEODReport,
+    submitParentTaskEOD,
+    getAllEODReports,
+    addSubtaskComment
 } = require('../controllers/taskController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -22,6 +25,7 @@ router.use(protect);
 
 router.get('/stats', getTaskStats);
 router.get('/my-tasks', getMyTasks);
+router.get('/eod-reports/all', getAllEODReports);
 router.route('/')
     .get(getTasks)
     .post(authorize('team_lead'), createTask);
@@ -32,6 +36,7 @@ router.route('/:id')
     .delete(authorize('team_lead'), deleteTask);
 
 router.post('/:id/comments', addComment);
+router.post('/:id/parent-eod-report', submitParentTaskEOD);
 
 // File attachment routes
 router.post('/:id/attachments', authorize('team_lead'), uploadAttachment);
@@ -42,5 +47,6 @@ router.post('/:id/subtasks', authorize('team_lead'), addSubtask);
 router.put('/:id/subtasks/:subtaskId', updateSubtask);
 router.delete('/:id/subtasks/:subtaskId', authorize('team_lead'), deleteSubtask);
 router.post('/:id/subtasks/:subtaskId/eod-report', submitEODReport);
+router.post('/:id/subtasks/:subtaskId/comments', addSubtaskComment);
 
 module.exports = router;

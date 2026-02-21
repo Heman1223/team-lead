@@ -159,9 +159,8 @@ const Settings = () => {
 
     const tabs = [
         { id: 'profile', label: 'Profile', icon: User, roles: ['admin', 'team_lead', 'team_member'] },
-        { id: 'security', label: 'Password & Security', icon: Lock, roles: ['admin', 'team_lead', 'team_member'] },
-        { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['admin', 'team_lead', 'team_member'] },
-        { id: 'preferences', label: 'Preferences', icon: Globe, roles: ['admin', 'team_lead', 'team_member'] }
+        { id: 'security', label: 'Security', icon: Lock, roles: ['admin', 'team_lead', 'team_member'] },
+        { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['admin', 'team_lead', 'team_member'] }
     ];
 
     const visibleTabs = tabs.filter(tab => tab.roles.includes(user?.role));
@@ -170,7 +169,7 @@ const Settings = () => {
         return (
             <Layout title="Settings">
                 <div className="flex items-center justify-center min-h-screen">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723]"></div>
                 </div>
             </Layout>
         );
@@ -206,7 +205,7 @@ const Settings = () => {
                                         onClick={() => setActiveTab(tab.id)}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                                             activeTab === tab.id
-                                                ? 'bg-orange-50 text-orange-600 font-semibold'
+                                                ? 'bg-[#3E2723]/10 text-[#3E2723] font-semibold'
                                                 : 'text-gray-700 hover:bg-gray-50'
                                         }`}
                                     >
@@ -229,7 +228,7 @@ const Settings = () => {
                                             type="text"
                                             value={profileData.name}
                                             onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723]/40 focus:border-transparent"
                                             required
                                         />
                                     </div>
@@ -249,14 +248,14 @@ const Settings = () => {
                                             type="tel"
                                             value={profileData.phone}
                                             onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                             placeholder="+1 (555) 000-0000"
                                         />
                                     </div>
                                     <button
                                         type="submit"
                                         disabled={saving}
-                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all font-semibold disabled:opacity-50"
+                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E2723] to-[#5D4037] text-white rounded-xl hover:from-[#2E1B17] hover:to-[#3E2723] transition-all font-semibold disabled:opacity-50"
                                     >
                                         <Save className="w-5 h-5" />
                                         {saving ? 'Saving...' : 'Save Changes'}
@@ -276,7 +275,7 @@ const Settings = () => {
                                                 type={showPasswords.current ? 'text' : 'password'}
                                                 value={passwordData.currentPassword}
                                                 onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                                 required
                                             />
                                             <button
@@ -295,7 +294,7 @@ const Settings = () => {
                                                 type={showPasswords.new ? 'text' : 'password'}
                                                 value={passwordData.newPassword}
                                                 onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                                 required
                                                 minLength={6}
                                             />
@@ -316,7 +315,7 @@ const Settings = () => {
                                                 type={showPasswords.confirm ? 'text' : 'password'}
                                                 value={passwordData.confirmPassword}
                                                 onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                                 required
                                             />
                                             <button
@@ -331,7 +330,7 @@ const Settings = () => {
                                     <button
                                         type="submit"
                                         disabled={saving}
-                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all font-semibold disabled:opacity-50"
+                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E2723] to-[#5D4037] text-white rounded-xl hover:from-[#2E1B17] hover:to-[#3E2723] transition-all font-semibold disabled:opacity-50"
                                     >
                                         <Lock className="w-5 h-5" />
                                         {saving ? 'Changing...' : 'Change Password'}
@@ -363,7 +362,7 @@ const Settings = () => {
                                                     onChange={(e) => handleNotificationUpdate(item.key, e.target.checked)}
                                                     className="sr-only peer"
                                                 />
-                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#3E2723]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3E2723]"></div>
                                             </label>
                                         </div>
                                     ))}
@@ -371,109 +370,7 @@ const Settings = () => {
                             </div>
                         )}
 
-                        {activeTab === 'preferences' && settings && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-6">Account Preferences</h2>
-                                <div className="space-y-5">
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Language</label>
-                                        <select
-                                            value={settings.preferences.language}
-                                            onChange={(e) => handlePreferenceUpdate('language', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                                        >
-                                            <option value="en">🇺🇸 English</option>
-                                            <option value="es">🇪🇸 Spanish (Español)</option>
-                                            <option value="fr">🇫🇷 French (Français)</option>
-                                            <option value="de">🇩🇪 German (Deutsch)</option>
-                                        </select>
-                                        <p className="text-xs text-gray-500 mt-1">Choose your preferred language</p>
-                                    </div>
-                                    
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Theme</label>
-                                        <select
-                                            value={settings.preferences.theme}
-                                            onChange={(e) => handlePreferenceUpdate('theme', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                                        >
-                                            <option value="light">☀️ Light Mode</option>
-                                            <option value="dark">🌙 Dark Mode</option>
-                                            <option value="auto">🔄 Auto (System)</option>
-                                        </select>
-                                        <p className="text-xs text-gray-500 mt-1">Changes apply immediately</p>
-                                    </div>
-                                    
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Timezone</label>
-                                        <select
-                                            value={settings.preferences.timezone || 'UTC'}
-                                            onChange={(e) => handlePreferenceUpdate('timezone', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                                        >
-                                            <option value="UTC">UTC (Coordinated Universal Time)</option>
-                                            <option value="America/New_York">EST (Eastern Time)</option>
-                                            <option value="America/Chicago">CST (Central Time)</option>
-                                            <option value="America/Denver">MST (Mountain Time)</option>
-                                            <option value="America/Los_Angeles">PST (Pacific Time)</option>
-                                            <option value="Europe/London">GMT (London)</option>
-                                            <option value="Europe/Paris">CET (Paris)</option>
-                                            <option value="Asia/Tokyo">JST (Tokyo)</option>
-                                            <option value="Asia/Shanghai">CST (Shanghai)</option>
-                                            <option value="Asia/Kolkata">IST (India)</option>
-                                            <option value="Australia/Sydney">AEDT (Sydney)</option>
-                                        </select>
-                                        <p className="text-xs text-gray-500 mt-1">Your local timezone for dates and times</p>
-                                    </div>
-                                    
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Date Format</label>
-                                        <select
-                                            value={settings.preferences.dateFormat}
-                                            onChange={(e) => handlePreferenceUpdate('dateFormat', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                                        >
-                                            <option value="MM/DD/YYYY">MM/DD/YYYY (12/30/2024)</option>
-                                            <option value="DD/MM/YYYY">DD/MM/YYYY (30/12/2024)</option>
-                                            <option value="YYYY-MM-DD">YYYY-MM-DD (2024-12-30)</option>
-                                        </select>
-                                        <p className="text-xs text-gray-500 mt-1">How dates are displayed throughout the app</p>
-                                    </div>
-                                    
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Time Format</label>
-                                        <select
-                                            value={settings.preferences.timeFormat}
-                                            onChange={(e) => handlePreferenceUpdate('timeFormat', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                                        >
-                                            <option value="12h">12-hour (2:30 PM)</option>
-                                            <option value="24h">24-hour (14:30)</option>
-                                        </select>
-                                        <p className="text-xs text-gray-500 mt-1">How times are displayed throughout the app</p>
-                                    </div>
-                                    
-                                    <div className="pt-4 border-t border-gray-200">
-                                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                                            <p className="text-sm text-blue-800 font-medium">✨ Preview</p>
-                                            <div className="mt-2 space-y-1 text-sm text-blue-700">
-                                                <p>Date: {new Date().toLocaleDateString('en-US', { 
-                                                    year: 'numeric', 
-                                                    month: '2-digit', 
-                                                    day: '2-digit' 
-                                                })}</p>
-                                                <p>Time: {new Date().toLocaleTimeString('en-US', { 
-                                                    hour: '2-digit', 
-                                                    minute: '2-digit',
-                                                    hour12: settings.preferences.timeFormat === '12h'
-                                                })}</p>
-                                                <p>Theme: {settings.preferences.theme === 'light' ? '☀️ Light' : settings.preferences.theme === 'dark' ? '🌙 Dark' : '🔄 Auto'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+
                     </div>
                 </div>
             </div>

@@ -65,7 +65,7 @@ const LeadList = ({ onSelectLead }) => {
         return (
             <div className="flex items-center justify-center p-12">
                 <div className="text-center space-y-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3E2723] mx-auto"></div>
                     <p className="text-gray-400 font-medium">Loading leads...</p>
                 </div>
             </div>
@@ -83,7 +83,7 @@ const LeadList = ({ onSelectLead }) => {
                     <p className="text-gray-400">{error}</p>
                     <button
                         onClick={fetchLeads}
-                        className="px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all font-semibold"
+                        className="px-6 py-3 bg-[#3E2723] text-white rounded-xl hover:bg-[#3E2723] transition-all font-semibold"
                     >
                         Try Again
                     </button>
@@ -101,7 +101,7 @@ const LeadList = ({ onSelectLead }) => {
                     <input
                         type="text"
                         placeholder="Search leads by name or email..."
-                        className="w-full bg-gray-900/50 border border-gray-700 text-gray-200 pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                        className="w-full bg-gray-900/50 border border-gray-700 text-gray-200 pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/50 transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -115,7 +115,7 @@ const LeadList = ({ onSelectLead }) => {
                         <History size={20} className={loading ? 'animate-spin' : ''} />
                     </button>
                     <select
-                        className="bg-gray-900/50 border border-gray-700 text-gray-200 px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all flex-1 md:flex-none"
+                        className="bg-gray-900/50 border border-gray-700 text-gray-200 px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/50 transition-all flex-1 md:flex-none"
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                     >
@@ -144,12 +144,12 @@ const LeadList = ({ onSelectLead }) => {
                             {filteredLeads.map((lead) => (
                                 <tr
                                     key={lead._id}
-                                    className="group hover:bg-orange-500/[0.02] transition-all duration-300 cursor-pointer"
+                                    className="group hover:bg-[#3E2723]/[0.02] transition-all duration-300 cursor-pointer"
                                     onClick={() => onSelectLead(lead._id)}
                                 >
                                     <td className="px-8 py-6">
                                         <div className="flex flex-col">
-                                            <span className="text-xl font-black text-white group-hover:text-orange-500 transition-colors uppercase tracking-tighter">{lead.clientName || 'Unknown'}</span>
+                                            <span className="text-xl font-black text-white group-hover:text-[#3E2723] transition-colors uppercase tracking-tighter">{lead.clientName || 'Unknown'}</span>
                                             <div className="flex items-center gap-3 mt-1.5">
                                                 <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded-md font-bold uppercase tracking-widest border border-white/5">{(lead.category || 'uncategorized').replace('_', ' ')}</span>
                                                 <span className="text-xs text-gray-500 font-medium">{lead.email || 'No email'}</span>
@@ -169,7 +169,7 @@ const LeadList = ({ onSelectLead }) => {
                                     <td className="px-8 py-6">
                                         {lead.assignedTo ? (
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-orange-500 text-white rounded-2xl flex items-center justify-center text-sm font-black shadow-lg shadow-orange-500/20">
+                                                <div className="w-10 h-10 bg-[#3E2723] text-white rounded-2xl flex items-center justify-center text-sm font-black shadow-lg shadow-[#3E2723]/20">
                                                     {lead.assignedTo?.name?.charAt(0) || '?'}
                                                 </div>
                                                 <div className="flex flex-col">
@@ -191,11 +191,11 @@ const LeadList = ({ onSelectLead }) => {
                                             <span className="text-2xl font-black text-white tracking-tighter">
                                                 ${(lead.estimatedValue || 0).toLocaleString()}
                                             </span>
-                                            <span className="text-[10px] text-orange-500/50 font-black uppercase tracking-widest">Estimated Revenue</span>
+                                            <span className="text-[10px] text-[#3E2723]/50 font-black uppercase tracking-widest">Estimated Revenue</span>
                                         </div>
                                     </td>
                                     <td className="px-8 py-6 text-right">
-                                        <button className="w-12 h-12 flex items-center justify-center text-gray-600 hover:text-white bg-gray-800/50 hover:bg-orange-600 rounded-2xl transition-all shadow-xl group-hover:scale-110">
+                                        <button className="w-12 h-12 flex items-center justify-center text-gray-600 hover:text-white bg-gray-800/50 hover:bg-[#3E2723] rounded-2xl transition-all shadow-xl group-hover:scale-110">
                                             <ChevronRight size={24} />
                                         </button>
                                     </td>

@@ -117,7 +117,7 @@ const Reports = () => {
             <Layout title="Reports & Analytics">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723] mx-auto"></div>
                         <p className="mt-4 text-gray-700 font-semibold">Loading reports...</p>
                     </div>
                 </div>
@@ -140,7 +140,7 @@ const Reports = () => {
                                 onClick={() => setPeriod(p)}
                                 className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
                                     period === p
-                                        ? 'bg-orange-500 text-white'
+                                        ? 'bg-[#3E2723] text-white'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                             >
@@ -211,7 +211,7 @@ const Reports = () => {
                                     onClick={() => setActiveTab(tab)}
                                     className={`px-4 py-4 font-semibold text-sm border-b-2 transition-all ${
                                         activeTab === tab
-                                            ? 'border-orange-500 text-orange-600'
+                                            ? 'border-[#3E2723] text-[#3E2723]'
                                             : 'border-transparent text-gray-600 hover:text-gray-900'
                                     }`}
                                 >
@@ -305,7 +305,7 @@ const Reports = () => {
                                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white ${
                                                         index === 0 ? 'bg-yellow-500' :
                                                         index === 1 ? 'bg-gray-400' :
-                                                        index === 2 ? 'bg-orange-600' :
+                                                        index === 2 ? 'bg-[#5D4037]' :
                                                         'bg-gray-300'
                                                     }`}>
                                                         {index === 0 ? '🏆' : `#${index + 1}`}
@@ -314,7 +314,7 @@ const Reports = () => {
                                                     {/* Member Info */}
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-3 mb-2">
-                                                            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold">
+                                                            <div className="w-10 h-10 bg-gradient-to-br from-[#3E2723] to-[#5D4037] rounded-lg flex items-center justify-center text-white font-bold">
                                                                 {member.member?.name?.charAt(0).toUpperCase()}
                                                             </div>
                                                             <div>
@@ -334,7 +334,7 @@ const Reports = () => {
                                                                 <p className="text-xs text-gray-600">Completed</p>
                                                             </div>
                                                             <div className="text-center">
-                                                                <p className="text-lg font-bold text-orange-600">{member.completionRate || 0}%</p>
+                                                                <p className="text-lg font-bold text-[#3E2723]">{member.completionRate || 0}%</p>
                                                                 <p className="text-xs text-gray-600">Rate</p>
                                                             </div>
                                                         </div>
@@ -342,7 +342,7 @@ const Reports = () => {
                                                         {/* Progress Bar */}
                                                         <div className="w-full bg-gray-200 rounded-full h-2">
                                                             <div
-                                                                className="bg-orange-500 h-2 rounded-full transition-all"
+                                                                className="bg-[#3E2723] h-2 rounded-full transition-all"
                                                                 style={{ width: `${member.completionRate || 0}%` }}
                                                             ></div>
                                                         </div>

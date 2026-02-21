@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -82,7 +82,10 @@ export const tasksAPI = {
     deleteSubtask: (taskId, subtaskId) => api.delete(`/tasks/${taskId}/subtasks/${subtaskId}`),
     uploadAttachment: (taskId, data) => api.post(`/tasks/${taskId}/attachments`, data),
     deleteAttachment: (taskId, attachmentId) => api.delete(`/tasks/${taskId}/attachments/${attachmentId}`),
-    submitEODReport: (taskId, subtaskId, data) => api.post(`/tasks/${taskId}/subtasks/${subtaskId}/eod-report`, data)
+    submitEODReport: (taskId, subtaskId, data) => api.post(`/tasks/${taskId}/subtasks/${subtaskId}/eod-report`, data),
+    submitParentTaskEOD: (taskId, data) => api.post(`/tasks/${taskId}/parent-eod-report`, data),
+    getAllEODReports: (params) => api.get('/tasks/eod-reports/all', { params }),
+    addSubtaskComment: (taskId, subtaskId, content) => api.post(`/tasks/${taskId}/subtasks/${subtaskId}/comments`, { content })
 };
 
 // Notifications API

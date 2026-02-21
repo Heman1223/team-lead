@@ -206,7 +206,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             <div className="w-full max-w-4xl h-full bg-gray-900 border-l border-gray-700/50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-500">
                 {/* Header */}
                 <div className="flex items-center justify-between p-10 border-b border-white/5 bg-gray-950 p-12 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl -mr-32 -mt-32" />
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-[#3E2723]/5 rounded-full blur-3xl -mr-32 -mt-32" />
                     <div className="flex items-center gap-8 relative z-10">
                         <div className={`w-20 h-20 rounded-[2rem] ${statusColors[lead.status]} shadow-2xl flex items-center justify-center border border-white/10 group hover:scale-110 transition-transform duration-500`}>
                             <Briefcase size={36} />
@@ -215,10 +215,10 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                             <h2 className="text-4xl font-black text-white tracking-tighter uppercase">{lead.clientName}</h2>
                             <div className="flex flex-wrap items-center gap-4">
                                 <span className="px-3 py-1 bg-gray-800 text-gray-400 rounded-lg text-xs font-black uppercase tracking-widest border border-white/5 flex items-center gap-2">
-                                    <Mail size={12} className="text-orange-500" /> {lead.email}
+                                    <Mail size={12} className="text-[#3E2723]" /> {lead.email}
                                 </span>
                                 <span className="px-3 py-1 bg-gray-800 text-gray-400 rounded-lg text-xs font-black uppercase tracking-widest border border-white/5 flex items-center gap-2">
-                                    <Phone size={12} className="text-orange-500" /> {lead.phone}
+                                    <Phone size={12} className="text-[#3E2723]" /> {lead.phone}
                                 </span>
                                 {lead.escalatedToAdmin && (
                                     <span className="px-3 py-1 bg-rose-500/20 text-rose-400 rounded-lg text-xs font-black uppercase tracking-widest border border-rose-500/30 flex items-center gap-2">
@@ -238,7 +238,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                     <div className="flex flex-wrap gap-4">
                         {/* Status Update */}
                         <select
-                            className="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
+                            className="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-[#3E2723] appearance-none cursor-pointer"
                             value={lead.status}
                             onChange={(e) => handleUpdateStatus(e.target.value)}
                             disabled={updating}
@@ -298,11 +298,11 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                     {/* Note Input for Status Change */}
                     <div className="bg-gray-900/50 border border-gray-700/50 rounded-2xl p-6">
                         <label className="block text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
-                            <MessageSquare size={16} className="text-orange-500" />
+                            <MessageSquare size={16} className="text-[#3E2723]" />
                             Add Note (Optional)
                         </label>
                         <textarea
-                            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-gray-200 focus:ring-2 focus:ring-orange-500 outline-none resize-none"
+                            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-gray-200 focus:ring-2 focus:ring-[#3E2723] outline-none resize-none"
                             placeholder="Add a note about this lead or status change..."
                             rows="3"
                             value={statusNote}
@@ -316,7 +316,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                     {/* Assignment Controls */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <select
-                            className="bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
+                            className="bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-[#3E2723] appearance-none cursor-pointer"
                             value={lead.assignedTo?._id || ''}
                             onChange={(e) => handleAssign(e.target.value, lead.assignedTeam?._id)}
                             disabled={updating}
@@ -325,7 +325,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                             {allUsers.map(u => <option key={u._id} value={u._id}>{u.name.toUpperCase()}</option>)}
                         </select>
                         <select
-                            className="bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
+                            className="bg-gray-900 border border-gray-700 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest focus:ring-2 focus:ring-[#3E2723] appearance-none cursor-pointer"
                             value={lead.assignedTeam?._id || ''}
                             onChange={(e) => handleAssign(lead.assignedTo?._id, e.target.value)}
                             disabled={updating}
@@ -392,7 +392,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-6">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Tag className="text-orange-500" size={18} />
+                                <Tag className="text-[#3E2723]" size={18} />
                                 Lead Information
                             </h3>
                             <div className="space-y-4 bg-gray-800/20 p-6 rounded-3xl border border-gray-700/30">
@@ -407,7 +407,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 <div className="flex justify-between items-center text-sm border-b border-gray-700/30 pb-3">
                                     <span className="text-gray-400">Priority</span>
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${lead.priority === 'urgent' ? 'bg-rose-500/20 text-rose-400' :
-                                        lead.priority === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                                        lead.priority === 'high' ? 'bg-[#3E2723]/20 text-[#5D4037]' :
                                             'bg-blue-500/20 text-blue-400'
                                         }`}>
                                         {lead.priority?.toUpperCase()}
@@ -450,7 +450,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                             <div className="space-y-6 pl-4 border-l border-gray-700/50">
                                 {activities.map((activity) => (
                                     <div key={activity._id} className="relative">
-                                        <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                                        <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-[#3E2723] shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
                                         <div className="space-y-1">
                                             <div className="flex justify-between items-center">
                                                 <span className="text-xs font-bold text-gray-200 capitalize">{activity.action.replace('lead_', '').replace('_', ' ')}</span>

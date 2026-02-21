@@ -31,7 +31,7 @@ const MemberDetailsPage = () => {
         switch (level) {
             case 'Very High': return 'text-green-600';
             case 'High': return 'text-blue-600';
-            case 'Medium': return 'text-orange-600';
+            case 'Medium': return 'text-[#3E2723]';
             default: return 'text-gray-600';
         }
     };
@@ -40,7 +40,7 @@ const MemberDetailsPage = () => {
         switch (level) {
             case 'Very High': return 'bg-green-100 border-green-200';
             case 'High': return 'bg-blue-100 border-blue-200';
-            case 'Medium': return 'bg-orange-100 border-orange-200';
+            case 'Medium': return 'bg-[#D7CCC8]/30 border-[#D7CCC8]/50';
             default: return 'bg-gray-100 border-gray-200';
         }
     };
@@ -59,7 +59,7 @@ const MemberDetailsPage = () => {
             <Layout title="Member Details">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723] mx-auto"></div>
                         <p className="mt-4 text-gray-700 font-semibold">Loading member details...</p>
                     </div>
                 </div>
@@ -74,7 +74,7 @@ const MemberDetailsPage = () => {
                     <p className="text-gray-500">Member not found</p>
                     <button
                         onClick={() => navigate(-1)}
-                        className="mt-4 px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700"
+                        className="mt-4 px-6 py-3 bg-[#3E2723] text-white rounded-xl hover:bg-[#5D4037]"
                     >
                         Go Back
                     </button>
@@ -100,7 +100,7 @@ const MemberDetailsPage = () => {
                 </div>
 
                 {/* Member Profile Card */}
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 text-white shadow-xl">
+                <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] rounded-2xl p-8 text-white shadow-xl">
                     <div className="flex items-start gap-6">
                         <div className="w-32 h-32 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center text-6xl font-bold shadow-lg">
                             {user.name?.charAt(0).toUpperCase()}
@@ -108,12 +108,12 @@ const MemberDetailsPage = () => {
                         <div className="flex-1">
                             <h1 className="text-4xl font-bold mb-2">{user.name}</h1>
                             <div className="space-y-2 mb-4">
-                                <div className="flex items-center gap-2 text-orange-100">
+                                <div className="flex items-center gap-2 text-[#D7CCC8]/80">
                                     <Mail className="w-5 h-5" />
                                     <span className="text-lg">{user.email}</span>
                                 </div>
                                 {user.phone && (
-                                    <div className="flex items-center gap-2 text-orange-100">
+                                    <div className="flex items-center gap-2 text-[#D7CCC8]/80">
                                         <Phone className="w-5 h-5" />
                                         <span className="text-lg">{user.phone}</span>
                                     </div>
@@ -145,7 +145,7 @@ const MemberDetailsPage = () => {
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-orange-100 text-sm mb-1">Status</p>
+                            <p className="text-[#D7CCC8]/80 text-sm mb-1">Status</p>
                             <p className={`text-xl font-bold px-4 py-2 rounded-lg ${
                                 user.isActive ? 'bg-green-500' : 'bg-red-500'
                             }`}>
@@ -174,7 +174,7 @@ const MemberDetailsPage = () => {
                             className={`h-4 rounded-full transition-all ${
                                 activityLevel === 'Very High' ? 'bg-green-500' :
                                 activityLevel === 'High' ? 'bg-blue-500' :
-                                activityLevel === 'Medium' ? 'bg-orange-500' :
+                                activityLevel === 'Medium' ? 'bg-[#3E2723]' :
                                 'bg-gray-500'
                             }`}
                             style={{ width: `${getActivityProgress(activityLevel)}%` }}
@@ -206,14 +206,14 @@ const MemberDetailsPage = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-orange-50 rounded-xl p-5 border border-orange-200">
+                    <div className="bg-[#D7CCC8]/20 rounded-xl p-5 border border-[#D7CCC8]/40">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-orange-100 rounded-lg">
-                                <Activity className="w-6 h-6 text-orange-600" />
+                            <div className="p-3 bg-[#D7CCC8]/30 rounded-lg">
+                                <Activity className="w-6 h-6 text-[#3E2723]" />
                             </div>
                             <div>
                                 <p className="text-xs text-gray-600 font-medium">In Progress</p>
-                                <p className="text-3xl font-bold text-orange-600">{taskStats.inProgress}</p>
+                                <p className="text-3xl font-bold text-[#3E2723]">{taskStats.inProgress}</p>
                             </div>
                         </div>
                     </div>
@@ -306,7 +306,7 @@ const MemberDetailsPage = () => {
                 {/* All Tasks */}
                 <div className="bg-white rounded-2xl border border-gray-200 p-6">
                     <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                        <Calendar className="w-6 h-6 text-orange-600" />
+                        <Calendar className="w-6 h-6 text-[#3E2723]" />
                         All Tasks ({tasks.length})
                     </h3>
                     {tasks.length > 0 ? (
@@ -338,7 +338,7 @@ const MemberDetailsPage = () => {
                                             <Award className="w-4 h-4" />
                                             <span>Priority: <span className={`font-medium ${
                                                 task.priority === 'high' ? 'text-red-600' :
-                                                task.priority === 'medium' ? 'text-orange-600' :
+                                                task.priority === 'medium' ? 'text-[#3E2723]' :
                                                 'text-green-600'
                                             }`}>{task.priority.toUpperCase()}</span></span>
                                         </div>
@@ -365,14 +365,14 @@ const MemberDetailsPage = () => {
                 {/* Recent Activities */}
                 <div className="bg-white rounded-2xl border border-gray-200 p-6">
                     <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                        <Activity className="w-6 h-6 text-orange-600" />
+                        <Activity className="w-6 h-6 text-[#3E2723]" />
                         Recent Activity Timeline ({activities.length})
                     </h3>
                     {activities.length > 0 ? (
                         <div className="space-y-3">
                             {activities.map(activity => (
                                 <div key={activity._id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                    <div className="flex-shrink-0 w-3 h-3 bg-orange-500 rounded-full mt-2"></div>
+                                    <div className="flex-shrink-0 w-3 h-3 bg-[#3E2723] rounded-full mt-2"></div>
                                     <div className="flex-1">
                                         <p className="text-sm text-gray-900 font-medium">{activity.details}</p>
                                         <p className="text-xs text-gray-500 mt-1">

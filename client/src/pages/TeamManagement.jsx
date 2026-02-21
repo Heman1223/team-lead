@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
     Users, User, Phone, Mail, MapPin, Calendar, TrendingUp,
     CheckCircle, Clock, AlertCircle, X, Search, Filter,
-    PhoneCall, PhoneOff, PhoneMissed, BarChart3
+    PhoneCall, PhoneOff, PhoneMissed
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -253,7 +253,7 @@ const TeamManagement = () => {
             <Layout title="Team Management">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723] mx-auto"></div>
                         <p className="mt-4 text-gray-700 font-semibold">Loading team members...</p>
                     </div>
                 </div>
@@ -295,10 +295,10 @@ const TeamManagement = () => {
                             <div 
                                 key={team._id} 
                                 onClick={() => handleTeamClick(team)}
-                                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group"
+                                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-[#5D4037] transition-all cursor-pointer group"
                             >
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                    <div className="w-12 h-12 bg-[#F3EFE7] rounded-xl flex items-center justify-center text-[#3E2723] group-hover:bg-[#3E2723] group-hover:text-white transition-colors">
                                         <Users className="w-6 h-6" />
                                     </div>
                                     <span className={`px-2 py-1 text-xs font-bold rounded-lg uppercase ${
@@ -309,31 +309,54 @@ const TeamManagement = () => {
                                 </div>
                                 
                                 <h3 className="text-xl font-bold text-gray-900 mb-2">{team.name}</h3>
-                                <p className="text-sm text-gray-500 line-clamp-2 mb-6 h-10">{team.description || 'No description provided.'}</p>
+                                <p className="text-sm text-gray-500 line-clamp-2 mb-4 h-10">{team.description || 'No description provided.'}</p>
                                 
                                 <div className="space-y-3">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Members</span>
                                         <span className="font-bold text-gray-900">{team.members?.length || 0}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Project</span>
-                                        <span className="font-bold text-gray-900 truncate max-w-[150px]">{team.currentProject || 'N/A'}</span>
-                                    </div>
                                     
-                                    {/* Progress Bar (Mock or real if available) */}
+                                    {/* Overall Progress */}
                                     <div className="pt-2">
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="text-xs font-semibold text-gray-500">Overall Progress</span>
-                                            <span className="text-xs font-bold text-orange-600">{team.completionRate || 0}%</span>
+                                            <span className="text-xs font-bold text-[#3E2723]">{team.completionRate || 0}%</span>
                                         </div>
                                         <div className="w-full bg-gray-100 rounded-full h-2">
                                             <div 
-                                                className="bg-orange-500 h-2 rounded-full transition-all"
+                                                className="bg-[#3E2723] h-2 rounded-full transition-all"
                                                 style={{ width: `${team.completionRate || 0}%` }}
                                             ></div>
                                         </div>
                                     </div>
+
+                                    {/* Per-Task/Project Progress */}
+                                    {team.tasksWithProgress && team.tasksWithProgress.length > 0 && (
+                                        <div className="pt-2 space-y-2 border-t border-gray-100">
+                                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Projects</span>
+                                            {team.tasksWithProgress.slice(0, 3).map(task => (
+                                                <div key={task._id}>
+                                                    <div className="flex justify-between items-center mb-0.5">
+                                                        <span className="text-xs font-medium text-gray-700 truncate max-w-[60%]">{task.title}</span>
+                                                        <span className="text-xs font-bold text-gray-500">{task.completedCount}/{task.totalCount}</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                                        <div 
+                                                            className={`h-1.5 rounded-full transition-all ${
+                                                                task.progress === 100 ? 'bg-green-500' : 
+                                                                task.progress > 0 ? 'bg-[#5D4037]' : 'bg-gray-300'
+                                                            }`}
+                                                            style={{ width: `${task.progress}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {team.tasksWithProgress.length > 3 && (
+                                                <p className="text-xs text-gray-400 text-center">+{team.tasksWithProgress.length - 3} more tasks</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -410,7 +433,7 @@ const TeamManagement = () => {
                                 placeholder="Search members..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 sm:pl-10 lg:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 lg:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                className="w-full pl-9 sm:pl-10 lg:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 lg:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                             />
                         </div>
                         <div className="flex gap-2 overflow-x-auto">
@@ -420,7 +443,7 @@ const TeamManagement = () => {
                                     onClick={() => setStatusFilter(status)}
                                     className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
                                         statusFilter === status
-                                            ? 'bg-orange-500 text-white'
+                                            ? 'bg-[#3E2723] text-white'
                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                                 >
@@ -452,7 +475,7 @@ const TeamManagement = () => {
                                         {/* Member Header */}
                                         <div className="flex items-start gap-4 mb-4">
                                             <div className="relative">
-                                                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                                                <div className="w-16 h-16 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-xl flex items-center justify-center text-white text-2xl font-bold shadow-md">
                                                     {member.name?.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor(member.status)} rounded-full border-2 border-white`}></div>
@@ -489,11 +512,11 @@ const TeamManagement = () => {
                                             <div className="mb-4 p-3 bg-gray-50 rounded-xl">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="text-xs font-semibold text-gray-600">Performance</span>
-                                                    <span className="text-xs font-bold text-orange-600">{stats.completionRate}%</span>
+                                                    <span className="text-xs font-bold text-[#3E2723]">{stats.completionRate}%</span>
                                                 </div>
                                                 <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                                     <div
-                                                        className="bg-orange-500 h-2 rounded-full transition-all"
+                                                        className="bg-[#3E2723] h-2 rounded-full transition-all"
                                                         style={{ width: `${stats.completionRate}%` }}
                                                     ></div>
                                                 </div>
@@ -514,15 +537,7 @@ const TeamManagement = () => {
                                             </div>
                                         )}
 
-                                        {/* Action Buttons */}
                                         <div className="flex gap-2">
-                                            <button
-                                                onClick={() => navigate(`/team/member/${member._id}`)}
-                                                className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-all font-semibold text-sm flex items-center justify-center gap-2"
-                                            >
-                                                <BarChart3 className="w-4 h-4" />
-                                                View Profile
-                                            </button>
                                             {isTeamLead && member._id !== user._id && (
                                                 <button
                                                     onClick={() => handleInitiateCall(member)}
@@ -553,7 +568,7 @@ const TeamManagement = () => {
         {showDetailsModal && selectedMember && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                 <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-hidden">
-                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 rounded-t-2xl">
+                    <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] px-6 py-5 rounded-t-2xl">
                         <div className="flex items-center justify-between">
                             <h3 className="text-xl font-bold text-white">Member Details</h3>
                             <button
@@ -568,7 +583,7 @@ const TeamManagement = () => {
                     <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
                         {/* Member Info */}
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white text-3xl font-bold shadow-md">
+                            <div className="w-20 h-20 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-xl flex items-center justify-center text-white text-3xl font-bold shadow-md">
                                 {selectedMember.name?.charAt(0).toUpperCase()}
                             </div>
                             <div>
@@ -624,7 +639,7 @@ const TeamManagement = () => {
                                                 <p className="text-sm text-gray-600">In Progress</p>
                                             </div>
                                             <div className="text-center p-3 bg-white rounded-lg">
-                                                <p className="text-2xl font-bold text-orange-600">{stats.completionRate}%</p>
+                                                <p className="text-2xl font-bold text-[#3E2723]">{stats.completionRate}%</p>
                                                 <p className="text-sm text-gray-600">Completion Rate</p>
                                             </div>
                                         </div>
@@ -662,7 +677,7 @@ const TeamManagement = () => {
                 <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
                     <div className="p-8 text-center">
                         {/* Member Avatar */}
-                        <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-lg mx-auto mb-4">
+                        <div className="w-24 h-24 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-lg mx-auto mb-4">
                             {selectedMember.name?.charAt(0).toUpperCase()}
                         </div>
 
@@ -672,7 +687,7 @@ const TeamManagement = () => {
                         {/* Call Status */}
                         {callStatus === 'checking' && (
                             <div className="mb-6">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-orange-600 mx-auto mb-3"></div>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#3E2723] mx-auto mb-3"></div>
                                 <p className="text-gray-700 font-semibold">Checking availability...</p>
                             </div>
                         )}

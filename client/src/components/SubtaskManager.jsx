@@ -102,7 +102,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
                 </div>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="ml-4 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all font-semibold text-sm flex items-center gap-2"
+                    className="ml-4 px-4 py-2 bg-[#3E2723] text-white rounded-xl hover:bg-[#3E2723] transition-all font-semibold text-sm flex items-center gap-2"
                 >
                     <Plus className="w-4 h-4" />
                     Add Subtask
@@ -116,7 +116,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
                     <p className="text-gray-600 mb-4">No subtasks yet</p>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all font-semibold text-sm"
+                        className="px-4 py-2 bg-[#3E2723] text-white rounded-xl hover:bg-[#3E2723] transition-all font-semibold text-sm"
                     >
                         Create First Subtask
                     </button>
@@ -158,7 +158,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
                                         <select
                                             value={subtask.status}
                                             onChange={(e) => handleUpdateStatus(subtask._id, e.target.value)}
-                                            className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                         >
                                             <option value="not_started">Not Started</option>
                                             <option value="in_progress">In Progress</option>
@@ -191,7 +191,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
             {showAddModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-                        <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4 rounded-t-2xl">
+                        <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] px-6 py-4 rounded-t-2xl">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                     <Plus className="w-5 h-5" />
@@ -215,7 +215,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
                                     type="text"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                     placeholder="e.g., Design database schema"
                                     required
                                 />
@@ -228,7 +228,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
                                 <textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                     placeholder="Brief description of the subtask"
                                     rows="3"
                                 />
@@ -241,7 +241,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
                                 <select
                                     value={formData.assignedTo}
                                     onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent bg-white"
                                     required
                                 >
                                     <option value="">Select team member</option>
@@ -261,7 +261,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
                                     type="date"
                                     value={formData.deadline}
                                     onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                     min={new Date().toISOString().split('T')[0]}
                                 />
                             </div>
@@ -277,7 +277,7 @@ const SubtaskManager = ({ task, teamMembers = [], onUpdate }) => {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white font-semibold rounded-xl hover:from-[#3E2723] hover:to-[#3E2723] shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
                                 >
                                     {loading ? 'Creating...' : 'Create Subtask'}
                                 </button>

@@ -14,7 +14,7 @@ const SecuritySettings = ({ passwordData, setPasswordData, handlePasswordChange,
                             type={showPasswords.current ? 'text' : 'password'}
                             value={passwordData.currentPassword}
                             onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                             required
                         />
                         <button
@@ -36,7 +36,7 @@ const SecuritySettings = ({ passwordData, setPasswordData, handlePasswordChange,
                             type={showPasswords.new ? 'text' : 'password'}
                             value={passwordData.newPassword}
                             onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                             required
                             minLength={6}
                         />
@@ -60,7 +60,7 @@ const SecuritySettings = ({ passwordData, setPasswordData, handlePasswordChange,
                             type={showPasswords.confirm ? 'text' : 'password'}
                             value={passwordData.confirmPassword}
                             onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                             required
                         />
                         <button
@@ -76,7 +76,7 @@ const SecuritySettings = ({ passwordData, setPasswordData, handlePasswordChange,
                 <button
                     type="submit"
                     disabled={saving}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all font-semibold disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white rounded-xl hover:from-[#3E2723] hover:to-[#3E2723] transition-all font-semibold disabled:opacity-50"
                 >
                     <Lock className="w-5 h-5" />
                     {saving ? 'Changing...' : 'Change Password'}

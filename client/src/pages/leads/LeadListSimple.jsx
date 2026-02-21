@@ -63,7 +63,7 @@ const LeadList = ({ onSelectLead }) => {
     const getPriorityColor = (priority) => {
         const colors = {
             urgent: 'bg-red-500',
-            high: 'bg-orange-500',
+            high: 'bg-[#3E2723]',
             medium: 'bg-yellow-500',
             low: 'bg-green-500'
         };
@@ -74,7 +74,7 @@ const LeadList = ({ onSelectLead }) => {
         return (
             <div className="flex items-center justify-center p-12">
                 <div className="text-center space-y-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3E2723] mx-auto"></div>
                     <p className="text-gray-600 font-medium">Loading leads...</p>
                 </div>
             </div>
@@ -92,7 +92,7 @@ const LeadList = ({ onSelectLead }) => {
                     <p className="text-gray-600">{error}</p>
                     <button
                         onClick={fetchLeads}
-                        className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all font-semibold"
+                        className="px-6 py-3 bg-[#3E2723] text-white rounded-xl hover:bg-[#2E1B17] transition-all font-semibold"
                     >
                         Try Again
                     </button>
@@ -113,7 +113,7 @@ const LeadList = ({ onSelectLead }) => {
                         placeholder="Search by name or email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 lg:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 lg:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                     />
                 </div>
 
@@ -123,7 +123,7 @@ const LeadList = ({ onSelectLead }) => {
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                        className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723] focus:border-transparent bg-white"
                     >
                         <option value="all">All Status</option>
                         <option value="new">New</option>
@@ -141,7 +141,7 @@ const LeadList = ({ onSelectLead }) => {
                     <button
                         onClick={() => setViewMode('list')}
                         className={`p-2 rounded-lg transition-all ${viewMode === 'list'
-                            ? 'bg-white text-orange-600 shadow-sm'
+                            ? 'bg-white text-[#3E2723] shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                             }`}
                         title="List View"
@@ -151,7 +151,7 @@ const LeadList = ({ onSelectLead }) => {
                     <button
                         onClick={() => setViewMode('kanban')}
                         className={`p-2 rounded-lg transition-all ${viewMode === 'kanban'
-                            ? 'bg-white text-orange-600 shadow-sm'
+                            ? 'bg-white text-[#3E2723] shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                             }`}
                         title="Kanban View"
@@ -200,7 +200,7 @@ const LeadList = ({ onSelectLead }) => {
                         <div
                             key={lead._id}
                             onClick={() => onSelectLead(lead._id)}
-                            className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-orange-300 hover:shadow-lg transition-all cursor-pointer group"
+                            className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-[#3E2723]/30 hover:shadow-lg transition-all cursor-pointer group"
                         >
                             <div className="flex items-start justify-between">
                                 {/* Lead Info */}
@@ -210,7 +210,7 @@ const LeadList = ({ onSelectLead }) => {
                                         <div className={`w-1 h-12 rounded-full ${getPriorityColor(lead.priority)}`}></div>
 
                                         <div className="flex-1">
-                                            <h3 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
+                                            <h3 className="text-lg font-bold text-gray-900 group-hover:text-[#3E2723] transition-colors">
                                                 {lead.clientName || 'Unknown'}
                                             </h3>
                                             <p className="text-sm text-gray-600 capitalize">
@@ -267,7 +267,7 @@ const LeadList = ({ onSelectLead }) => {
                                 </div>
 
                                 {/* View Button */}
-                                <button className="ml-4 p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors">
+                                <button className="ml-4 p-2 text-gray-400 hover:text-[#3E2723] hover:bg-[#3E2723]/5 rounded-lg transition-colors">
                                     <Eye className="w-5 h-5" />
                                 </button>
                             </div>

@@ -356,9 +356,9 @@ const convertToProject = async (req, res) => {
             teamId: lead.assignedTeam,
             dueDate: lead.expectedCloseDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
             deadline: lead.expectedCloseDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            status: 'not_started',
+            status: 'pending',
             isParentTask: true,
-            leadId: lead._id // Pass lead link
+            relatedLead: lead._id // Pass lead link correctly
         });
 
         // Update lead
@@ -533,10 +533,28 @@ const getLeadStats = async (req, res) => {
         // Calculate stats
         const totalLeads = leads.length;
         const convertedLeads = leads.filter(l => l.status === 'converted').length;
-        const notInterestedLeads = leads.filter(l => l.status === 'not_interested').length;
+        const lostLeads = leads.filter(l => l.status === 'lost').length;
         const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(2) : 0;
 
-        console.log('Stats calculated:', { totalLeads, convertedLeads, notInterestedLeads, conversionRate });
+        // Alerts & Specific Logic
+        const now = new Date();
+        const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(now.setHours(23, 59, 59, 999));
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        const followUpsToday = leads.filter(l => 
+            l.followUpDate && 
+            new Date(l.followUpDate) >= startOfDay && 
+            new Date(l.followUpDate) <= endOfDay
+        ).length;
+
+        const highValueLeads = leads.filter(l => l.estimatedValue >= 10000).length;
+        const inactiveLeads = leads.filter(l => 
+            new Date(l.updatedAt) < sevenDaysAgo && 
+            !['converted', 'lost'].includes(l.status)
+        ).length;
+
+        console.log('Stats calculated:', { totalLeads, convertedLeads, lostLeads, conversionRate });
 
         // Leads by status
         const statusDist = leads.reduce((acc, lead) => {
@@ -618,7 +636,10 @@ const getLeadStats = async (req, res) => {
             totalLeads,
             wonLeads: convertedLeads,
             convertedLeads,
-            notInterestedLeads,
+            lostLeads,
+            followUpsToday,
+            highValueLeads,
+            inactiveLeads,
             conversionRate: parseFloat(conversionRate),
             statusDist,
             sourcesDist,

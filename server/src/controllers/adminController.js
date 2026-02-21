@@ -36,6 +36,7 @@ const getUserDetails = async (req, res) => {
         const tasks = await Task.find({ assignedTo: user._id })
             .populate('assignedBy', 'name email')
             .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email avatar role')
             .sort({ createdAt: -1 })
             .limit(20);
 
@@ -96,7 +97,7 @@ const createUser = async (req, res) => {
         console.log('=== CREATE USER REQUEST ===');
         console.log('Request body:', req.body);
         
-        const { name, email, password, role, phone, designation, coreField, teamId } = req.body;
+        const { name, email, password, role, phone, designation, department, coreField, teamId } = req.body;
 
         // Validate required fields
         if (!name || !email || !password || !role) {
@@ -136,6 +137,7 @@ const createUser = async (req, res) => {
             role,
             phone: phone || '',
             designation: designation || '',
+            department: department || '',
             coreField: coreField || '',
             teamId: teamId || null
         });
@@ -184,7 +186,7 @@ const createUser = async (req, res) => {
 // @access  Private/Admin
 const updateUser = async (req, res) => {
     try {
-        const { name, email, role, phone, designation, coreField, teamId } = req.body;
+        const { name, email, role, phone, designation, department, coreField, teamId } = req.body;
 
         let user = await User.findById(req.params.id);
         if (!user) {
@@ -216,6 +218,7 @@ const updateUser = async (req, res) => {
         if (role && ['admin', 'team_lead', 'team_member'].includes(role)) user.role = role;
         if (phone !== undefined) user.phone = phone;
         if (designation !== undefined) user.designation = designation;
+        if (department !== undefined) user.department = department;
         if (coreField !== undefined) user.coreField = coreField;
         
         // Handle teamId - convert empty string to null
@@ -395,8 +398,8 @@ const resetUserPassword = async (req, res) => {
 const getAllTeams = async (req, res) => {
     try {
         const teams = await Team.find()
-            .populate('leadId', 'name email coreField designation phone')
-            .populate('members', 'name email role coreField designation phone');
+            .populate('leadId', 'name email avatar coreField designation phone')
+            .populate('members', 'name email avatar role coreField designation phone');
         
         // Update statistics for each team to get current data
         const teamsWithStats = await Promise.all(
@@ -458,11 +461,29 @@ const createTeam = async (req, res) => {
             });
         }
 
-        // Create team with lead as first member
+        // Handle members with roles
         const members = [leadId];
+        const memberDetails = [{
+            userId: leadId,
+            role: 'lead',
+            joinedAt: new Date()
+        }];
+
         if (memberIds && Array.isArray(memberIds)) {
-            memberIds.forEach(id => {
-                if (id !== leadId) members.push(id);
+            memberIds.forEach(m => {
+                const id = typeof m === 'object' ? m.userId : m;
+                const role = typeof m === 'object' ? m.role : 'member';
+                
+                if (id !== leadId) {
+                    if (!members.includes(id)) {
+                        members.push(id);
+                        memberDetails.push({
+                            userId: id,
+                            role: role || 'member',
+                            joinedAt: new Date()
+                        });
+                    }
+                }
             });
         }
 
@@ -472,6 +493,7 @@ const createTeam = async (req, res) => {
             objective: objective || '',
             leadId,
             members,
+            memberDetails,
             department: department || '',
             coreField: coreField || teamLead.coreField || '',
             currentProject: currentProject || '',
@@ -489,8 +511,9 @@ const createTeam = async (req, res) => {
 
         // Update members' teamId
         if (memberIds && memberIds.length > 0) {
+            const memberUserIds = memberIds.map(m => typeof m === 'object' ? m.userId : m);
             await User.updateMany(
-                { _id: { $in: memberIds } },
+                { _id: { $in: memberUserIds } },
                 { teamId: team._id }
             );
         }
@@ -560,7 +583,8 @@ const assignMembersToTeam = async (req, res) => {
 
         // Add new members (avoid duplicates)
         memberIds.forEach(memberId => {
-            if (!team.members.includes(memberId)) {
+            const idStr = memberId.toString();
+            if (!team.members.some(m => m.toString() === idStr)) {
                 team.members.push(memberId);
             }
         });
@@ -611,22 +635,23 @@ const assignMembersToTeam = async (req, res) => {
 // @access  Private/Admin
 const getAllTasks = async (req, res) => {
     try {
-        const tasks = await Task.find()
+        const tasks = await Task.find({ isDeleted: { $ne: true } })
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
             .populate('teamId', 'name')
-            .populate('subtasks.assignedTo', 'name email avatar');
+            .populate('subtasks.assignedTo', 'name email avatar')
+            .populate('relatedLead', 'clientName email');
         
-        // Calculate progress for each task before returning
-        const tasksWithProgress = await Promise.all(
-            tasks.map(async (task) => {
-                if (task.subtasks && task.subtasks.length > 0) {
-                    task.calculateProgress();
-                    await task.save();
-                }
-                return task;
-            })
-        );
+        // Calculate progress for each task before returning WITHOUT saving in loop
+        const tasksWithProgress = tasks.map((task) => {
+            const taskObj = task.toObject();
+            if (taskObj.subtasks && taskObj.subtasks.length > 0) {
+                const totalSubtasks = taskObj.subtasks.length;
+                const totalProgress = taskObj.subtasks.reduce((sum, st) => sum + (st.progressPercentage || 0), 0);
+                taskObj.progressPercentage = Math.round(totalProgress / totalSubtasks) || 0;
+            }
+            return taskObj;
+        });
         
         res.json({
             success: true,
@@ -721,7 +746,11 @@ const assignTaskToTeamLead = async (req, res) => {
             deadlineType,
             taskType,
             teamLeadId,
-            notes
+            notes,
+            relatedProject,
+            relatedLead,
+            reminder,
+            checklist
         } = req.body;
 
         // Validate required fields
@@ -757,6 +786,8 @@ const assignTaskToTeamLead = async (req, res) => {
             assignedBy: req.user._id,
             teamId: team ? team._id : null,
             taskType: taskType || 'one_time',
+            relatedProject: relatedProject || '',
+            relatedLead: relatedLead || null,
             
             // Timeline
             startDate: startDate ? new Date(startDate) : new Date(),
@@ -765,9 +796,10 @@ const assignTaskToTeamLead = async (req, res) => {
             estimatedEffort: estimatedEffort || 0,
             estimatedEffortUnit: estimatedEffortUnit || 'hours',
             deadlineType: deadlineType || 'soft',
+            reminder: reminder ? new Date(reminder) : null,
             
             // Status
-            status: 'not_started',
+            status: 'pending',
             progressPercentage: 0,
             isOverdue: false,
             
@@ -778,7 +810,8 @@ const assignTaskToTeamLead = async (req, res) => {
             assignedAt: new Date(),
             
             // Additional
-            notes: notes || ''
+            notes: notes || '',
+            checklist: checklist || []
         });
 
         // Log activity
@@ -853,7 +886,9 @@ const getTeamDetails = async (req, res) => {
         const tasks = await Task.find({ teamId: team._id })
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
+            .populate('subtasks.assignedTo', 'name email avatar role')
             .sort({ createdAt: -1 });
+
 
         // Calculate task statistics
         const taskStats = {
@@ -884,9 +919,11 @@ const getTeamDetails = async (req, res) => {
                 });
 
                 return {
+                    _id: member._id,
                     userId: member._id,
                     name: member.name,
                     email: member.email,
+                    designation: member.designation,
                     tasksAssigned: memberTasks.length,
                     tasksCompleted: completedCount,
                     completionRate: memberTasks.length > 0 ? Math.round((completedCount / memberTasks.length) * 100) : 0,
@@ -897,18 +934,9 @@ const getTeamDetails = async (req, res) => {
             })
         );
 
-        // Calculate team health score (0-100)
-        const healthScore = Math.round(
-            (completionRate * 0.4) + // 40% weight on completion rate
-            (Math.min(100, (team.members.filter(m => m.isActive).length / team.members.length) * 100) * 0.3) + // 30% weight on active members
-            (Math.max(0, 100 - (taskStats.overdue / Math.max(1, taskStats.total)) * 100) * 0.3) // 30% weight on overdue tasks (inverse)
-        );
-
-        // Determine team status
-        let teamStatus = 'Excellent';
-        if (healthScore < 40) teamStatus = 'Critical';
-        else if (healthScore < 60) teamStatus = 'Needs Attention';
-        else if (healthScore < 80) teamStatus = 'Good';
+        // Update statistics to get latest health score and status
+        await team.updateStatistics();
+        await team.save();
 
         res.json({
             success: true,
@@ -919,8 +947,8 @@ const getTeamDetails = async (req, res) => {
                 completionRate,
                 avgCompletionTime: Math.round(avgCompletionTime * 10) / 10,
                 memberActivity,
-                healthScore,
-                teamStatus,
+                healthScore: team.healthScore,
+                teamStatus: team.healthStatus,
                 activeMembers: team.members.filter(m => m.isActive).length,
                 inactiveMembers: team.members.filter(m => !m.isActive).length
             }
@@ -936,19 +964,76 @@ const getTeamDetails = async (req, res) => {
 // @access  Private/Admin
 const updateTeam = async (req, res) => {
     try {
-        const { name, description, currentProject, projectProgress, department, coreField } = req.body;
+        const { name, description, objective, currentProject, projectProgress, department, coreField, leadId, memberIds } = req.body;
 
         const team = await Team.findById(req.params.id);
         if (!team) {
             return res.status(404).json({ success: false, message: 'Team not found' });
         }
 
+        // Basic Info Updates
         if (name) team.name = name;
         if (description !== undefined) team.description = description;
+        if (objective !== undefined) team.objective = objective;
         if (currentProject !== undefined) team.currentProject = currentProject;
         if (projectProgress !== undefined) team.projectProgress = projectProgress;
         if (department !== undefined) team.department = department;
         if (coreField !== undefined) team.coreField = coreField;
+
+        // Handle Leadership Change
+        if (leadId && leadId.toString() !== team.leadId?.toString()) {
+            const oldLeadId = team.leadId;
+            const newLead = await User.findById(leadId);
+            
+            if (!newLead || newLead.role !== 'team_lead') {
+                return res.status(400).json({ success: false, message: 'Invalid lead ID or role' });
+            }
+
+            team.leadId = leadId;
+            
+            // Ensure new lead is in members
+            if (!team.members.includes(leadId)) {
+                team.members.push(leadId);
+            }
+
+            // Update Users
+            if (oldLeadId) {
+                await User.findByIdAndUpdate(oldLeadId, { teamId: null });
+            }
+            await User.findByIdAndUpdate(leadId, { teamId: team._id });
+        }
+
+        // Handle Members Change
+        if (memberIds && Array.isArray(memberIds)) {
+            // Include lead in members if not already there
+            const finalMembers = [...new Set([...memberIds, team.leadId.toString()])];
+            
+            // Sync memberDetails structure
+            const newMemberDetails = finalMembers.map(mId => {
+                const existing = team.memberDetails.find(md => md.userId.toString() === mId);
+                return {
+                    userId: mId,
+                    role: mId === team.leadId.toString() ? 'lead' : 'member',
+                    joinedAt: existing ? existing.joinedAt : new Date()
+                };
+            });
+
+            // Sync User models teamId
+            // 1. Clear old members
+            await User.updateMany(
+                { teamId: team._id },
+                { teamId: null }
+            );
+
+            // 2. Set new members
+            await User.updateMany(
+                { _id: { $in: finalMembers } },
+                { teamId: team._id }
+            );
+
+            team.members = finalMembers;
+            team.memberDetails = newMemberDetails;
+        }
 
         await team.save();
 
@@ -957,7 +1042,7 @@ const updateTeam = async (req, res) => {
             action: 'team_updated',
             userId: req.user._id,
             teamId: team._id,
-            details: `Admin updated team: ${team.name}`
+            details: `Admin updated team: ${team.name}. Fields: ${Object.keys(req.body).join(', ')}`
         });
 
         const updatedTeam = await Team.findById(team._id)
@@ -1312,7 +1397,8 @@ const cancelTask = async (req, res) => {
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
-            .populate('teamId', 'name');
+            .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email avatar role');
 
         res.json({
             success: true,
@@ -1335,7 +1421,11 @@ const deleteTask = async (req, res) => {
         }
 
         const taskTitle = task.title;
-        await task.deleteOne();
+        
+        // Soft delete
+        task.isDeleted = true;
+        task.deletedAt = new Date();
+        await task.save();
 
         // Log activity
         await ActivityLog.create({
@@ -1397,6 +1487,7 @@ const uploadTaskAttachment = async (req, res) => {
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
             .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email avatar role')
             .populate('attachments.uploadedBy', 'name');
 
         res.json({
@@ -1439,6 +1530,7 @@ const deleteTaskAttachment = async (req, res) => {
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
             .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name email avatar role')
             .populate('attachments.uploadedBy', 'name');
 
         res.json({
@@ -1448,6 +1540,50 @@ const deleteTaskAttachment = async (req, res) => {
     } catch (error) {
         console.error('Delete attachment error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Send manual admin message/notification to user
+// @route   POST /api/admin/users/:id/message
+// @access  Private/Admin
+const sendAdminMessage = async (req, res) => {
+    try {
+        const { title, message, priority } = req.body;
+        const targetUser = await User.findById(req.params.id);
+
+        if (!targetUser) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Create Notification
+        const notification = await Notification.create({
+            type: 'manual_reminder',
+            title: title || 'Message from Administrator',
+            message: message,
+            userId: targetUser._id,
+            senderId: req.user._id,
+            priority: priority || 'medium',
+            relatedToModel: 'User',
+            relatedTo: targetUser._id
+        });
+
+        // Log this activity
+        await ActivityLog.create({
+            userId: req.user._id,
+            type: 'USER_MEMBER_NOTIFIED',
+            description: `Sent admin message to ${targetUser.name}: ${title}`,
+            relatedId: targetUser._id,
+            relatedModel: 'User'
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Message sent successfully',
+            data: notification
+        });
+    } catch (error) {
+        console.error('Send Admin Message Error:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -1476,5 +1612,6 @@ module.exports = {
     reassignTask,
     cancelTask,
     uploadTaskAttachment,
-    deleteTaskAttachment
+    deleteTaskAttachment,
+    sendAdminMessage
 };

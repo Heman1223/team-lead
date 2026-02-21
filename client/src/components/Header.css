@@ -114,7 +114,7 @@
 
 .mark-all-btn {
     font-size: var(--text-xs);
-    color: var(--primary-600);
+    color: var(--primary-500);
     background: none;
     border: none;
     cursor: pointer;
@@ -141,7 +141,7 @@
 }
 
 .notification-item.unread {
-    background-color: var(--primary-50);
+    background-color: var(--primary-100);
 }
 
 .notification-item:last-child {
@@ -185,7 +185,7 @@
 
 .dropdown-footer button {
     font-size: var(--text-sm);
-    color: var(--primary-600);
+    color: var(--primary-500);
     background: none;
     border: none;
     cursor: pointer;
@@ -293,7 +293,7 @@
 }
 
 .status-option.active {
-    background-color: var(--primary-50);
+    background-color: var(--primary-100);
     border-color: var(--primary-300);
 }
 

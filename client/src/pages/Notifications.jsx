@@ -138,7 +138,7 @@ const Notifications = () => {
     const getTypeColor = (type) => {
         switch (type) {
             case 'task_assigned': return 'bg-green-100 text-green-600 border-green-200';
-            case 'deadline_reminder': return 'bg-orange-100 text-orange-600 border-orange-200';
+            case 'deadline_reminder': return 'bg-[#EFEBE9] text-[#3E2723] border-[#D7CCC8]';
             case 'overdue_alert': return 'bg-red-100 text-red-600 border-red-200';
             case 'manual_reminder': return 'bg-blue-100 text-blue-600 border-blue-200';
             default: return 'bg-gray-100 text-gray-600 border-gray-200';
@@ -181,7 +181,7 @@ const Notifications = () => {
                             {isTeamLead && (
                                 <button 
                                     onClick={() => setShowReminderModal(true)}
-                                    className="px-4 py-2 text-sm font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-lg shadow-lg shadow-orange-200 transition-all flex items-center gap-2"
+                                    className="px-4 py-2 text-sm font-bold text-white bg-[#3E2723] hover:bg-[#3E2723] rounded-lg shadow-lg shadow-[#D7CCC8] transition-all flex items-center gap-2"
                                 >
                                     <Send className="w-4 h-4" />
                                     Send Reminder
@@ -224,7 +224,7 @@ const Notifications = () => {
                                     placeholder={activeTab === 'inbox' ? "Search inbox..." : "Search sent items..."}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723] transition-all"
                                 />
                             </div>
                             
@@ -253,7 +253,7 @@ const Notifications = () => {
                 <div className="space-y-3">
                     {loading ? (
                          <div className="text-center py-12">
-                            <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                            <div className="animate-spin w-8 h-8 border-4 border-[#3E2723] border-t-transparent rounded-full mx-auto mb-4"></div>
                             <p className="text-gray-500">Loading...</p>
                          </div>
                     ) : filteredNotifications.length === 0 ? (
@@ -271,7 +271,7 @@ const Notifications = () => {
                             <div 
                                 key={notif._id}
                                 className={`group relative bg-white rounded-2xl p-5 border transition-all duration-200 hover:shadow-md ${
-                                    !notif.isRead && activeTab === 'inbox' ? 'border-orange-200 bg-orange-50/30' : 'border-gray-100'
+                                    !notif.isRead && activeTab === 'inbox' ? 'border-[#D7CCC8] bg-[#FAF7F2]/30' : 'border-gray-100'
                                 }`}
                             >
                                 <div className="flex items-start gap-4">
@@ -317,7 +317,7 @@ const Notifications = () => {
                                         {!notif.isRead && activeTab === 'inbox' && (
                                             <button 
                                                 onClick={() => handleMarkAsRead(notif._id)}
-                                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                                className="p-2 text-[#3E2723] hover:bg-[#FAF7F2] rounded-lg transition-colors"
                                                 title="Mark as read"
                                             >
                                                 <CheckCircle className="w-4 h-4" />
@@ -363,7 +363,7 @@ const Notifications = () => {
                                         required
                                         value={reminderForm.userId}
                                         onChange={e => setReminderForm({ ...reminderForm, userId: e.target.value })}
-                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723]"
                                     >
                                         <option value="">Select member</option>
                                         {members.map(m => (
@@ -376,7 +376,7 @@ const Notifications = () => {
                                     <select
                                         value={reminderForm.priority}
                                         onChange={e => setReminderForm({ ...reminderForm, priority: e.target.value })}
-                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723]"
                                     >
                                         <option value="low">Low</option>
                                         <option value="medium">Medium</option>
@@ -390,7 +390,7 @@ const Notifications = () => {
                                 <select
                                     value={reminderForm.taskId}
                                     onChange={e => setReminderForm({ ...reminderForm, taskId: e.target.value })}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723]"
                                 >
                                     <option value="">Select task context...</option>
                                     {tasks.map(t => (
@@ -406,7 +406,7 @@ const Notifications = () => {
                                     placeholder="Brief subject..."
                                     value={reminderForm.title}
                                     onChange={e => setReminderForm({ ...reminderForm, title: e.target.value })}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723]"
                                 />
                             </div>
 
@@ -418,7 +418,7 @@ const Notifications = () => {
                                     placeholder="Write your reminder message here..."
                                     value={reminderForm.message}
                                     onChange={e => setReminderForm({ ...reminderForm, message: e.target.value })}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none"
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723] resize-none"
                                 />
                             </div>
 
@@ -432,7 +432,7 @@ const Notifications = () => {
                                 </button>
                                 <button 
                                     type="submit" 
-                                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition-all transform hover:scale-[1.02]"
+                                    className="flex-1 py-3 bg-gradient-to-r from-[#3E2723] to-[#3E2723] hover:from-[#3E2723] hover:to-[#3E2723] text-white font-bold rounded-xl shadow-lg shadow-[#D7CCC8] transition-all transform hover:scale-[1.02]"
                                 >
                                     Send Reminder
                                 </button>

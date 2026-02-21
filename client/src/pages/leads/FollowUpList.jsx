@@ -74,7 +74,7 @@ const FollowUpList = () => {
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
                 {loading ? (
                     <div className="flex justify-center py-8">
-                        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-2 border-[#3E2723] border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : followUps.length === 0 ? (
                     <div className="text-center py-12">
@@ -86,7 +86,7 @@ const FollowUpList = () => {
                         <div key={item._id} className="group flex items-start gap-4 p-4 rounded-2xl bg-gray-800/50 hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-all">
                             <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
                                 item.priority === 'urgent' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' : 
-                                item.priority === 'high' ? 'bg-orange-500' : 'bg-blue-500'
+                                item.priority === 'high' ? 'bg-[#3E2723]' : 'bg-blue-500'
                             }`} />
                             
                             <div className="flex-1 min-w-0">

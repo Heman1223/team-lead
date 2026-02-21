@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Activity, Search, Calendar, User, FileText, Users, CheckSquare, RefreshCw } from 'lucide-react';
+import { Activity, Search, User, FileText, Users, CheckSquare, RefreshCw, Filter, TrendingUp, Shield, Zap } from 'lucide-react';
 import { adminActivitiesAPI } from '../services/adminApi';
 import Layout from '../components/Layout';
 
@@ -32,17 +32,18 @@ const AdminActivityLogs = () => {
     });
 
     const getActionIcon = (action) => {
-        if (action.includes('user')) return <User className="w-5 h-5" />;
-        if (action.includes('task')) return <CheckSquare className="w-5 h-5" />;
-        if (action.includes('team')) return <Users className="w-5 h-5" />;
-        return <FileText className="w-5 h-5" />;
+        if (action.includes('user')) return <User className="w-4 h-4" />;
+        if (action.includes('task')) return <CheckSquare className="w-4 h-4" />;
+        if (action.includes('team')) return <Users className="w-4 h-4" />;
+        return <FileText className="w-4 h-4" />;
     };
 
     const getActionColor = (action) => {
         if (action.includes('created')) return 'bg-green-100 text-green-800 border-green-200';
-        if (action.includes('updated')) return 'bg-orange-100 text-orange-800 border-orange-200';
+        if (action.includes('updated')) return 'bg-[#D7CCC8]/30 text-[#3E2723] border-[#D7CCC8]/50';
         if (action.includes('deleted')) return 'bg-red-100 text-red-800 border-red-200';
-        if (action.includes('login')) return 'bg-gray-100 text-gray-800 border-gray-200';
+        if (action.includes('login')) return 'bg-blue-50 text-blue-700 border-blue-200';
+        if (action.includes('logout')) return 'bg-gray-100 text-gray-600 border-gray-200';
         return 'bg-gray-100 text-gray-800 border-gray-200';
     };
 
@@ -93,13 +94,18 @@ const AdminActivityLogs = () => {
         'member_removed'
     ];
 
+    // Compute stats
+    const userActions = activities.filter(a => a.action.includes('user')).length;
+    const taskActions = activities.filter(a => a.action.includes('task')).length;
+    const teamActions = activities.filter(a => a.action.includes('team') || a.action.includes('member')).length;
+
     if (loading) {
         return (
             <Layout title="Activity Logs">
-                <div className="flex items-center justify-center min-h-screen">
+                <div className="flex items-center justify-center min-h-[60vh]">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
-                        <p className="mt-4 text-gray-700 font-semibold">Loading activities...</p>
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#3E2723] mx-auto"></div>
+                        <p className="mt-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Loading activities...</p>
                     </div>
                 </div>
             </Layout>
@@ -108,167 +114,216 @@ const AdminActivityLogs = () => {
 
     return (
         <Layout title="Activity Logs">
-            <div className="space-y-6">
+            <div className="space-y-5" style={{ background: '#FAF9F8' }}>
 
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-gray-600 mt-1">Monitor all system activities</p>
+                {/* KPI CARDS (BEIGE THEME - MATCHING PROJECT) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Total Activities */}
+                    <div className="bg-[#F3EFE7] rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                        <div className="flex items-center justify-between">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                    Total Events
+                                </p>
+                                <div className="flex items-baseline gap-2 mt-1.5">
+                                    <h3 className="text-2xl font-black text-[#1D1110] tracking-tighter">
+                                        {activities.length}
+                                    </h3>
+                                    <span className="text-[10px] font-bold text-green-500 tracking-tighter truncate">
+                                        ALL TIME
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="shrink-0 p-2.5 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                <Activity className="w-4 h-4" />
+                            </div>
+                        </div>
                     </div>
+
+                    {/* User Actions */}
+                    <div className="bg-[#F3EFE7] rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                        <div className="flex items-center justify-between">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                    User Actions
+                                </p>
+                                <div className="flex items-baseline gap-2 mt-1.5">
+                                    <h3 className="text-2xl font-black text-[#1D1110] tracking-tighter">
+                                        {userActions}
+                                    </h3>
+                                    <span className="text-[10px] font-bold text-[#5D4037] tracking-tighter truncate">
+                                        LOGINS
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="shrink-0 p-2.5 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                <Shield className="w-4 h-4" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Task Actions */}
+                    <div className="bg-[#F3EFE7] rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                        <div className="flex items-center justify-between">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                    Task Actions
+                                </p>
+                                <div className="flex items-baseline gap-2 mt-1.5">
+                                    <h3 className="text-2xl font-black text-[#1D1110] tracking-tighter">
+                                        {taskActions}
+                                    </h3>
+                                    <span className="text-[10px] font-bold text-[#5D4037] tracking-tighter truncate">
+                                        UPDATES
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="shrink-0 p-2.5 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                <Zap className="w-4 h-4" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Team Actions */}
+                    <div className="bg-[#F3EFE7] rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                        <div className="flex items-center justify-between">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                    Team Actions
+                                </p>
+                                <div className="flex items-baseline gap-2 mt-1.5">
+                                    <h3 className="text-2xl font-black text-green-600 tracking-tighter">
+                                        {teamActions}
+                                    </h3>
+                                    <span className="text-[10px] font-bold text-green-500 tracking-tighter truncate">
+                                        ACTIVE
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="shrink-0 p-2.5 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                <TrendingUp className="w-4 h-4" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SEARCH & FILTER ROW (PILL-SHAPED - MATCHING PROJECT) */}
+                <div className="flex flex-wrap lg:flex-nowrap gap-3 items-center">
+                    <div className="flex-1 min-w-[280px] bg-white rounded-[1.5rem] shadow-sm border border-gray-100 p-1.5 flex items-center group focus-within:ring-2 focus-within:ring-[#1D1110]/10 transition-all">
+                        <div className="p-2.5">
+                            <Search className="w-4 h-4 text-gray-400 group-focus-within:text-[#1D1110] transition-colors" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search activities..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="bg-transparent border-none focus:ring-0 text-xs font-bold text-[#1D1110] placeholder-gray-400 flex-1 px-1"
+                        />
+                    </div>
+
+                    <div className="bg-white rounded-[1.25rem] shadow-sm border border-gray-100 p-1 flex items-center min-w-[180px]">
+                        <select
+                            value={filterAction}
+                            onChange={(e) => setFilterAction(e.target.value)}
+                            className="w-full pl-4 pr-8 py-2 bg-transparent border-none focus:ring-0 text-[10px] font-black uppercase tracking-widest text-[#3E2723] appearance-none cursor-pointer"
+                        >
+                            {actionTypes.map(action => (
+                                <option key={action} value={action}>
+                                    {action === 'all' ? 'All Actions' : action.replace(/_/g, ' ')}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="pr-3 pointer-events-none">
+                            <Filter className="w-3 h-3 text-gray-400" />
+                        </div>
+                    </div>
+
                     <button
                         onClick={fetchActivities}
-                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl font-semibold"
+                        className="bg-[#1D1110] text-white rounded-[1.25rem] px-5 py-2.5 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest hover:bg-[#3E2723] transition-all shadow-sm"
                     >
-                        <RefreshCw className="w-5 h-5" />
+                        <RefreshCw className="w-3.5 h-3.5" />
                         Refresh
                     </button>
                 </div>
 
-                {/* Filters */}
-                <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="Search activities..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                            />
-                        </div>
-
-                        <select
-                            value={filterAction}
-                            onChange={(e) => setFilterAction(e.target.value)}
-                            className="px-6 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white font-medium"
-                        >
-                            {actionTypes.map(action => (
-                                <option key={action} value={action}>
-                                    {action === 'all' ? 'All Actions' : action.replace(/_/g, ' ').toUpperCase()}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                {/* RESULTS COUNT */}
+                <div className="flex items-center justify-between px-1">
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                        Showing <span className="text-[#1D1110]">{filteredActivities.length}</span> of <span className="text-[#1D1110]">{activities.length}</span> activities
+                    </p>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200 hover:shadow-lg transition-all">
-                        <p className="text-sm font-semibold text-gray-600 mb-1">Total Activities</p>
-                        <p className="text-3xl font-bold text-gray-900">{activities.length}</p>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
-                        <p className="text-sm font-semibold text-gray-600 mb-1">User Actions</p>
-                        <p className="text-3xl font-bold text-orange-600">
-                            {activities.filter(a => a.action.includes('user')).length}
-                        </p>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
-                        <p className="text-sm font-semibold text-gray-600 mb-1">Task Actions</p>
-                        <p className="text-3xl font-bold text-orange-600">
-                            {activities.filter(a => a.action.includes('task')).length}
-                        </p>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
-                        <p className="text-sm font-semibold text-gray-600 mb-1">Team Actions</p>
-                        <p className="text-3xl font-bold text-green-600">
-                            {activities.filter(a => a.action.includes('team') || a.action.includes('member')).length}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Activity Timeline */}
-                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
-                    <div className="p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                            <div className="p-2 bg-orange-100 rounded-lg">
-                                <Activity className="w-6 h-6 text-orange-600" />
-                            </div>
-                            Recent Activities
-                        </h2>
-                        
-                        <div className="space-y-3">
-                            {filteredActivities.map((activity, index) => (
-                                <div key={activity._id} className="flex gap-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-                                    {/* Timeline dot */}
-                                    <div className="flex flex-col items-center">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 ${getActionColor(activity.action)}`}>
-                                            {getActionIcon(activity.action)}
+                {/* ACTIVITY TIMELINE */}
+                <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-5">
+                        <div className="space-y-0">
+                            {filteredActivities.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <Activity className="mx-auto h-10 w-10 text-gray-300 mb-3" />
+                                    <h3 className="text-sm font-black text-gray-900 mb-1">No activities found</h3>
+                                    <p className="text-[11px] text-gray-400 font-medium">Try adjusting your search or filters</p>
+                                </div>
+                            ) : (
+                                filteredActivities.map((activity, index) => (
+                                    <div key={activity._id} className={`flex gap-3 py-3 ${index < filteredActivities.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                                        {/* Timeline Icon */}
+                                        <div className="flex flex-col items-center pt-0.5">
+                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${getActionColor(activity.action)}`}>
+                                                {getActionIcon(activity.action)}
+                                            </div>
                                         </div>
-                                        {index < filteredActivities.length - 1 && (
-                                            <div className="w-0.5 h-full bg-gray-200 mt-2"></div>
-                                        )}
-                                    </div>
 
-                                    {/* Content */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-4 mb-2">
-                                            <div className="flex-1">
-                                                <p className="text-sm font-semibold text-gray-900">{activity.details}</p>
-                                                <div className="flex items-center gap-3 mt-2">
-                                                    <span className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${getActionColor(activity.action)}`}>
-                                                        {activity.action.replace(/_/g, ' ').toUpperCase()}
-                                                    </span>
-                                                    {activity.userId && (
-                                                        <span className="text-xs text-gray-600 flex items-center gap-1 font-medium">
-                                                            <User className="w-3 h-3" />
-                                                            {activity.userId.name}
+                                        {/* Content */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-bold text-gray-900 leading-snug">{activity.details}</p>
+                                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                        <span className={`px-2 py-0.5 text-[9px] font-black rounded-md border uppercase tracking-wider ${getActionColor(activity.action)}`}>
+                                                            {activity.action.replace(/_/g, ' ')}
+                                                        </span>
+                                                        {activity.userId && (
+                                                            <span className="text-[10px] text-gray-500 flex items-center gap-1 font-bold">
+                                                                <User className="w-2.5 h-2.5" />
+                                                                {activity.userId.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <p className="text-[10px] text-gray-500 font-bold">{formatDate(activity.createdAt)}</p>
+                                                    <p className="text-[9px] text-gray-300 font-medium mt-0.5">{formatFullDate(activity.createdAt)}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Related Entities */}
+                                            {(activity.taskId || activity.teamId || activity.targetUserId) && (
+                                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                                    {activity.taskId && (
+                                                        <span className="text-[9px] bg-[#F3EFE7] text-[#3E2723] px-2 py-0.5 rounded-md font-bold border border-[#D7CCC8]/40">
+                                                            Task: {activity.taskId.title}
+                                                        </span>
+                                                    )}
+                                                    {activity.teamId && (
+                                                        <span className="text-[9px] bg-green-50 text-green-700 px-2 py-0.5 rounded-md font-bold border border-green-200">
+                                                            Team: {activity.teamId.name}
+                                                        </span>
+                                                    )}
+                                                    {activity.targetUserId && (
+                                                        <span className="text-[9px] bg-gray-50 text-gray-600 px-2 py-0.5 rounded-md font-bold border border-gray-200">
+                                                            User: {activity.targetUserId.name}
                                                         </span>
                                                     )}
                                                 </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs text-gray-600 font-semibold">{formatDate(activity.createdAt)}</p>
-                                                <p className="text-xs text-gray-400 mt-1">{formatFullDate(activity.createdAt)}</p>
-                                            </div>
+                                            )}
                                         </div>
-
-                                        {/* Additional Info */}
-                                        {(activity.taskId || activity.teamId || activity.targetUserId) && (
-                                            <div className="flex flex-wrap gap-2 mt-3">
-                                                {activity.taskId && (
-                                                    <span className="text-xs bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg font-semibold border border-orange-200">
-                                                        Task: {activity.taskId.title}
-                                                    </span>
-                                                )}
-                                                {activity.teamId && (
-                                                    <span className="text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg font-semibold border border-green-200">
-                                                        Team: {activity.teamId.name}
-                                                    </span>
-                                                )}
-                                                {activity.targetUserId && (
-                                                    <span className="text-xs bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg font-semibold border border-gray-200">
-                                                        User: {activity.targetUserId.name}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
-
-                        {filteredActivities.length === 0 && (
-                            <div className="text-center py-16">
-                                <Activity className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">No activities found</h3>
-                                <p className="text-gray-600">Try adjusting your search or filters.</p>
-                            </div>
-                        )}
                     </div>
-
-                    {/* Pagination Info */}
-                    {filteredActivities.length > 0 && (
-                        <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm text-gray-700 font-medium">
-                                    Showing <span className="font-bold text-orange-600">{filteredActivities.length}</span> of{' '}
-                                    <span className="font-bold text-gray-900">{activities.length}</span> activities
-                                </p>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
         </Layout>

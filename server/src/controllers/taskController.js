@@ -23,41 +23,52 @@ const getTasks = async (req, res) => {
                 { assignedTo: req.user._id },
                 { 'subtasks.assignedTo': req.user._id }
             ];
-        } else {
-            // For team leads and admins, filter by team
+        } else if (req.user.role === 'team_lead') {
+            query.$or = [
+                { assignedTo: req.user._id }
+            ];
+            
+            // Also include tasks in their team
             if (teamId) {
-                query.teamId = teamId;
+                query.$or.push({ teamId });
             } else if (req.user.teamId) {
-                query.teamId = req.user.teamId;
+                query.$or.push({ teamId: req.user.teamId });
             }
+        } else if (req.user.role === 'admin' && teamId) {
+            query.teamId = teamId;
         }
 
         const tasks = await Task.find(query)
             .populate('assignedTo', 'name email avatar status')
             .populate('assignedBy', 'name email')
             .populate('subtasks.assignedTo', 'name email')
+            .populate('attachments.uploadedBy', 'name')
             .sort({ deadline: 1 });
 
-        // Update overdue tasks and calculate progress
+        // Efficiently update overdue tasks and calculate progress WITHOUT saving in loop
         const now = new Date();
-        for (let task of tasks) {
-            // Update overdue status
-            if (task.status !== 'completed' && task.deadline < now && task.status !== 'overdue') {
-                task.status = 'overdue';
+        const updatedTasks = tasks.map(task => {
+            const taskObj = task.toObject();
+            
+            // Check overdue status
+            if (taskObj.status !== 'completed' && new Date(taskObj.deadline) < now && taskObj.status !== 'overdue') {
+                taskObj.status = 'overdue';
             }
             
             // Calculate progress if task has subtasks
-            if (task.subtasks && task.subtasks.length > 0) {
-                task.calculateProgress();
+            if (taskObj.subtasks && taskObj.subtasks.length > 0) {
+                const totalSubtasks = taskObj.subtasks.length;
+                const totalProgress = taskObj.subtasks.reduce((sum, st) => sum + (st.progressPercentage || 0), 0);
+                taskObj.progressPercentage = Math.round(totalProgress / totalSubtasks) || 0;
             }
             
-            await task.save();
-        }
+            return taskObj;
+        });
 
         res.json({
             success: true,
-            count: tasks.length,
-            data: tasks
+            count: updatedTasks.length,
+            data: updatedTasks
         });
     } catch (error) {
         console.error('Get tasks error:', error);
@@ -73,6 +84,7 @@ const getTask = async (req, res) => {
         const task = await Task.findById(req.params.id)
             .populate('assignedTo', 'name email avatar status')
             .populate('assignedBy', 'name email')
+            .populate('attachments.uploadedBy', 'name')
             .populate('comments.userId', 'name avatar');
 
         if (!task) {
@@ -445,7 +457,7 @@ const getMyTasks = async (req, res) => {
 // @access  Private (Team Lead only)
 const addSubtask = async (req, res) => {
     try {
-        const { title, description, assignedTo } = req.body;
+        const { title, description, assignedTo, deadline } = req.body;
 
         if (!title || !assignedTo) {
             return res.status(400).json({
@@ -472,7 +484,8 @@ const addSubtask = async (req, res) => {
             title,
             description: description || '',
             assignedTo,
-            status: 'not_started',
+            status: 'pending',
+            deadline: deadline || null,
             createdAt: new Date()
         };
 
@@ -481,7 +494,7 @@ const addSubtask = async (req, res) => {
             req.params.id,
             {
                 $push: { subtasks: newSubtask },
-                $set: { status: task.status === 'not_started' ? 'in_progress' : task.status }
+                $set: { status: task.status === 'pending' ? 'in_progress' : task.status }
             },
             { new: true, runValidators: false }
         );
@@ -616,7 +629,7 @@ const updateSubtask = async (req, res) => {
 // @access  Private
 const submitEODReport = async (req, res) => {
     try {
-        const { workCompleted, hoursSpent, progressUpdate, blockers, nextDayPlan } = req.body;
+        const { workCompleted, hoursSpent, progressUpdate, blockers, nextDayPlan, links, images } = req.body;
 
         if (!workCompleted) {
             return res.status(400).json({
@@ -651,6 +664,8 @@ const submitEODReport = async (req, res) => {
             progressUpdate: progressUpdate || subtask.progressPercentage,
             blockers: blockers || '',
             nextDayPlan: nextDayPlan || '',
+            links: links || [],
+            images: images || [],
             submittedBy: req.user._id,
             submittedAt: new Date()
         };
@@ -665,7 +680,7 @@ const submitEODReport = async (req, res) => {
             if (progressUpdate === 100) {
                 subtask.status = 'completed';
                 subtask.completedAt = new Date();
-            } else if (progressUpdate > 0 && subtask.status === 'not_started') {
+            } else if (progressUpdate > 0 && subtask.status === 'pending') {
                 subtask.status = 'in_progress';
             }
         }
@@ -713,6 +728,228 @@ const submitEODReport = async (req, res) => {
     } catch (error) {
         console.error('Submit EOD report error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Submit EOD report for main task (Team Lead to Admin)
+// @route   POST /api/tasks/:id/parent-eod-report
+// @access  Private
+const submitParentTaskEOD = async (req, res) => {
+    try {
+        const { workCompleted, hoursSpent, progressUpdate, blockers, nextDayPlan, links, images } = req.body;
+
+        if (!workCompleted) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide work completed description'
+            });
+        }
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        // Verify the user is assigned to this task
+        if (task.assignedTo.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only submit EOD reports for tasks assigned to you'
+            });
+        }
+
+        // Create EOD report
+        const eodReport = {
+            reportDate: new Date(),
+            workCompleted,
+            hoursSpent: hoursSpent || 0,
+            progressUpdate: progressUpdate || task.progressPercentage,
+            blockers: blockers || '',
+            nextDayPlan: nextDayPlan || '',
+            links: links || [],
+            images: images || [],
+            submittedBy: req.user._id,
+            submittedAt: new Date()
+        };
+
+        task.eodReports.push(eodReport);
+
+        // Update task progress
+        if (progressUpdate !== undefined) {
+            task.progressPercentage = progressUpdate;
+            
+            if (progressUpdate === 100) {
+                task.status = 'completed';
+                task.completedAt = new Date();
+            } else if (progressUpdate > 0 && task.status === 'pending') {
+                task.status = 'in_progress';
+            }
+        }
+
+        if (blockers && blockers.trim().length > 0 && task.status !== 'completed') {
+            task.status = 'blocked';
+        }
+
+        await task.save();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'task_updated',
+            userId: req.user._id,
+            taskId: task._id,
+            teamId: task.teamId,
+            details: `Parent Task EOD report submitted by Lead: ${task.title} (${progressUpdate || task.progressPercentage}% complete)`
+        });
+
+        // Notify Admin
+        await Notification.create({
+            type: 'task_updated',
+            title: 'Lead EOD Report Submitted',
+            message: `${req.user.name} (Lead) submitted EOD report for task "${task.title}"`,
+            userId: task.assignedBy,
+            taskId: task._id,
+            senderId: req.user._id
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email')
+            .populate('assignedBy', 'name email')
+            .populate('teamId', 'name')
+            .populate('eodReports.submittedBy', 'name email');
+
+        res.json({
+            success: true,
+            message: 'EOD report submitted successfully',
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Submit Parent EOD report error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Get all EOD reports for monitoring
+// @route   GET /api/tasks/eod-reports/all
+// @access  Private (Admin/Team Lead)
+const getAllEODReports = async (req, res) => {
+    try {
+        const { date, teamId } = req.query;
+        const queryDate = date ? new Date(date) : new Date();
+        queryDate.setHours(0, 0, 0, 0);
+        const nextDay = new Date(queryDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        let query = {};
+        if (teamId) query.teamId = teamId;
+
+        // If team lead, only show reports for their teams
+        if (req.user.role === 'team_lead') {
+            // Logic to find teams led by this user
+            const Team = require('../models/Team');
+            const ledTeams = await Team.find({ lead: req.user._id });
+            const ledTeamIds = ledTeams.map(t => t._id);
+            query.teamId = { $in: ledTeamIds };
+        }
+
+        const tasks = await Task.find(query)
+            .populate('assignedTo', 'name')
+            .populate('teamId', 'name')
+            .populate('subtasks.assignedTo', 'name')
+            .populate('eodReports.submittedBy', 'name avatar')
+            .populate('subtasks.eodReports.submittedBy', 'name avatar');
+
+        const eods = [];
+
+        tasks.forEach(task => {
+            // Main task EODs
+            task.eodReports.forEach(report => {
+                const reportDate = new Date(report.reportDate);
+                reportDate.setHours(0, 0, 0, 0);
+                if (reportDate.getTime() === queryDate.getTime()) {
+                    eods.push({
+                        ...report.toObject(),
+                        taskTitle: task.title,
+                        projectName: task.relatedProject || 'General',
+                        isSubtask: false,
+                        teamName: task.teamId?.name || 'N/A'
+                    });
+                }
+            });
+
+            // Subtask EODs
+            task.subtasks.forEach(subtask => {
+                subtask.eodReports.forEach(report => {
+                    const reportDate = new Date(report.reportDate);
+                    reportDate.setHours(0, 0, 0, 0);
+                    if (reportDate.getTime() === queryDate.getTime()) {
+                        eods.push({
+                            ...report.toObject(),
+                            taskTitle: subtask.title,
+                            parentTaskTitle: task.title,
+                            projectName: task.relatedProject || 'General',
+                            isSubtask: true,
+                            teamName: task.teamId?.name || 'N/A'
+                        });
+                    }
+                });
+            });
+        });
+
+        res.json({
+            success: true,
+            data: eods
+        });
+    } catch (error) {
+        console.error('Get all EODs error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// @desc    Add comment to subtask
+// @route   POST /api/tasks/:id/subtasks/:subtaskId/comments
+// @access  Private
+const addSubtaskComment = async (req, res) => {
+    try {
+        const { content } = req.body;
+        const task = await Task.findById(req.params.id);
+        
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        const subtask = task.subtasks.id(req.params.subtaskId);
+        if (!subtask) {
+            return res.status(404).json({ success: false, message: 'Subtask not found' });
+        }
+
+        subtask.comments.push({
+            userId: req.user._id,
+            content
+        });
+
+        await task.save();
+
+        await ActivityLog.create({
+            action: 'comment_added',
+            userId: req.user._id,
+            taskId: task._id,
+            teamId: task.teamId,
+            details: `Comment added to subtask "${subtask.title}" in task: ${task.title}`
+        });
+
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email avatar')
+            .populate('assignedBy', 'name email')
+            .populate('subtasks.assignedTo', 'name email')
+            .populate('subtasks.comments.userId', 'name avatar');
+
+        res.json({
+            success: true,
+            data: populatedTask
+        });
+    } catch (error) {
+        console.error('Add subtask comment error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -778,7 +1015,7 @@ const deleteSubtask = async (req, res) => {
 // @access  Private (Team Lead only)
 const uploadAttachment = async (req, res) => {
     try {
-        const { fileName, fileUrl, fileType, fileSize, originalName } = req.body;
+        const { fileName, fileUrl, fileType, fileSize, originalName, isExternalLink } = req.body;
 
         if (!fileName || !fileUrl) {
             return res.status(400).json({
@@ -798,6 +1035,7 @@ const uploadAttachment = async (req, res) => {
             url: fileUrl,
             fileType: fileType || 'unknown',
             fileSize: fileSize || 0,
+            isExternalLink: isExternalLink === true,
             uploadedBy: req.user._id,
             uploadedAt: new Date()
         };
@@ -884,5 +1122,8 @@ module.exports = {
     deleteSubtask,
     uploadAttachment,
     deleteAttachment,
-    submitEODReport
+    submitEODReport,
+    submitParentTaskEOD,
+    getAllEODReports,
+    addSubtaskComment
 };

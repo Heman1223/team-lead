@@ -1,556 +1,469 @@
 import { useState, useEffect } from 'react';
-import { Users, Briefcase, CheckCircle, TrendingUp, Award, BarChart3, Clock, AlertCircle, Target, Activity, Calendar, Zap, Trophy, Filter } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { 
+    Users, Briefcase, CheckCircle, TrendingUp, Award, Clock, 
+    Target, Activity, Zap, 
+    ArrowUpRight, ArrowDownRight, MoreVertical,
+    FileText, ClipboardList
+} from 'lucide-react';
+import { 
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+    LineChart, Line, PieChart, Pie, Cell, ComposedChart, Area
+} from 'recharts';
 import Layout from '../components/Layout';
+import { useFilters } from '../context/FilterContext';
+import api from '../services/api';
 import { adminAnalyticsAPI, adminTasksAPI } from '../services/adminApi';
 import { leadsAPI } from '../services/api';
 
 const AdminDashboard = () => {
-    const [stats, setStats] = useState(null);
-    const [teamPerformance, setTeamPerformance] = useState([]);
+    const { dateRange } = useFilters();
+
+    const [dashboardStats, setDashboardStats] = useState(null);
     const [bestTeams, setBestTeams] = useState([]);
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    const [leadStats, setLeadStats] = useState({
-        total: 0,
-        converted: 0,
-        conversionRate: 0
-    });
+    const [leadStats, setLeadStats] = useState({ total: 0, converted: 0, conversionRate: 0 });
     const [leadChartData, setLeadChartData] = useState([]);
-    const [taskStats, setTaskStats] = useState({
-        assignedToday: 0,
-        dueToday: 0,
-        overdue: 0,
-        bestTeamLead: null
-    });
+    const [activities, setActivities] = useState([]);
+    const [performanceTrend, setPerformanceTrend] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         fetchDashboardData();
-    }, [selectedMonth, selectedYear]); // Re-fetch when month or year changes
+    }, [dateRange]);
 
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
+            setError(null);
 
-            // Calculate date range for selected month
-            const startDate = new Date(selectedYear, selectedMonth, 1);
-            const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
-
+            const startDate = dateRange.startDate;
+            const endDate = dateRange.endDate;
             const params = {
                 startDate: startDate.toISOString(),
                 endDate: endDate.toISOString()
             };
 
-            const [statsRes, performanceRes, bestTeamsRes, tasksRes, leadsRes] = await Promise.all([
+            // Fetch all data in parallel
+            const results = await Promise.allSettled([
                 adminAnalyticsAPI.getDashboardStats(params),
-                adminAnalyticsAPI.getTeamPerformance(params),
                 adminAnalyticsAPI.getBestTeams(params),
                 adminTasksAPI.getAll(),
-                leadsAPI.getStats(params)
+                leadsAPI.getStats(params),
+                api.get('/admin/activities')
             ]);
 
-            console.log('Stats Response:', statsRes.data);
-            console.log('Performance Response:', performanceRes.data);
-            console.log('Best Teams Response:', bestTeamsRes.data);
-            console.log('Leads Response:', leadsRes.data);
+            // Extract data safely from settled promises
+            const [statsResult, bestTeamsResult, tasksResult, leadsResult, activitiesResult] = results;
 
-            const statsData = statsRes.data.data || {};
-
-            // Get all tasks and filter by selected month
-            const allTasks = tasksRes.data.data || [];
-            const filteredTasks = allTasks.filter(t => {
-                const taskDate = new Date(t.createdAt);
-                return taskDate >= startDate && taskDate <= endDate;
-            });
-
-            // Transform stats data using filtered tasks
-            const transformedStats = {
-                totalTeams: statsData.overview?.totalTeams || 0,
-                totalTeamLeads: statsData.overview?.totalUsers || 0,
-                totalMembers: statsData.overview?.totalUsers || 0,
-                totalTasks: filteredTasks.length,
-                completedTasks: filteredTasks.filter(t => t.status === 'completed').length,
-                inProgressTasks: filteredTasks.filter(t => t.status === 'in_progress').length,
-                pendingTasks: filteredTasks.filter(t => t.status !== 'completed' && t.status !== 'in_progress').length,
-                overdueTasks: filteredTasks.filter(t => t.isOverdue && t.status !== 'completed').length,
-                overallProgress: filteredTasks.length > 0
-                    ? Math.round((filteredTasks.filter(t => t.status === 'completed').length / filteredTasks.length) * 100)
-                    : 0
-            };
-
-            setStats(transformedStats);
-            setTeamPerformance(performanceRes.data.data || []);
-            setBestTeams(bestTeamsRes.data.data || []);
-
-            // Set lead statistics
-            if (leadsRes.data.data) {
-                const leadData = leadsRes.data.data;
-                setLeadStats({
-                    total: leadData.totalLeads || 0,
-                    converted: leadData.convertedLeads || 0,
-                    conversionRate: leadData.conversionRate || 0
-                });
-
-                // Prepare chart data for lead status distribution
-                const statusDist = leadData.statusDist || {};
-                setLeadChartData([
-                    { name: 'New', value: statusDist.new || 0, color: '#3b82f6' },
-                    { name: 'Contacted', value: statusDist.contacted || 0, color: '#6366f1' },
-                    { name: 'Interested', value: statusDist.interested || 0, color: '#8b5cf6' },
-                    { name: 'Follow Up', value: statusDist.follow_up || 0, color: '#f59e0b' },
-                    { name: 'Converted', value: statusDist.converted || 0, color: '#10b981' },
-                    { name: 'Not Interested', value: statusDist.not_interested || 0, color: '#ef4444' }
-                ].filter(item => item.value > 0));
+            // 1. Dashboard Stats (primary data source)
+            if (statsResult.status === 'fulfilled') {
+                const d = statsResult.value.data.data;
+                setDashboardStats(d);
             }
 
-            // Calculate today's task statistics from filtered tasks
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            // 2. Best Teams
+            if (bestTeamsResult.status === 'fulfilled') {
+                setBestTeams(bestTeamsResult.value.data.data || []);
+            }
 
-            const assignedToday = filteredTasks.filter(t => {
-                const assignedDate = new Date(t.assignedAt || t.createdAt);
-                assignedDate.setHours(0, 0, 0, 0);
-                return assignedDate.getTime() === today.getTime();
-            }).length;
+            // 3. Build performance trend from tasks
+            if (tasksResult.status === 'fulfilled') {
+                const allTasks = tasksResult.value.data.data || [];
+                const filteredTasks = allTasks.filter(t => {
+                    const taskDate = new Date(t.createdAt);
+                    return taskDate >= startDate && taskDate <= endDate;
+                });
 
-            const dueToday = filteredTasks.filter(t => {
-                const dueDate = new Date(t.dueDate || t.deadline);
-                dueDate.setHours(0, 0, 0, 0);
-                return dueDate.getTime() === today.getTime() && t.status !== 'completed';
-            }).length;
+                // Build daily trend
+                const trendMap = {};
+                filteredTasks.forEach(task => {
+                    const d = new Date(task.createdAt);
+                    const key = `${d.getMonth() + 1}/${d.getDate()}`;
+                    if (!trendMap[key]) trendMap[key] = { name: key, tasks: 0, leads: 0 };
+                    trendMap[key].tasks++;
+                });
+                setPerformanceTrend(Object.values(trendMap).slice(-14));
+            }
 
-            const overdue = filteredTasks.filter(t => t.isOverdue && t.status !== 'completed').length;
-            const bestTeamLead = bestTeamsRes.data.data?.[0] || null;
+            // 4. Lead Stats
+            if (leadsResult.status === 'fulfilled') {
+                const leadData = leadsResult.value.data.data;
+                if (leadData) {
+                    setLeadStats({
+                        total: leadData.totalLeads || 0,
+                        converted: leadData.convertedLeads || 0,
+                        conversionRate: leadData.conversionRate || 0
+                    });
 
-            setTaskStats({ assignedToday, dueToday, overdue, bestTeamLead });
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
+                    const statusDist = leadData.statusDist || {};
+                    setLeadChartData([
+                        { name: 'New', value: statusDist.new || 0, color: '#3b82f6' },
+                        { name: 'Contacted', value: statusDist.contacted || 0, color: '#6366f1' },
+                        { name: 'Interested', value: statusDist.interested || 0, color: '#8b5cf6' },
+                        { name: 'Follow Up', value: statusDist.follow_up || 0, color: '#f59e0b' },
+                        { name: 'Converted', value: statusDist.converted || 0, color: '#10b981' },
+                        { name: 'Not Interested', value: statusDist.not_interested || 0, color: '#ef4444' }
+                    ].filter(item => item.value > 0));
+                }
+            }
+
+            // 5. Activities
+            if (activitiesResult.status === 'fulfilled') {
+                setActivities(activitiesResult.value.data.data?.slice(0, 10) || []);
+            }
+
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+            setError('Failed to load dashboard data');
         } finally {
             setLoading(false);
         }
     };
 
-    const getPerformanceColor = (status) => {
-        switch (status) {
-            case 'doing_great': return 'text-green-700 bg-green-50 border-green-200';
-            case 'average': return 'text-orange-700 bg-orange-50 border-orange-200';
-            case 'needs_attention': return 'text-red-700 bg-red-50 border-red-200';
-            default: return 'text-gray-700 bg-gray-50 border-gray-200';
-        }
-    };
-
-    const getPerformanceLabel = (status) => {
-        switch (status) {
-            case 'doing_great': return 'Best Performing';
-            case 'average': return 'Average';
-            case 'needs_attention': return 'Needs Improvement';
-            default: return 'Unknown';
-        }
-    };
-
-    const getRankBadge = (index) => {
-        const badges = ['1st', '2nd', '3rd', '4th', '5th'];
-        return badges[index] || `${index + 1}th`;
-    };
-
-    // Prepare chart data
-    const taskStatusData = stats ? [
-        { name: 'Completed', value: stats.completedTasks, color: '#10B981' },
-        { name: 'In Progress', value: stats.inProgressTasks, color: '#F59E0B' },
-        { name: 'Pending', value: stats.pendingTasks, color: '#6B7280' },
-        { name: 'Overdue', value: stats.overdueTasks, color: '#EF4444' }
-    ] : [];
-
-    const teamCompletionData = bestTeams.map(team => ({
-        name: team.teamName?.length > 15 ? team.teamName.substring(0, 15) + '...' : (team.teamName || 'Unknown'),
-        completion: team.completionRate || 0,
-        overdue: team.overdueTasks || 0
-    }));
+    // Derive computed values from dashboardStats
+    const overview = dashboardStats?.overview || {};
+    const taskData = dashboardStats?.tasks || {};
+    const leadData = dashboardStats?.leads || {};
+    const recentActivity = dashboardStats?.recentActivity || {};
 
     if (loading) {
         return (
             <Layout title="Admin Dashboard">
-                <div className="flex items-center justify-center min-h-screen">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600"></div>
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#3E2723] mx-auto"></div>
+                        <p className="mt-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Loading dashboard...</p>
+                    </div>
                 </div>
             </Layout>
         );
     }
 
+    if (error) {
+        return (
+            <Layout title="Admin Dashboard">
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <div className="text-center">
+                        <p className="text-red-600 font-bold mb-4">{error}</p>
+                        <button onClick={fetchDashboardData} className="px-6 py-2 bg-[#3E2723] text-white rounded-xl font-bold text-sm">
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
+
+    const KPICard = ({ title, value, icon: Icon, gradient, subtitle, trend, trendValue }) => (
+        <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+            <div className="flex items-center justify-between">
+                <div className="min-w-0">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest truncate">
+                        {title}
+                    </p>
+                    <div className="flex items-baseline gap-2 mt-2">
+                        <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter">
+                            {value}
+                        </h3>
+                        {trend && (
+                            <span className={`text-xs font-bold tracking-tighter truncate flex items-center gap-0.5 ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                                {trend === 'up' ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                                {trendValue}
+                            </span>
+                        )}
+                    </div>
+                    {subtitle && <p className="text-xs font-medium text-gray-400 mt-1">{subtitle}</p>}
+                </div>
+                <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                    <Icon className="w-5 h-5" />
+                </div>
+            </div>
+        </div>
+    );
+
+    // Prepare chart data from real stats
+    const taskStatusData = [
+        { name: 'Completed', value: taskData.completed || 0, color: '#10B981' },
+        { name: 'In Progress', value: taskData.inProgress || 0, color: '#F59E0B' },
+        { name: 'Overdue', value: taskData.overdue || 0, color: '#EF4444' },
+        { name: 'Other', value: Math.max(0, (taskData.total || 0) - (taskData.completed || 0) - (taskData.inProgress || 0) - (taskData.overdue || 0)), color: '#6B7280' }
+    ].filter(d => d.value > 0);
+
     return (
         <Layout title="Admin Dashboard">
-            <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6">
-                {/* Page Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                    <div>
-                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-                        <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">Real-time analytics</p>
-                    </div>
-                    {/* Month Filter */}
-                    <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2">
-                        <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" />
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                            className="bg-transparent text-xs sm:text-sm font-medium text-gray-700 focus:outline-none cursor-pointer"
-                        >
-                            <option value={0}>Jan</option>
-                            <option value={1}>Feb</option>
-                            <option value={2}>Mar</option>
-                            <option value={3}>Apr</option>
-                            <option value={4}>May</option>
-                            <option value={5}>Jun</option>
-                            <option value={6}>Jul</option>
-                            <option value={7}>Aug</option>
-                            <option value={8}>Sep</option>
-                            <option value={9}>Oct</option>
-                            <option value={10}>Nov</option>
-                            <option value={11}>Dec</option>
-                        </select>
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                            className="bg-transparent text-xs sm:text-sm font-medium text-gray-700 focus:outline-none cursor-pointer"
-                        >
-                            <option value={2024}>2024</option>
-                            <option value={2025}>2025</option>
-                            <option value={2026}>2026</option>
-                        </select>
-                    </div>
+            <div className="space-y-5" style={{ background: '#FAF9F8' }}>
+
+                {/* KPI GRID */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <KPICard
+                        title="Total Employees"
+                        value={overview.totalUsers || 0}
+                        icon={Users}
+                        subtitle="Active in system"
+                        trend={overview.totalUsers > 0 ? "up" : null}
+                        trendValue="ACTIVE"
+                    />
+                    <KPICard
+                        title="Active Teams"
+                        value={overview.totalTeams || 0}
+                        icon={Briefcase}
+                        subtitle="Registered teams"
+                    />
+                    <KPICard
+                        title="Total Tasks"
+                        value={taskData.total || 0}
+                        icon={ClipboardList}
+                        subtitle={`${taskData.completed || 0} completed`}
+                        trend={taskData.completionRate > 50 ? "up" : taskData.total > 0 ? "down" : null}
+                        trendValue={`${taskData.completionRate || 0}%`}
+                    />
+                    <KPICard
+                        title="Total Leads"
+                        value={leadData.total || leadStats.total || 0}
+                        icon={Target}
+                        subtitle={`${leadData.active || 0} active`}
+                    />
+                    <KPICard
+                        title="Lead Conv. Rate"
+                        value={`${leadData.conversionRate || leadStats.conversionRate || 0}%`}
+                        icon={TrendingUp}
+                        subtitle={`${leadData.converted || leadStats.converted || 0} converted`}
+                        trend={leadData.conversionRate > 0 ? "up" : null}
+                        trendValue="CONV"
+                    />
+                    <KPICard
+                        title="Overdue Tasks"
+                        value={taskData.overdue || 0}
+                        icon={Clock}
+                        subtitle="Need attention"
+                        trend={taskData.overdue > 0 ? "down" : null}
+                        trendValue="ALERT"
+                    />
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    {/* Lead Stats */}
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Total Leads</p>
-                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{leadStats?.total || 0}</p>
-                                <div className="mt-1.5 sm:mt-2">
-                                    <span className="text-xs text-gray-600">In pipeline</span>
-                                </div>
+                {/* PERFORMANCE CHART */}
+                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-black text-[#1D1110]">Performance Measurement</h3>
+                            <p className="text-sm text-gray-400 font-medium mt-0.5">Daily tasks created over the date range</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#3E2723]"></div>
+                                <span className="text-xs font-bold text-gray-500">Tasks</span>
                             </div>
-                            <div className="p-2.5 sm:p-3 bg-purple-200 rounded-lg flex-shrink-0 ml-2">
-                                <Target className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-purple-700" />
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#D7CCC8]"></div>
+                                <span className="text-xs font-bold text-gray-500">Leads</span>
                             </div>
                         </div>
                     </div>
-
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-green-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Converted Leads</p>
-                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{leadStats?.converted || 0}</p>
-                                <div className="mt-1.5 sm:mt-2">
-                                    <span className="text-xs text-green-600 font-medium">{leadStats?.conversionRate || 0}% rate</span>
-                                </div>
-                            </div>
-                            <div className="p-2.5 sm:p-3 bg-green-200 rounded-lg flex-shrink-0 ml-2">
-                                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-green-700" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Team Stats */}
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Total Teams</p>
-                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{stats?.totalTeams || 0}</p>
-                                <div className="mt-1.5 sm:mt-2">
-                                    <span className="text-xs text-gray-600">{stats?.totalTeamLeads || 0} Leads</span>
-                                </div>
-                            </div>
-                            <div className="p-2.5 sm:p-3 bg-blue-200 rounded-lg flex-shrink-0 ml-2">
-                                <Users className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-blue-700" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Task Stats */}
-                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-orange-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5 sm:mb-1">Total Tasks</p>
-                                <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{stats?.totalTasks || 0}</p>
-                                <div className="mt-1.5 sm:mt-2">
-                                    <span className="text-xs text-green-600 font-medium">{stats?.completedTasks || 0} Done</span>
-                                </div>
-                            </div>
-                            <div className="p-2.5 sm:p-3 bg-orange-200 rounded-lg flex-shrink-0 ml-2">
-                                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-orange-700" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Today's Task Statistics */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                    <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-cyan-200 shadow-sm">
-                        <div className="flex flex-col">
-                            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-700" />
-                            </div>
-                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5">Assigned Today</p>
-                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{taskStats.assignedToday}</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-amber-200 shadow-sm">
-                        <div className="flex flex-col">
-                            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700" />
-                            </div>
-                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5">Due Today</p>
-                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{taskStats.dueToday}</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-red-200 shadow-sm">
-                        <div className="flex flex-col">
-                            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-700" />
-                            </div>
-                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5">Overdue</p>
-                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{taskStats.overdue}</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-emerald-200 shadow-sm">
-                        <div className="flex flex-col">
-                            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                                <Award className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700" />
-                            </div>
-                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-0.5">Best Lead</p>
-                            {taskStats.bestTeamLead ? (
-                                <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 truncate">{taskStats.bestTeamLead.leadName}</p>
-                            ) : (
-                                <p className="text-sm font-bold text-gray-500">No data</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
-                    {/* LEFT SIDE - Charts (8 columns) */}
-                    <div className="lg:col-span-8 space-y-3 sm:space-y-4">
-                        {/* Lead Status Distribution Chart */}
-                        {leadChartData.length > 0 && (
-                            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border-2 border-purple-200 shadow-lg">
-                                <div className="mb-3 sm:mb-4">
-                                    <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-1.5 sm:gap-2">
-                                        <div className="p-1.5 sm:p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
-                                            <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
-                                        </div>
-                                        <span>Lead Status Distribution</span>
-                                    </h3>
-                                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1 ml-8 sm:ml-10">Pipeline breakdown</p>
-                                </div>
-                                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
-                                    {/* Pie Chart */}
-                                    <div className="w-full sm:w-1/2 h-40 sm:h-48 lg:h-56 bg-white rounded-xl p-2 sm:p-3 shadow-sm border border-purple-100">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={leadChartData}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    labelLine={false}
-                                                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                                                    outerRadius={60}
-                                                    fill="#8884d8"
-                                                    dataKey="value"
-                                                    strokeWidth={2}
-                                                    stroke="#fff"
-                                                >
-                                                    {leadChartData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip
-                                                    contentStyle={{
-                                                        backgroundColor: 'white',
-                                                        border: '2px solid #e9d5ff',
-                                                        borderRadius: '8px',
-                                                        padding: '6px 10px',
-                                                        fontSize: '11px',
-                                                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                                                    }}
-                                                />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-
-                                    {/* Legend */}
-                                    <div className="w-full sm:w-1/2 grid grid-cols-2 gap-2">
-                                        {leadChartData.map((item, index) => (
-                                            <div key={index} className="flex items-center gap-2 p-2 bg-white rounded-lg border-2 border-gray-100 hover:border-purple-300 transition-all hover:shadow-md">
-                                                <div className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm" style={{ backgroundColor: item.color }}></div>
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
-                                                    <p className="text-sm font-bold" style={{ color: item.color }}>{item.value}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                    <div className="h-[350px]">
+                        {performanceTrend.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={performanceTrend}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F0F0" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
+                                    <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '13px'}} />
+                                    <Area type="monotone" dataKey="leads" fill="#D7CCC8" fillOpacity={0.3} stroke="#D7CCC8" strokeWidth={2} />
+                                    <Bar dataKey="tasks" barSize={16} fill="#3E2723" radius={[4, 4, 0, 0]} />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-gray-300">
+                                <div className="text-center">
+                                    <Activity className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                                    <p className="text-sm font-bold text-gray-400">No trend data for selected period</p>
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
 
-                        {/* Team Completion Rate Bar Chart */}
-                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-gray-200 shadow-sm">
-                            <div className="mb-3 sm:mb-4">
-                                <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-1.5 sm:gap-2">
-                                    <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
-                                    <span>Team Completion</span>
-                                </h3>
-                                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Completion % by team</p>
-                            </div>
-                            <div className="h-40 sm:h-48 lg:h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={teamCompletionData} barGap={4}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                        <XAxis
-                                            dataKey="name"
-                                            tick={{ fill: '#6B7280', fontSize: 10 }}
-                                            axisLine={{ stroke: '#E5E7EB' }}
-                                        />
-                                        <YAxis
-                                            tick={{ fill: '#6B7280', fontSize: 10 }}
-                                            axisLine={{ stroke: '#E5E7EB' }}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: 'white',
-                                                border: '1px solid #E5E7EB',
-                                                borderRadius: '8px',
-                                                fontSize: '12px'
-                                            }}
-                                        />
-                                        <Bar
-                                            dataKey="completion"
-                                            fill="#10B981"
-                                            name="Completion %"
-                                            radius={[6, 6, 0, 0]}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        {/* Task Status Distribution Pie Chart */}
-                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-gray-200 shadow-sm">
-                            <div className="mb-3 sm:mb-4">
-                                <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-1.5 sm:gap-2">
-                                    <Target className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
-                                    <span>Task Status</span>
-                                </h3>
-                                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Overall breakdown</p>
-                            </div>
-                            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
-                                <div className="h-32 w-32 sm:h-40 sm:w-40 lg:h-48 lg:w-48">
+                {/* TWO COLUMN: Lead Pie + Task Status */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    {/* Lead Status Distribution */}
+                    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+                        <h3 className="text-lg font-black text-[#1D1110] mb-5">Lead Status Distribution</h3>
+                        {leadChartData.length > 0 ? (
+                            <div className="flex items-center justify-between">
+                                <div className="h-[200px] w-1/2">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
-                                            <Pie
-                                                data={taskStatusData}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={40}
-                                                outerRadius={60}
-                                                paddingAngle={2}
-                                                dataKey="value"
-                                            >
-                                                {taskStatusData.map((entry, index) => (
+                                            <Pie data={leadChartData} innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value">
+                                                {leadChartData.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip contentStyle={{ fontSize: '12px' }} />
+                                            <Tooltip />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <div className="flex-1 w-full grid grid-cols-2 gap-2 sm:gap-3">
-                                    {taskStatusData.map((item) => (
-                                        <div key={item.name} className="flex items-center gap-1.5 sm:gap-2">
-                                            <div
-                                                className="w-3 h-3 rounded-full flex-shrink-0"
-                                                style={{ backgroundColor: item.color }}
-                                            ></div>
-                                            <div className="min-w-0">
-                                                <p className="text-xs sm:text-sm text-gray-700 font-medium truncate">{item.name}</p>
-                                                <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">{item.value}</p>
+                                <div className="w-1/2 space-y-2">
+                                    {leadChartData.map((item, index) => (
+                                        <div key={index} className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-2 h-2 rounded-full" style={{backgroundColor: item.color}}></div>
+                                                <span className="text-xs font-bold text-gray-500">{item.name}</span>
                                             </div>
+                                            <span className="text-xs font-black text-[#1D1110]">{item.value}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-[200px] text-gray-300">
+                                <p className="text-sm font-bold text-gray-400">No lead data available</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Task Status Breakdown */}
+                    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+                        <h3 className="text-lg font-black text-[#1D1110] mb-5">Task Status Breakdown</h3>
+                        {taskStatusData.length > 0 ? (
+                            <div className="flex items-center justify-between">
+                                <div className="h-[200px] w-1/2">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={taskStatusData} innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value">
+                                                {taskStatusData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="w-1/2 space-y-2">
+                                    {taskStatusData.map((item, index) => (
+                                        <div key={index} className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-2 h-2 rounded-full" style={{backgroundColor: item.color}}></div>
+                                                <span className="text-xs font-bold text-gray-500">{item.name}</span>
+                                            </div>
+                                            <span className="text-xs font-black text-[#1D1110]">{item.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-[200px] text-gray-300">
+                                <p className="text-sm font-bold text-gray-400">No task data available</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* THREE COLUMN: Activity + Teams + Leaders */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    {/* Recent Activity */}
+                    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-base font-black text-[#1D1110]">Recent Activity</h3>
+                            <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg">
+                                {recentActivity.tasksCreated || 0} this week
+                            </span>
+                        </div>
+                        <div className="space-y-4 flex-1">
+                            {activities.length > 0 ? activities.slice(0, 5).map((activity, index, arr) => (
+                                <div key={index} className="flex gap-3 group">
+                                    <div className="relative">
+                                        <div className="w-8 h-8 bg-[#F3EFE7] rounded-xl flex items-center justify-center text-[#3E2723] group-hover:scale-110 transition-transform">
+                                            {activity.action?.includes('lead') ? <Target size={14} /> : 
+                                             activity.action?.includes('task') ? <CheckCircle size={14} /> :
+                                             <Activity size={14} />}
+                                        </div>
+                                        {index !== arr.length - 1 && (
+                                            <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[1px] h-4 bg-gray-100"></div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-[#1D1110] leading-tight truncate">{activity.details || activity.action}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5 font-medium">
+                                            {new Date(activity.createdAt).toLocaleDateString()} • {new Date(activity.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                        </p>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-300 py-8">
+                                    <Activity size={24} className="mb-2 opacity-20" />
+                                    <p className="text-sm font-bold text-gray-400">No recent activities</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* RIGHT SIDEBAR (4 columns) */}
-                    <div className="lg:col-span-4 space-y-3 sm:space-y-4">
-                        {/* Best Performing Teams */}
-                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-200 shadow-sm">
-                            <div className="flex items-center gap-1.5 sm:gap-2 mb-3">
-                                <Award className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
-                                <h3 className="text-sm sm:text-base font-bold text-gray-900">Top Teams</h3>
-                            </div>
-                            <div className="space-y-2">
-                                {bestTeams.slice(0, 5).map((team, index) => (
-                                    <div
-                                        key={team.teamId}
-                                        className="flex items-center gap-2 p-2 sm:p-2.5 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-100 hover:shadow-sm transition-shadow"
-                                    >
-                                        <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white rounded-lg flex items-center justify-center shadow-sm border border-orange-200 flex-shrink-0">
-                                            <span className="text-orange-600 font-bold text-xs sm:text-sm">#{index + 1}</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-xs sm:text-sm text-gray-900 truncate">{team.teamName || 'Unknown'}</p>
-                                            <p className="text-xs text-gray-600 truncate">{team.leadName || 'Unknown'}</p>
-                                        </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <p className="text-xs sm:text-sm font-bold text-green-600">{team.completionRate || 0}%</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                    {/* Active Teams */}
+                    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-base font-black text-[#1D1110]">Active Teams</h3>
+                            <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg">
+                                {bestTeams.length} teams
+                            </span>
                         </div>
+                        <div className="space-y-4 flex-1">
+                            {bestTeams.length > 0 ? bestTeams.slice(0, 5).map((team) => (
+                                <div key={team.teamId} className="flex items-center justify-between group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 bg-[#F3EFE7] rounded-xl flex items-center justify-center text-[#3E2723] text-xs font-black group-hover:rotate-6 transition-transform">
+                                            {team.teamName?.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-[#1D1110]">{team.teamName}</p>
+                                            <p className="text-xs text-gray-400 font-medium">{team.leadName}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-black text-[#1D1110]">{team.memberCount} members</p>
+                                        <div className="w-14 h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                                            <div className="h-full bg-[#3E2723] rounded-full" style={{width: `${team.completionRate}%`}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-300 py-8">
+                                    <Briefcase size={24} className="mb-2 opacity-20" />
+                                    <p className="text-sm font-bold text-gray-400">No active teams</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                        {/* Task Status Overview */}
-                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-200 shadow-sm">
-                            <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-3">Quick Stats</h3>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-green-50 rounded-lg border border-green-100">
-                                    <div className="flex items-center gap-1.5 sm:gap-2">
-                                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                                        <span className="text-xs sm:text-sm font-medium text-gray-700">Completed</span>
+                    {/* Top Leaders */}
+                    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-base font-black text-[#1D1110]">Top Leaders</h3>
+                        </div>
+                        <div className="space-y-3 flex-1">
+                            {bestTeams.length > 0 ? bestTeams.slice(0, 5).map((team, index) => (
+                                <div key={index} className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-[#1D1110]">{team.leadName}</span>
+                                        <span className="text-xs font-black text-[#3E2723]">{team.completionRate}%</span>
                                     </div>
-                                    <span className="text-base sm:text-lg font-bold text-green-600">{stats?.completedTasks || 0}</span>
-                                </div>
-                                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-orange-50 rounded-lg border border-orange-100">
-                                    <div className="flex items-center gap-1.5 sm:gap-2">
-                                        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
-                                        <span className="text-xs sm:text-sm font-medium text-gray-700">In Progress</span>
+                                    <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-[#D7CCC8] to-[#3E2723] rounded-full"
+                                            style={{width: `${team.completionRate}%`}}
+                                        ></div>
                                     </div>
-                                    <span className="text-base sm:text-lg font-bold text-orange-600">{stats?.inProgressTasks || 0}</span>
                                 </div>
-                                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-gray-50 rounded-lg border border-gray-100">
-                                    <div className="flex items-center gap-1.5 sm:gap-2">
-                                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
-                                        <span className="text-xs sm:text-sm font-medium text-gray-700">Pending</span>
-                                    </div>
-                                    <span className="text-base sm:text-lg font-bold text-gray-600">{stats?.pendingTasks || 0}</span>
+                            )) : (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-300 py-8">
+                                    <Award size={24} className="mb-2 opacity-20" />
+                                    <p className="text-sm font-bold text-gray-400">No performance data</p>
                                 </div>
-                                <div className="flex items-center justify-between p-2 sm:p-2.5 bg-red-50 rounded-lg border border-red-100">
-                                    <div className="flex items-center gap-1.5 sm:gap-2">
-                                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
-                                        <span className="text-xs sm:text-sm font-medium text-gray-700">Overdue</span>
-                                    </div>
-                                    <span className="text-base sm:text-lg font-bold text-red-600">{stats?.overdueTasks || 0}</span>
-                                </div>
+                            )}
+                        </div>
+                        <div className="mt-5 p-3 bg-[#1D1110] rounded-2xl flex items-center justify-between text-white">
+                            <div>
+                                <p className="text-xs font-medium opacity-70">Lead Conversion</p>
+                                <p className="text-lg font-black">{leadData.conversionRate || leadStats.conversionRate || 0}%</p>
                             </div>
+                            <TrendingUp size={18} className="opacity-50" />
                         </div>
                     </div>
                 </div>

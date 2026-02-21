@@ -8,8 +8,8 @@ const ActivityLog = require('../models/ActivityLog');
 const getTeams = async (req, res) => {
     try {
         const teams = await Team.find()
-            .populate('leadId', 'name email avatar')
-            .populate('members', 'name email avatar status')
+            .populate('leadId', 'name email avatar role')
+            .populate('members', 'name email avatar status role')
             .sort({ createdAt: -1 });
 
         res.json({
@@ -29,8 +29,8 @@ const getTeams = async (req, res) => {
 const getTeam = async (req, res) => {
     try {
         const team = await Team.findById(req.params.id)
-            .populate('leadId', 'name email avatar')
-            .populate('members', 'name email avatar status designation');
+            .populate('leadId', 'name email avatar role')
+            .populate('members', 'name email avatar status designation role');
 
         if (!team) {
             return res.status(404).json({ success: false, message: 'Team not found' });
@@ -52,8 +52,8 @@ const getTeam = async (req, res) => {
 const getMyTeam = async (req, res) => {
     try {
         const team = await Team.findById(req.user.teamId)
-            .populate('leadId', 'name email avatar')
-            .populate('members', 'name email avatar status designation phone skills');
+            .populate('leadId', 'name email avatar role')
+            .populate('members', 'name email avatar status designation phone skills role');
 
         if (!team) {
             return res.status(404).json({ success: false, message: 'Team not found' });
@@ -74,22 +74,75 @@ const getMyTeam = async (req, res) => {
 // @access  Private (Team Lead)
 const getLedTeams = async (req, res) => {
     try {
-        const teams = await Team.find({ leadId: req.user._id })
-            .populate('leadId', 'name email avatar')
-            .populate('members', 'name email avatar status designation');
+        const Task = require('../models/Task');
 
-        // Calculate progress for each team dynamically if needed
-        // For now, valid statistics are expected to be updated/stored on the team model
-        // or we could aggregate active task stats here. 
-        // Let's ensure strict project progress is available.
-        
-        // Populate specific mock "current project" if not strictly defined, 
-        // or rely on fields 'currentProject' and 'projectProgress' from schema.
+        const teams = await Team.find({ leadId: req.user._id })
+            .populate('leadId', 'name email avatar role')
+            .populate('members', 'name email avatar status designation role');
+
+        // Dynamically compute per-team and per-task progress
+        const teamsWithProgress = await Promise.all(teams.map(async (team) => {
+            const teamObj = team.toObject();
+            const memberIds = (team.members || []).map(m => m._id);
+            const totalMembers = memberIds.length;
+
+            // Get all tasks assigned to this team
+            const tasks = await Task.find({ teamId: team._id });
+
+            // Compute per-task progress:
+            // Progress = (completed member subtasks / total assigned members) × 100
+            const tasksWithProgress = tasks.map(task => {
+                const subtasks = task.subtasks || [];
+
+                if (subtasks.length > 0) {
+                    // Count how many members have completed their subtask
+                    const completedMemberSubtasks = subtasks.filter(
+                        st => st.status === 'completed'
+                    ).length;
+                    const totalSubtasks = subtasks.length;
+                    const progress = totalSubtasks > 0
+                        ? Math.round((completedMemberSubtasks / totalSubtasks) * 100)
+                        : 0;
+
+                    return {
+                        _id: task._id,
+                        title: task.title,
+                        status: task.status,
+                        progress,
+                        completedCount: completedMemberSubtasks,
+                        totalCount: totalSubtasks
+                    };
+                } else {
+                    // No subtasks — use the task's own status
+                    const progress = task.status === 'completed' ? 100 : 
+                                     task.status === 'in_progress' ? (task.progressPercentage || 50) : 0;
+                    return {
+                        _id: task._id,
+                        title: task.title,
+                        status: task.status,
+                        progress,
+                        completedCount: task.status === 'completed' ? 1 : 0,
+                        totalCount: 1
+                    };
+                }
+            });
+
+            // Overall team completion rate = average of all task progress
+            const overallProgress = tasksWithProgress.length > 0
+                ? Math.round(tasksWithProgress.reduce((sum, t) => sum + t.progress, 0) / tasksWithProgress.length)
+                : 0;
+
+            return {
+                ...teamObj,
+                completionRate: overallProgress,
+                tasksWithProgress
+            };
+        }));
 
         res.json({
             success: true,
-            count: teams.length,
-            data: teams
+            count: teamsWithProgress.length,
+            data: teamsWithProgress
         });
     } catch (error) {
         console.error('Get led teams error:', error);

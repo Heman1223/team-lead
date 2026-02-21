@@ -69,8 +69,14 @@ const teamSchema = new mongoose.Schema({
     // Team Health & Performance
     healthStatus: {
         type: String,
-        enum: ['healthy', 'at_risk', 'critical'],
-        default: 'healthy'
+        enum: ['Excellent', 'Good', 'Needs Attention', 'Critical'],
+        default: 'Good'
+    },
+    healthScore: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
     },
     completionRate: {
         type: Number,
@@ -85,6 +91,16 @@ const teamSchema = new mongoose.Schema({
     overdueTasksCount: {
         type: Number,
         default: 0
+    },
+    totalProjects: {
+        type: Number,
+        default: 0
+    },
+    overallProgress: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
     },
     
     // Legacy fields (keep for backward compatibility)
@@ -133,17 +149,13 @@ const teamSchema = new mongoose.Schema({
 });
 
 // Calculate team health status based on performance
-teamSchema.methods.calculateHealthStatus = function() {
-    const completionRate = this.completionRate || 0;
-    const hasOverdue = this.overdueTasksCount > 0;
+teamSchema.methods.calculateHealthStatus = function(score) {
+    const healthScore = score !== undefined ? score : this.healthScore;
     
-    if (hasOverdue || completionRate < 50) {
-        this.healthStatus = 'critical';
-    } else if (completionRate >= 50 && completionRate < 80) {
-        this.healthStatus = 'at_risk';
-    } else {
-        this.healthStatus = 'healthy';
-    }
+    if (healthScore >= 80) this.healthStatus = 'Excellent';
+    else if (healthScore >= 60) this.healthStatus = 'Good';
+    else if (healthScore >= 40) this.healthStatus = 'Needs Attention';
+    else this.healthStatus = 'Critical';
     
     return this.healthStatus;
 };
@@ -151,11 +163,13 @@ teamSchema.methods.calculateHealthStatus = function() {
 // Update team statistics
 teamSchema.methods.updateStatistics = async function() {
     const Task = mongoose.model('Task');
+    const User = mongoose.model('User');
     
     // Get all tasks for this team
     const tasks = await Task.find({ teamId: this._id });
     
     // Calculate statistics
+    const totalTasks = tasks.length;
     this.activeTasksCount = tasks.filter(t => 
         t.status !== 'completed' && t.status !== 'cancelled'
     ).length;
@@ -164,10 +178,39 @@ teamSchema.methods.updateStatistics = async function() {
         t.isOverdue && t.status !== 'completed'
     ).length;
     
-    const completedTasks = tasks.filter(t => t.status === 'completed').length;
-    this.completionRate = tasks.length > 0 
-        ? Math.round((completedTasks / tasks.length) * 100) 
+    const completedTasksNum = tasks.filter(t => t.status === 'completed').length;
+    this.completionRate = totalTasks > 0 
+        ? Math.round((completedTasksNum / totalTasks) * 100) 
         : 0;
+    
+    // Calculate overall progress across all tasks
+    const totalProgress = tasks.reduce((sum, t) => sum + (t.progressPercentage || 0), 0);
+    this.overallProgress = totalTasks > 0 ? Math.round(totalProgress / totalTasks) : 0;
+
+    // Calculate total projects (grouped by title/project field if exists, otherwise assume task groups)
+    // For now, let's look at unique currentProject values if any, or just count distinct tasks as projects if they are major
+    // Actually, let's just use a projects count field for now or unique categories.
+    const uniqueProjects = new Set(tasks.map(t => t.projectScope || 'General').filter(p => p));
+    this.totalProjects = uniqueProjects.size;
+
+    // Get active members ratio
+    const totalMembers = this.members.length;
+    const activeMembersCount = await User.countDocuments({
+        _id: { $in: this.members },
+        isActive: true
+    });
+    const activeMembersRatio = totalMembers > 0 ? (activeMembersCount / totalMembers) * 100 : 0;
+    
+    // Non-overdue tasks ratio
+    const nonOverdueRatio = totalTasks > 0 ? ((totalTasks - this.overdueTasksCount) / totalTasks) * 100 : 100;
+
+    // Calculate team health score (0-100)
+    // 40% Completion Rate, 30% Active Members, 30% Non-overdue tasks
+    this.healthScore = Math.round(
+        (this.completionRate * 0.4) + 
+        (activeMembersRatio * 0.3) + 
+        (nonOverdueRatio * 0.3)
+    );
     
     // Calculate health status
     this.calculateHealthStatus();

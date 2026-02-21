@@ -15,7 +15,8 @@ export const adminUsersAPI = {
     create: (data) => api.post('/admin/users', data),
     update: (id, data) => api.put(`/admin/users/${id}`, data),
     delete: (id, permanent = false) => api.delete(`/admin/users/${id}${permanent ? '?permanent=true' : ''}`),
-    resetPassword: (id, newPassword, forceChange = false) => api.put(`/admin/users/${id}/reset-password`, { newPassword, forceChange })
+    resetPassword: (id, newPassword, forceChange = false) => api.put(`/admin/users/${id}/reset-password`, { newPassword, forceChange }),
+    sendDirectMessage: (id, data) => api.post(`/admin/users/${id}/message`, data)
 };
 
 // Admin Team Management API
@@ -38,7 +39,9 @@ export const adminTasksAPI = {
     updateTask: (id, data) => api.put(`/admin/tasks/${id}`, data),
     deleteTask: (id) => api.delete(`/admin/tasks/${id}`),
     uploadAttachment: (taskId, data) => api.post(`/admin/tasks/${taskId}/attachments`, data),
-    deleteAttachment: (taskId, attachmentId) => api.delete(`/admin/tasks/${taskId}/attachments/${attachmentId}`)
+    deleteAttachment: (taskId, attachmentId) => api.delete(`/admin/tasks/${taskId}/attachments/${attachmentId}`),
+    reassignTask: (taskId, data) => api.put(`/admin/tasks/${taskId}/reassign`, data),
+    cancelTask: (taskId, data) => api.put(`/admin/tasks/${taskId}/cancel`, data)
 };
 
 // Admin Activities API

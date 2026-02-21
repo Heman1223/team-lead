@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Plus, Users, Calendar, Clock, AlertCircle, CheckCircle, X, Target, TrendingUp, Edit, Trash2, User, Bell, Phone, PhoneCall, PhoneOff, PhoneMissed, Filter } from 'lucide-react';
+import { ClipboardList, Plus, Users, Calendar, Clock, AlertCircle, CheckCircle, X, Target, TrendingUp, Edit, Trash2, User, Bell, Phone, PhoneCall, PhoneOff, PhoneMissed, Filter, MessageSquare, Save } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api, { notificationsAPI, callsAPI, activitiesAPI } from '../services/api';
 import Layout from '../components/Layout';
@@ -24,6 +24,8 @@ const TeamLeadTaskBreakdown = () => {
     
     const [filterStatus, setFilterStatus] = useState('all');
     const [filterPriority, setFilterPriority] = useState('all');
+    const [leaderNote, setLeaderNote] = useState('');
+    const [savingNote, setSavingNote] = useState(false);
     const [subtaskForm, setSubtaskForm] = useState({
         title: '',
         description: '',
@@ -141,7 +143,23 @@ const TeamLeadTaskBreakdown = () => {
 
     const handleProjectClick = (project) => {
         setSelectedProject(project);
+        setLeaderNote(project.notes || '');
         setViewMode('details');
+    };
+
+    const handleSaveNote = async () => {
+        if (!selectedProject) return;
+        setSavingNote(true);
+        try {
+            await api.put(`/tasks/${selectedProject._id}`, { notes: leaderNote });
+            alert('✅ Note saved successfully!');
+            fetchData();
+        } catch (error) {
+            console.error('Error saving note:', error);
+            alert('❌ Failed to save note');
+        } finally {
+            setSavingNote(false);
+        }
     };
 
     const handleBackToProjects = () => {
@@ -296,7 +314,7 @@ const TeamLeadTaskBreakdown = () => {
     const getPriorityColor = (priority) => {
         switch (priority) {
             case 'critical': return 'bg-red-100 text-red-700 border-red-200';
-            case 'high': return 'bg-orange-100 text-orange-700 border-orange-200';
+            case 'high': return 'bg-[#EFEBE9] text-[#3E2723] border-[#D7CCC8]';
             case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
             case 'low': return 'bg-green-100 text-green-700 border-green-200';
             default: return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -323,7 +341,7 @@ const TeamLeadTaskBreakdown = () => {
             <Layout title="Task Breakdown">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723] mx-auto"></div>
                         <p className="mt-4 text-gray-700 font-semibold">Loading projects...</p>
                     </div>
                 </div>
@@ -426,7 +444,7 @@ const TeamLeadTaskBreakdown = () => {
                             <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2.5 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl">
+                                        <div className="p-2.5 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-xl">
                                             <Filter className="w-5 h-5 text-white" />
                                         </div>
                                         <div>
@@ -448,7 +466,7 @@ const TeamLeadTaskBreakdown = () => {
                                                     key={filter.value}
                                                     onClick={() => setFilterStatus(filter.value)}
                                                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${filterStatus === filter.value
-                                                        ? 'bg-white text-orange-600 shadow-md'
+                                                        ? 'bg-white text-[#3E2723] shadow-md'
                                                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                                         }`}
                                                 >
@@ -471,10 +489,10 @@ const TeamLeadTaskBreakdown = () => {
                                     <div
                                         key={project._id}
                                         onClick={() => handleProjectClick(project)}
-                                        className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group relative flex flex-col h-full hover:border-orange-200"
+                                        className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group relative flex flex-col h-full hover:border-[#D7CCC8]"
                                     >
                                         <div className="flex items-start justify-between mb-4">
-                                            <div className="p-3 bg-gray-50 rounded-2xl group-hover:bg-orange-50 transition-colors duration-300">
+                                            <div className="p-3 bg-gray-50 rounded-2xl group-hover:bg-[#FAF7F2] transition-colors duration-300">
                                                 <span className="text-2xl">{getCategoryIcon(project.category)}</span>
                                             </div>
                                             <div className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${getPriorityColor(project.priority)}`}>
@@ -483,7 +501,7 @@ const TeamLeadTaskBreakdown = () => {
                                         </div>
 
                                         <div className="mb-4 flex-1">
-                                            <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors">
+                                            <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#3E2723] transition-colors">
                                                 {project.title}
                                             </h3>
                                             <p className="text-sm text-gray-500 line-clamp-3">
@@ -500,7 +518,7 @@ const TeamLeadTaskBreakdown = () => {
                                                 </div>
                                                 <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                                                     <div
-                                                        className={`h-2 rounded-full transition-all duration-500 ${project.progressPercentage === 100 ? 'bg-green-500' : 'bg-gradient-to-r from-orange-500 to-orange-600'
+                                                        className={`h-2 rounded-full transition-all duration-500 ${project.progressPercentage === 100 ? 'bg-green-500' : 'bg-gradient-to-r from-[#3E2723] to-[#3E2723]'
                                                             }`}
                                                         style={{ width: `${project.progressPercentage || 0}%` }}
                                                     ></div>
@@ -548,7 +566,7 @@ const TeamLeadTaskBreakdown = () => {
                                                 </div>
                                                 <div className="w-full bg-gray-100 rounded-full h-2">
                                                     <div 
-                                                        className="bg-orange-500 h-2 rounded-full transition-all"
+                                                        className="bg-[#3E2723] h-2 rounded-full transition-all"
                                                         style={{ width: `${selectedProject.progressPercentage || 0}%` }}
                                                     ></div>
                                                 </div>
@@ -556,12 +574,48 @@ const TeamLeadTaskBreakdown = () => {
                                              
                                              <button
                                                 onClick={() => setShowSubtaskModal(true)} // Open subtask modal
-                                                className="w-full py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold shadow-lg shadow-orange-200 transition-all flex items-center justify-center gap-2"
+                                                className="w-full py-3 bg-[#3E2723] text-white rounded-xl hover:bg-[#3E2723] font-bold shadow-lg shadow-[#D7CCC8] transition-all flex items-center justify-center gap-2"
                                             >
                                                 <Plus className="w-5 h-5" />
                                                 Add Subtask
                                             </button>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Notes Section */}
+                                <div className="p-6 border-b border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <MessageSquare className="w-5 h-5 text-gray-500" />
+                                        Notes / Instructions
+                                    </h3>
+                                    
+                                    {/* Show existing notes from Admin */}
+                                    {selectedProject.notes && selectedProject.notes !== leaderNote && (
+                                        <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 mb-4">
+                                            <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">From Admin</p>
+                                            <p className="text-gray-700 font-medium leading-relaxed whitespace-pre-wrap text-sm">{selectedProject.notes}</p>
+                                        </div>
+                                    )}
+
+                                    <textarea
+                                        placeholder="Add or update notes for this task..." 
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent font-medium text-gray-800 resize-none text-sm"
+                                        rows="3"
+                                        maxLength={1000}
+                                        value={leaderNote}
+                                        onChange={(e) => setLeaderNote(e.target.value)}
+                                    />
+                                    <div className="flex items-center justify-between mt-2">
+                                        <p className="text-xs text-gray-400 font-medium">{leaderNote?.length || 0} / 1000</p>
+                                        <button
+                                            onClick={handleSaveNote}
+                                            disabled={savingNote}
+                                            className="px-5 py-2 bg-[#3E2723] text-white rounded-lg hover:bg-[#3E2723] font-bold text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <Save className="w-4 h-4" />
+                                            {savingNote ? 'Saving...' : 'Save Note'}
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -627,7 +681,7 @@ const TeamLeadTaskBreakdown = () => {
                                                                      {subtask.status !== 'completed' && (
                                                                         <button
                                                                             onClick={() => handleSendReminder(subtask)}
-                                                                            className="p-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-100"
+                                                                            className="p-2 text-[#3E2723] bg-[#FAF7F2] hover:bg-[#EFEBE9] rounded-lg transition-colors border border-[#EFEBE9]"
                                                                             title="Send Reminder"
                                                                         >
                                                                             <Bell className="w-4 h-4" />
@@ -677,7 +731,7 @@ const TeamLeadTaskBreakdown = () => {
             {showSubtaskModal && selectedProject && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
                     <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl">
-                        <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 rounded-t-2xl">
+                        <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] px-6 py-5 rounded-t-2xl">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                     <Plus className="w-6 h-6" />
@@ -698,7 +752,7 @@ const TeamLeadTaskBreakdown = () => {
                                     type="text"
                                     value={subtaskForm.title}
                                     onChange={(e) => setSubtaskForm({ ...subtaskForm, title: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                     placeholder="e.g., Implement login API endpoint"
                                     required
                                 />
@@ -711,7 +765,7 @@ const TeamLeadTaskBreakdown = () => {
                                 <textarea
                                     value={subtaskForm.description}
                                     onChange={(e) => setSubtaskForm({ ...subtaskForm, description: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                     placeholder="Detailed description of the subtask..."
                                     rows="3"
                                 />
@@ -724,7 +778,7 @@ const TeamLeadTaskBreakdown = () => {
                                 <select
                                     value={subtaskForm.assignedTo}
                                     onChange={(e) => setSubtaskForm({ ...subtaskForm, assignedTo: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent bg-white"
                                     required
                                 >
                                     <option value="">Select Team Member</option>
@@ -749,7 +803,7 @@ const TeamLeadTaskBreakdown = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl"
+                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white font-semibold rounded-xl hover:from-[#3E2723] hover:to-[#3E2723] transition-all shadow-lg hover:shadow-xl"
                                 >
                                     Create Subtask
                                 </button>
@@ -797,7 +851,7 @@ function CallModal({ show, member, status, duration, onEnd, onCancel }) {
                     <div className="min-h-[100px] flex flex-col items-center justify-center mb-6">
                         {status === 'checking' && (
                             <>
-                                <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-orange-500 mb-3"></div>
+                                <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-[#3E2723] mb-3"></div>
                                 <p className="text-gray-600 font-medium">Connecting...</p>
                             </>
                         )}
@@ -821,8 +875,8 @@ function CallModal({ show, member, status, duration, onEnd, onCancel }) {
                         )}
                         {status === 'missed' && (
                             <>
-                                <PhoneMissed className="w-10 h-10 text-orange-500 mb-2" />
-                                <p className="text-orange-600 font-semibold">No Answer</p>
+                                <PhoneMissed className="w-10 h-10 text-[#3E2723] mb-2" />
+                                <p className="text-[#3E2723] font-semibold">No Answer</p>
                             </>
                         )}
                         {status === 'ended' && (

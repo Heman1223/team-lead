@@ -104,11 +104,11 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden pointer-events-auto flex flex-col">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 text-white">
+                    <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] p-6 text-white">
                         <div className="flex items-start justify-between">
                             <div>
                                 <h2 className="text-2xl font-bold mb-1">Create New Lead</h2>
-                                <p className="text-orange-100 text-sm">Add a new lead to your pipeline</p>
+                                <p className="text-[#EFEBE9] text-sm">Add a new lead to your pipeline</p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -131,7 +131,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                         {/* Contact Information */}
                         <div className="bg-gray-50 rounded-xl p-6 space-y-4">
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                <User size={20} className="text-orange-600" />
+                                <User size={20} className="text-[#3E2723]" />
                                 Contact Information
                             </h3>
                             
@@ -145,7 +145,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                         name="clientName"
                                         value={formData.clientName}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                         placeholder="John Doe"
                                     />
                                 </div>
@@ -161,7 +161,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                             name="email"
                                             value={formData.email}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                             placeholder="john@example.com"
                                         />
                                     </div>
@@ -177,7 +177,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                             name="phone"
                                             value={formData.phone}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                             placeholder="+1 (555) 000-0000"
                                         />
                                     </div>
@@ -190,7 +190,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                         name="category"
                                         value={formData.category}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                     >
                                         <option value="web_development">Web Development</option>
                                         <option value="mobile_app">Mobile App</option>
@@ -207,7 +207,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                         {/* Lead Details */}
                         <div className="bg-gray-50 rounded-xl p-6 space-y-4">
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                <Tag size={20} className="text-orange-600" />
+                                <Tag size={20} className="text-[#3E2723]" />
                                 Lead Details
                             </h3>
                             
@@ -223,7 +223,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                             name="estimatedValue"
                                             value={formData.estimatedValue}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                             placeholder="5000"
                                         />
                                     </div>
@@ -239,7 +239,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                             name="expectedCloseDate"
                                             value={formData.expectedCloseDate}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                         />
                                     </div>
                                 </div>
@@ -251,7 +251,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                         name="source"
                                         value={formData.source}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                     >
                                         <option value="manual">Manual Entry</option>
                                         <option value="website">Website Form</option>
@@ -269,7 +269,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                         name="priority"
                                         value={formData.priority}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                     >
                                         <option value="low">Low</option>
                                         <option value="medium">Medium</option>
@@ -336,7 +336,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                     value={formData.inquiryMessage}
                                     onChange={handleChange}
                                     rows="3"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] resize-none"
                                     placeholder="Paste the initial inquiry message from the client..."
                                 />
                             </div>
@@ -350,7 +350,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                     value={formData.description}
                                     onChange={handleChange}
                                     rows="3"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] resize-none"
                                     placeholder="Add any internal notes or requirements..."
                                 />
                             </div>
@@ -368,7 +368,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#3E2723] text-white rounded-lg hover:bg-[#3E2723] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? (
                                     <>

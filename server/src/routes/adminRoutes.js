@@ -25,7 +25,8 @@ const {
     reassignTask,
     cancelTask,
     uploadTaskAttachment,
-    deleteTaskAttachment
+    deleteTaskAttachment,
+    sendAdminMessage
 } = require('../controllers/adminController');
 const {
     getTeamPerformance: getAnalyticsTeamPerformance,
@@ -51,6 +52,7 @@ router.route('/users/:id')
     .delete(deleteUser);
 
 router.put('/users/:id/reset-password', resetUserPassword);
+router.post('/users/:id/message', sendAdminMessage);
 
 // Team management routes
 router.route('/teams')

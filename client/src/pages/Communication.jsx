@@ -170,7 +170,7 @@ const Communication = () => {
             <Layout title="Communication">
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723] mx-auto"></div>
                         <p className="mt-4 text-gray-700 font-semibold">Loading communication...</p>
                     </div>
                 </div>
@@ -187,7 +187,7 @@ const Communication = () => {
                         {/* Left Panel - Contacts List */}
                         <div className={`w-full md:w-96 border-r border-gray-200 flex flex-col ${activeView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
                             {/* Header */}
-                            <div className="p-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                            <div className="p-4 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white">
                                 <div className="flex items-center justify-between mb-3">
                                     <h2 className="text-xl font-bold">Messages</h2>
                                     <button
@@ -200,13 +200,13 @@ const Communication = () => {
                                 </div>
                                 {/* Search */}
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-orange-200 w-4 h-4" />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#D7CCC8] w-4 h-4" />
                                     <input
                                         type="text"
                                         placeholder="Search contacts..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-white/20 border border-white/30 rounded-xl text-white placeholder-orange-200 focus:outline-none focus:bg-white/30"
+                                        className="w-full pl-10 pr-4 py-2 bg-white/20 border border-white/30 rounded-xl text-white placeholder-[#D7CCC8] focus:outline-none focus:bg-white/30"
                                     />
                                 </div>
                             </div>
@@ -221,7 +221,7 @@ const Communication = () => {
                                         key={tab.key}
                                         onClick={() => setStatusFilter(tab.key)}
                                         className={`flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter === tab.key
-                                                ? 'bg-orange-100 text-orange-700'
+                                                ? 'bg-[#EFEBE9] text-[#3E2723]'
                                                 : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
@@ -240,12 +240,12 @@ const Communication = () => {
                                         <div
                                             key={member._id}
                                             onClick={() => openChat(member)}
-                                            className={`flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${selectedMember?._id === member._id ? 'bg-orange-50' : ''
+                                            className={`flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${selectedMember?._id === member._id ? 'bg-[#FAF7F2]' : ''
                                                 }`}
                                         >
                                             {/* Avatar */}
                                             <div className="relative flex-shrink-0">
-                                                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                                <div className="w-12 h-12 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-full flex items-center justify-center text-white font-bold text-lg">
                                                     {member.name?.charAt(0).toUpperCase() || '?'}
                                                 </div>
                                                 <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 ${getStatusColor(member.status)} rounded-full border-2 border-white`}></span>
@@ -266,7 +266,7 @@ const Communication = () => {
                                                         {lastMsg ? lastMsg.content : (member.email || 'No email')}
                                                     </p>
                                                     {unread > 0 && (
-                                                        <span className="ml-2 px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
+                                                        <span className="ml-2 px-2 py-0.5 bg-[#3E2723] text-white text-xs font-bold rounded-full">
                                                             {unread}
                                                         </span>
                                                     )}
@@ -297,7 +297,7 @@ const Communication = () => {
                                             <ArrowLeft className="w-5 h-5 text-gray-600" />
                                         </button>
                                         <div className="relative">
-                                            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-full flex items-center justify-center text-white font-bold">
                                                 {selectedMember.name?.charAt(0).toUpperCase() || '?'}
                                             </div>
                                             <span className={`absolute bottom-0 right-0 w-3 h-3 ${getStatusColor(selectedMember.status)} rounded-full border-2 border-white`}></span>
@@ -312,7 +312,7 @@ const Communication = () => {
                                     <div className="flex-1 overflow-y-auto p-4 bg-[#e5ded8]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.05"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
                                         {loadingMessages ? (
                                             <div className="flex items-center justify-center h-full">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3E2723]"></div>
                                             </div>
                                         ) : messages.length === 0 ? (
                                             <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -363,12 +363,12 @@ const Communication = () => {
                                                 value={messageText}
                                                 onChange={(e) => setMessageText(e.target.value)}
                                                 placeholder="Type a message..."
-                                                className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
                                             />
                                             <button
                                                 type="submit"
                                                 disabled={!messageText.trim() || sendingMessage}
-                                                className="p-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full hover:from-orange-600 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="p-3 bg-gradient-to-r from-[#3E2723] to-[#3E2723] text-white rounded-full hover:from-[#3E2723] hover:to-[#3E2723] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 {sendingMessage ? (
                                                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -382,8 +382,8 @@ const Communication = () => {
                             ) : (
                                 /* Empty State */
                                 <div className="flex-1 flex flex-col items-center justify-center bg-gray-50">
-                                    <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center mb-6">
-                                        <MessageCircle className="w-12 h-12 text-orange-500" />
+                                    <div className="w-24 h-24 bg-gradient-to-br from-[#EFEBE9] to-[#D7CCC8] rounded-full flex items-center justify-center mb-6">
+                                        <MessageCircle className="w-12 h-12 text-[#3E2723]" />
                                     </div>
                                     <h3 className="text-2xl font-bold text-gray-800 mb-2">Team Chat</h3>
                                     <p className="text-gray-600 text-center max-w-md">

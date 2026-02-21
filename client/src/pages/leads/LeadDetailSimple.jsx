@@ -191,7 +191,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     if (loading) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3E2723]"></div>
             </div>
         );
     }
@@ -210,7 +210,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden pointer-events-auto flex flex-col">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 text-white">
+                    <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] p-6 text-white">
                         <div className="flex items-start justify-between">
                             <div className="flex-1">
                                 <h2 className="text-2xl font-bold mb-2">{lead.clientName || 'Unknown'}</h2>
@@ -248,7 +248,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                         disabled={updating}
                                         className={`w-full px-4 py-3 border-2 rounded-xl font-bold text-sm focus:outline-none transition-all ${selectedStatus === 'converted' ? 'border-green-500 text-green-700 bg-green-50' :
                                             selectedStatus === 'lost' ? 'border-red-300 text-red-700 bg-red-50' :
-                                                'border-orange-500 text-gray-900'
+                                                'border-[#3E2723] text-gray-900'
                                             }`}
                                     >
                                         <option value="new">New</option>
@@ -268,7 +268,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                             value={lead.assignedTo?._id || ''}
                                             onChange={(e) => handleAssign(e.target.value)}
                                             disabled={updating}
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                         >
                                             <option value="">Unassigned</option>
                                             {allUsers.map(u => (
@@ -366,20 +366,20 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 {/* Add Note Input Area */}
                                 <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                                     <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <Edit3 size={16} className="text-orange-500" />
+                                        <Edit3 size={16} className="text-[#3E2723]" />
                                         Add a Note
                                     </label>
                                     <textarea
                                         value={note}
                                         onChange={(e) => setNote(e.target.value)}
                                         placeholder="Type a note about this lead..."
-                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[80px] text-sm mb-3 resize-none"
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] min-h-[80px] text-sm mb-3 resize-none"
                                     />
                                     <div className="flex justify-end">
                                         <button
                                             onClick={handleSaveNote}
                                             disabled={!note.trim() || updating}
-                                            className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                                            className="px-4 py-2 bg-[#3E2723] text-white rounded-lg text-sm font-bold hover:bg-[#2E1B17] disabled:opacity-50 transition-colors"
                                         >
                                             {updating ? 'Saving...' : 'Post Note'}
                                         </button>
@@ -404,7 +404,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                                 <div key={index} className="flex gap-4 group">
                                                     {/* Icon Column */}
                                                     <div className="flex flex-col items-center">
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-gray-50 shadow-sm z-10 ${isNote ? 'bg-orange-100 text-orange-600' :
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-gray-50 shadow-sm z-10 ${isNote ? 'bg-[#3E2723]/10 text-[#3E2723]' :
                                                             isStatusChange ? 'bg-blue-100 text-blue-600' :
                                                                 'bg-gray-100 text-gray-500'
                                                             }`}>
@@ -477,7 +477,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                     <select
                                         value={followUpData.title}
                                         onChange={(e) => setFollowUpData({ ...followUpData, title: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                     >
                                         <option value="">Select follow-up title...</option>
                                         <option value="Follow-up call">Follow-up call</option>
@@ -500,7 +500,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                         type="date"
                                         value={followUpData.scheduledDate}
                                         onChange={(e) => setFollowUpData({ ...followUpData, scheduledDate: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                     />
                                 </div>
                                 <div>
@@ -509,14 +509,14 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                         type="time"
                                         value={followUpData.scheduledTime}
                                         onChange={(e) => setFollowUpData({ ...followUpData, scheduledTime: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                     />
                                 </div>
                                 <div>
                                     <select
                                         value={followUpData.priority}
                                         onChange={(e) => setFollowUpData({ ...followUpData, priority: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                     >
                                         <option value="low">Low</option>
                                         <option value="medium">Medium</option>
@@ -529,7 +529,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                     <select
                                         value={followUpData.type}
                                         onChange={(e) => setFollowUpData({ ...followUpData, type: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
                                     >
                                         <option value="call">Call</option>
                                         <option value="email">Email</option>
@@ -550,7 +550,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 <button
                                     onClick={handleScheduleFollowUp}
                                     disabled={updating || !followUpData.title || !followUpData.scheduledDate}
-                                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 px-4 py-2 bg-[#3E2723] text-white rounded-lg hover:bg-[#2E1B17] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Schedule
                                 </button>

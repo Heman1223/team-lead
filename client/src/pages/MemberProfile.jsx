@@ -145,7 +145,7 @@ const MemberProfile = () => {
         return (
             <Layout title="Member Profile">
                 <div className="flex justify-center items-center h-screen">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723]"></div>
                 </div>
             </Layout>
         );
@@ -158,7 +158,7 @@ const MemberProfile = () => {
             <div className="space-y-8 pb-12">
                 {/* Header / Profile Card */}
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-orange-400 to-orange-600 opacity-90"></div>
+                    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-[#5D4037] to-[#3E2723] opacity-90"></div>
                     <button 
                         onClick={() => navigate(-1)}
                         className="absolute top-6 left-6 p-2 bg-white/20 backdrop-blur-md rounded-xl text-white hover:bg-white/30 transition-colors z-10"
@@ -198,7 +198,7 @@ const MemberProfile = () => {
                     {/* Overall Progress Bar Chart */}
                     <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 col-span-1 lg:col-span-2">
                         <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5 text-orange-500" />
+                            <TrendingUp className="w-5 h-5 text-[#3E2723]" />
                             Workload Overview
                         </h3>
                         <div className="h-[300px] w-full">
@@ -232,9 +232,9 @@ const MemberProfile = () => {
                             <p className="text-sm text-indigo-700 mt-1">Subtasks across all projects</p>
                         </div>
 
-                        <div className="bg-orange-50 rounded-3xl p-6 border border-orange-100">
+                        <div className="bg-[#FAF7F2] rounded-3xl p-6 border border-[#EFEBE9]">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                                <div className="p-2 bg-[#EFEBE9] rounded-lg text-[#3E2723]">
                                     <Clock className="w-5 h-5" />
                                 </div>
                                 <span className="font-semibold text-orange-900">Pending</span>
@@ -242,7 +242,7 @@ const MemberProfile = () => {
                             <p className="text-4xl font-bold text-orange-900">
                                 {tasks.flatMap(t => t.subtasks).filter(s => s.status !== 'completed').length}
                             </p>
-                            <p className="text-sm text-orange-700 mt-1">Subtasks remaining</p>
+                            <p className="text-sm text-[#3E2723] mt-1">Subtasks remaining</p>
                         </div>
                     </div>
                 </div>
@@ -269,11 +269,11 @@ const MemberProfile = () => {
                                             setSelectedProject(project);
                                             setShowProjectModal(true);
                                         }}
-                                        className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 hover:shadow-xl hover:border-orange-200 transition-all cursor-pointer group"
+                                        className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 hover:shadow-xl hover:border-[#D7CCC8] transition-all cursor-pointer group"
                                     >
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="flex-1">
-                                                <h4 className="font-bold text-lg text-gray-900 line-clamp-1 group-hover:text-orange-600 transition-colors">{project.title}</h4>
+                                                <h4 className="font-bold text-lg text-gray-900 line-clamp-1 group-hover:text-[#3E2723] transition-colors">{project.title}</h4>
                                                 <span className={`inline-block mt-2 px-2.5 py-1 text-xs font-semibold rounded-lg ${
                                                     percent === 100 ? 'bg-green-100 text-green-700' : 
                                                     percent > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
@@ -281,7 +281,7 @@ const MemberProfile = () => {
                                                     {percent}% Complete
                                                 </span>
                                             </div>
-                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-orange-50 group-hover:text-orange-500 transition-colors">
+                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[#FAF7F2] group-hover:text-[#3E2723] transition-colors">
                                                 <Briefcase className="w-4 h-4" />
                                             </div>
                                         </div>
@@ -354,9 +354,9 @@ const MemberProfile = () => {
                         <div className="p-6 overflow-y-auto custom-scrollbar">
                             <div className="space-y-3">
                                 {selectedProject.subtasks.map(task => (
-                                    <div key={task._id} className="group p-4 bg-white border border-gray-200 rounded-xl hover:border-orange-200 hover:shadow-md transition-all">
+                                    <div key={task._id} className="group p-4 bg-white border border-gray-200 rounded-xl hover:border-[#D7CCC8] hover:shadow-md transition-all">
                                         <div className="flex justify-between items-start mb-2">
-                                            <h5 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">{task.title}</h5>
+                                            <h5 className="font-semibold text-gray-900 group-hover:text-[#3E2723] transition-colors">{task.title}</h5>
                                             <span className={`px-2.5 py-1 text-xs font-bold rounded-lg uppercase tracking-wide
                                                 ${task.status === 'completed' ? 'bg-green-100 text-green-700' : 
                                                   task.status === 'blocked' ? 'bg-red-100 text-red-700' : 

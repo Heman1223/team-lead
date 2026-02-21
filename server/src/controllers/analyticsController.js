@@ -251,8 +251,9 @@ const getBestPerformingTeams = async (req, res) => {
                 // Get team tasks
                 const tasks = await Task.find({ teamId: team._id, ...dateFilter });
                 const completedTasks = tasks.filter(t => t.status === 'completed').length;
+                const totalTasksProgress = tasks.reduce((acc, t) => acc + (t.progressPercentage || 0), 0);
                 const totalTasks = tasks.length;
-                const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+                const completionRate = totalTasks > 0 ? (totalTasksProgress / totalTasks) : 0;
 
                 // Get team leads (if they exist)
                 const leads = await Lead.find({ assignedTeam: team._id, ...dateFilter });
@@ -299,13 +300,16 @@ const getTeamLeadEffectiveness = async (req, res) => {
         if (!teamLead || teamLead.role !== 'team_lead') {
             return res.status(404).json({ success: false, message: 'Team lead not found' });
         }
-
         const team = await Team.findOne({ leadId: leadId });
 
         // Get tasks assigned to this team lead
         const tasks = await Task.find({ assignedTo: leadId });
-        const completedTasks = tasks.filter(t => t.status === 'completed').length;
-        const overdueTasks = tasks.filter(t =>
+        const totalTasks = tasks.length;
+        const personalTaskTotalProgress = tasks.reduce((sum, t) => sum + (t.progressPercentage || 0), 0);
+        const personalTaskCompletionRate = totalTasks > 0 ? (personalTaskTotalProgress / totalTasks) : 0;
+        
+        const completedTasksCount = tasks.filter(t => t.status === 'completed').length;
+        const overdueTasksCount = tasks.filter(t =>
             t.status !== 'completed' && new Date(t.deadline) < new Date()
         ).length;
 
@@ -318,31 +322,29 @@ const getTeamLeadEffectiveness = async (req, res) => {
 
                     const member = await User.findById(memberId).select('name email');
                     const memberTasks = await Task.find({ assignedTo: memberId });
-                    const memberCompleted = memberTasks.filter(t => t.status === 'completed').length;
+                    const totalMemberProgress = memberTasks.reduce((sum, t) => sum + (t.progressPercentage || 0), 0);
+                    const avgMemberProgress = memberTasks.length > 0 ? Math.round(totalMemberProgress / memberTasks.length) : 0;
 
                     return {
                         memberId,
                         memberName: member?.name || 'Unknown',
                         tasksAssigned: memberTasks.length,
-                        tasksCompleted: memberCompleted,
-                        completionRate: memberTasks.length > 0 ?
-                            Math.round((memberCompleted / memberTasks.length) * 100) : 0
+                        progressPercentage: avgMemberProgress
                     };
                 })
             );
             teamMemberStats = teamMemberStats.filter(s => s !== null);
         }
 
-        // Calculate average team member completion rate
+        // Calculate average team member completion rate (based on progress)
         const avgTeamCompletionRate = teamMemberStats.length > 0
-            ? teamMemberStats.reduce((sum, s) => sum + s.completionRate, 0) / teamMemberStats.length
+            ? teamMemberStats.reduce((sum, s) => sum + s.progressPercentage, 0) / teamMemberStats.length
             : 0;
 
         // Calculate effectiveness score
-        const taskCompletionRate = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
-        const overdueRate = tasks.length > 0 ? (overdueTasks / tasks.length) * 100 : 0;
+        const overdueRate = totalTasks > 0 ? (overdueTasksCount / totalTasks) * 100 : 0;
         const effectivenessScore = Math.round(
-            (taskCompletionRate * 0.4) +
+            (personalTaskCompletionRate * 0.4) +
             (avgTeamCompletionRate * 0.4) +
             ((100 - overdueRate) * 0.2)
         );
@@ -361,10 +363,10 @@ const getTeamLeadEffectiveness = async (req, res) => {
                     memberCount: team.members.length
                 } : null,
                 personalStats: {
-                    totalTasks: tasks.length,
-                    completedTasks,
-                    overdueTasks,
-                    taskCompletionRate: Math.round(taskCompletionRate)
+                    totalTasks: totalTasks,
+                    completedTasks: completedTasksCount,
+                    overdueTasks: overdueTasksCount,
+                    taskCompletionRate: Math.round(personalTaskCompletionRate)
                 },
                 teamStats: {
                     members: teamMemberStats,

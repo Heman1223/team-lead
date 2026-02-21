@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { leadsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useFilters } from '../../context/FilterContext';
 import FollowUpList from './FollowUpListSimple';
 
 const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
@@ -19,7 +20,7 @@ const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
         blue: 'bg-blue-50 border-blue-200 text-blue-600',
         green: 'bg-green-50 border-green-200 text-green-600',
         red: 'bg-red-50 border-red-200 text-red-600',
-        orange: 'bg-orange-50 border-orange-200 text-orange-600',
+        orange: 'bg-[#3E2723]/10 border-[#3E2723]/20 text-[#3E2723]',
         purple: 'bg-purple-50 border-purple-200 text-purple-600'
     };
 
@@ -39,17 +40,22 @@ const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
 
 const LeadDashboard = ({ refreshTrigger }) => {
     const { user } = useAuth();
+    const { dateRange } = useFilters();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchStats();
-    }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
+    }, [refreshTrigger, dateRange]); // Re-fetch when refreshTrigger or global date range changes
 
     const fetchStats = async () => {
         setLoading(true);
         try {
-            const response = await leadsAPI.getStats();
+            const params = {
+                startDate: dateRange.startDate.toISOString(),
+                endDate: dateRange.endDate.toISOString()
+            };
+            const response = await leadsAPI.getStats(params);
             setStats(response.data.data);
         } catch (error) {
             console.error('Error fetching lead stats:', error);
@@ -61,7 +67,7 @@ const LeadDashboard = ({ refreshTrigger }) => {
     if (loading) {
         return (
             <div className="flex items-center justify-center p-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3E2723]"></div>
             </div>
         );
     }
@@ -122,7 +128,7 @@ const LeadDashboard = ({ refreshTrigger }) => {
                                 new: 'bg-blue-500',
                                 contacted: 'bg-yellow-500',
                                 interested: 'bg-purple-500',
-                                follow_up: 'bg-orange-500',
+                                follow_up: 'bg-[#3E2723]',
                                 converted: 'bg-green-500',
                                 not_interested: 'bg-red-500'
                             };
@@ -186,7 +192,7 @@ const LeadDashboard = ({ refreshTrigger }) => {
                                         <tr key={emp._id} className="border-b border-gray-100 hover:bg-gray-50">
                                             <td className="py-3 px-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold text-sm">
+                                                    <div className="w-8 h-8 bg-[#3E2723]/10 rounded-full flex items-center justify-center text-[#3E2723] font-bold text-sm">
                                                         {index + 1}
                                                     </div>
                                                     <span className="font-semibold text-gray-900">{emp.name || 'Unknown'}</span>

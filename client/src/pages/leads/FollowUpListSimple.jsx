@@ -39,7 +39,7 @@ const FollowUpList = () => {
     const getPriorityColor = (priority) => {
         const colors = {
             urgent: 'bg-red-100 text-red-700 border-red-200',
-            high: 'bg-orange-100 text-orange-700 border-orange-200',
+            high: 'bg-[#EFEBE9] text-[#3E2723] border-[#D7CCC8]',
             medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
             low: 'bg-green-100 text-green-700 border-green-200'
         };
@@ -50,7 +50,7 @@ const FollowUpList = () => {
         return (
             <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
                 <div className="flex items-center justify-center h-40">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3E2723]"></div>
                 </div>
             </div>
         );
@@ -78,7 +78,7 @@ const FollowUpList = () => {
                         return (
                             <div
                                 key={followUp._id}
-                                className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-orange-300 transition-all"
+                                className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-[#BCAAA4] transition-all"
                             >
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1">

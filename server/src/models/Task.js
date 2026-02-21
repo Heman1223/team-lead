@@ -16,6 +16,21 @@ const commentSchema = new mongoose.Schema({
     }
 });
 
+const checklistItemSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    isCompleted: {
+        type: Boolean,
+        default: false
+    },
+    completedAt: {
+        type: Date
+    }
+});
+
 const subtaskSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -31,9 +46,13 @@ const subtaskSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['not_started', 'in_progress', 'completed', 'blocked'],
-        default: 'not_started'
+        enum: ['pending', 'in_progress', 'completed'],
+        default: 'pending'
     },
+    deadline: {
+        type: Date
+    },
+    comments: [commentSchema],
     progressPercentage: {
         type: Number,
         default: 0,
@@ -67,6 +86,11 @@ const subtaskSchema = new mongoose.Schema({
             type: String,
             maxlength: [1000, 'Next day plan cannot exceed 1000 characters']
         },
+        links: [{
+            title: String,
+            url: String
+        }],
+        images: [String],
         submittedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
@@ -137,8 +161,16 @@ const taskSchema = new mongoose.Schema({
     },
     taskType: {
         type: String,
-        enum: ['one_time', 'daily', 'weekly', 'monthly'],
+        enum: ['one_time', 'daily', 'weekly', 'monthly', 'project_task', 'lead_task', 'internal_task'],
         default: 'one_time'
+    },
+    relatedProject: {
+        type: String,
+        default: ''
+    },
+    relatedLead: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Lead'
     },
     
     // Timeline Control
@@ -168,12 +200,15 @@ const taskSchema = new mongoose.Schema({
         enum: ['soft', 'strict'],
         default: 'soft'
     },
+    reminder: {
+        type: Date
+    },
     
     // Performance Tracking
     status: {
         type: String,
-        enum: ['not_started', 'in_progress', 'completed', 'blocked', 'cancelled'],
-        default: 'not_started'
+        enum: ['pending', 'in_progress', 'on_hold', 'completed', 'overdue', 'blocked', 'cancelled'],
+        default: 'pending'
     },
     progressPercentage: {
         type: Number,
@@ -196,6 +231,47 @@ const taskSchema = new mongoose.Schema({
         ref: 'Task'
     },
     subtasks: [subtaskSchema],
+    eodReports: [{
+        reportDate: {
+            type: Date,
+            default: Date.now
+        },
+        workCompleted: {
+            type: String,
+            required: true,
+            maxlength: [2000, 'Work completed description cannot exceed 2000 characters']
+        },
+        hoursSpent: {
+            type: Number,
+            default: 0
+        },
+        progressUpdate: {
+            type: Number,
+            min: 0,
+            max: 100
+        },
+        blockers: {
+            type: String,
+            maxlength: [1000, 'Blockers description cannot exceed 1000 characters']
+        },
+        nextDayPlan: {
+            type: String,
+            maxlength: [1000, 'Next day plan cannot exceed 1000 characters']
+        },
+        links: [{
+            title: String,
+            url: String
+        }],
+        images: [String],
+        submittedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        submittedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     
     // Audit Fields
     assignedAt: {
@@ -224,6 +300,10 @@ const taskSchema = new mongoose.Schema({
         url: String,
         fileType: String,
         fileSize: Number,
+        isExternalLink: {
+            type: Boolean,
+            default: false
+        },
         uploadedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
@@ -234,9 +314,19 @@ const taskSchema = new mongoose.Schema({
         }
     }],
     comments: [commentSchema],
+    checklist: [checklistItemSchema],
     notes: {
         type: String,
         maxlength: [1000, 'Notes cannot be more than 1000 characters']
+    },
+    
+    // Soft Delete
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date
     },
     
     // Legacy fields for backward compatibility
@@ -255,20 +345,26 @@ const taskSchema = new mongoose.Schema({
 // Auto-calculate progress based on subtasks
 taskSchema.methods.calculateProgress = function() {
     if (this.subtasks && this.subtasks.length > 0) {
-        // Calculate average progress from all subtasks
-        const totalProgress = this.subtasks.reduce((sum, subtask) => {
-            return sum + (subtask.progressPercentage || 0);
-        }, 0);
-        this.progressPercentage = Math.round(totalProgress / this.subtasks.length);
+        const totalSubtasks = this.subtasks.length;
+        // Sum up progress percentages of all subtasks
+        const totalProgress = this.subtasks.reduce((sum, st) => sum + (st.progressPercentage || 0), 0);
+        this.progressPercentage = Math.round(totalProgress / totalSubtasks);
         
         // Update parent task status based on progress
         if (this.progressPercentage === 100) {
             this.status = 'completed';
-            this.completedAt = new Date();
+            if (!this.completedAt) this.completedAt = new Date();
         } else if (this.progressPercentage > 0) {
-            this.status = 'in_progress';
-            if (!this.startedAt) {
-                this.startedAt = new Date();
+            // Revert from completed if work is still remaining
+            // Only update to in_progress if not already on_hold or blocked
+            if (this.status === 'completed' || !['on_hold', 'blocked'].includes(this.status)) {
+                this.status = 'in_progress';
+            }
+            if (!this.startedAt) this.startedAt = new Date();
+        } else if (this.progressPercentage === 0) {
+            // Revert from completed/in_progress if progress is 0
+            if (this.status === 'completed' || this.status === 'in_progress' || !['on_hold', 'blocked'].includes(this.status)) {
+                this.status = 'pending';
             }
         }
     }
