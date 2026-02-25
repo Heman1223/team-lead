@@ -286,64 +286,43 @@ const deleteUser = async (req, res) => {
             });
         }
 
-        if (permanent === 'true') {
-            // HARD DELETE - Permanent removal
-            // Remove user from teams
-            await Team.updateMany(
-                { members: user._id },
-                { $pull: { members: user._id } }
-            );
+        // HARD DELETE - Permanent removal
+        // Remove user from teams
+        await Team.updateMany(
+            { members: user._id },
+            { $pull: { members: user._id } }
+        );
 
-            // If user is a team lead, handle teams
-            const teamsLed = await Team.find({ leadId: user._id });
-            for (const team of teamsLed) {
-                // Reassign tasks from this team to admin or delete team
-                await Task.updateMany(
-                    { teamId: team._id },
-                    { teamId: null, assignedTo: req.user._id }
-                );
-                await team.deleteOne();
-            }
-
-            // Reassign user's tasks to admin
+        // If user is a team lead, handle teams
+        const teamsLed = await Team.find({ leadId: user._id });
+        for (const team of teamsLed) {
+            // Reassign tasks from this team to admin or delete team
             await Task.updateMany(
-                { assignedTo: user._id },
-                { assignedTo: req.user._id }
+                { teamId: team._id },
+                { teamId: null, assignedTo: req.user._id }
             );
-
-            await user.deleteOne();
-
-            // Log activity
-            await ActivityLog.create({
-                action: 'user_deleted',
-                userId: req.user._id,
-                details: `Admin permanently deleted user: ${user.name} (${user.email})`
-            });
-
-            res.json({
-                success: true,
-                message: 'User permanently deleted successfully'
-            });
-        } else {
-            // SOFT DELETE - Mark as deleted but keep data
-            user.deletedAt = new Date();
-            user.isActive = false;
-            user.status = 'offline';
-            await user.save();
-
-            // Log activity
-            await ActivityLog.create({
-                action: 'user_deleted',
-                userId: req.user._id,
-                targetUserId: user._id,
-                details: `Admin soft deleted user: ${user.name} (${user.email})`
-            });
-
-            res.json({
-                success: true,
-                message: 'User deleted successfully (soft delete - can be restored)'
-            });
+            await team.deleteOne();
         }
+
+        // Reassign user's tasks to admin
+        await Task.updateMany(
+            { assignedTo: user._id },
+            { assignedTo: req.user._id }
+        );
+
+        await user.deleteOne();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'user_deleted',
+            userId: req.user._id,
+            details: `Admin permanently deleted user: ${user.name} (${user.email})`
+        });
+
+        res.json({
+            success: true,
+            message: 'User permanently deleted successfully'
+        });
     } catch (error) {
         console.error('Delete user error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -746,6 +725,7 @@ const assignTaskToTeamLead = async (req, res) => {
             deadlineType,
             taskType,
             teamLeadId,
+            teamId,
             notes,
             relatedProject,
             relatedLead,
@@ -767,8 +747,12 @@ const assignTaskToTeamLead = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Team lead not found' });
         }
 
-        // Get team lead's team
-        const team = await Team.findOne({ leadId: teamLeadId });
+        // Get team lead's team if not provided
+        let finalTeamId = teamId;
+        if (!finalTeamId) {
+            const team = await Team.findOne({ leadId: teamLeadId });
+            finalTeamId = team ? team._id : null;
+        }
 
         // Create task with all professional fields
         const task = await Task.create({
@@ -784,7 +768,7 @@ const assignTaskToTeamLead = async (req, res) => {
             // Ownership
             assignedTo: teamLeadId,
             assignedBy: req.user._id,
-            teamId: team ? team._id : null,
+            teamId: finalTeamId,
             taskType: taskType || 'one_time',
             relatedProject: relatedProject || '',
             relatedLead: relatedLead || null,
@@ -1226,6 +1210,8 @@ const updateTask = async (req, res) => {
             estimatedEffortUnit,
             deadlineType,
             taskType,
+            teamLeadId,
+            teamId,
             notes
         } = req.body;
 
@@ -1252,6 +1238,31 @@ const updateTask = async (req, res) => {
         if (deadlineType) task.deadlineType = deadlineType;
         if (taskType) task.taskType = taskType;
         if (notes !== undefined) task.notes = notes;
+
+        // Update Team Lead and Team if teamLeadId provided
+        if (teamLeadId) {
+            const isLeadChanged = teamLeadId.toString() !== task.assignedTo.toString();
+            
+            if (isLeadChanged) {
+                const newTeamLead = await User.findById(teamLeadId);
+                if (newTeamLead && newTeamLead.role === 'team_lead') {
+                    task.assignedTo = teamLeadId;
+                    
+                    // If teamId not explicitly changed but lead is, update teamId to lead's team
+                    if (!teamId) {
+                        const team = await Team.findOne({ leadId: teamLeadId });
+                        if (team) {
+                            task.teamId = team._id;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Always update teamId if explicitly provided
+        if (teamId) {
+            task.teamId = teamId;
+        }
 
         task.lastUpdatedBy = req.user._id;
         await task.save();
@@ -1569,11 +1580,10 @@ const sendAdminMessage = async (req, res) => {
 
         // Log this activity
         await ActivityLog.create({
+            action: 'notification_sent',
             userId: req.user._id,
-            type: 'USER_MEMBER_NOTIFIED',
-            description: `Sent admin message to ${targetUser.name}: ${title}`,
-            relatedId: targetUser._id,
-            relatedModel: 'User'
+            targetUserId: targetUser._id,
+            details: `Sent admin message to ${targetUser.name}: ${title}`
         });
 
         res.status(201).json({

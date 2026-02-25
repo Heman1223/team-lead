@@ -168,19 +168,14 @@ const AdminUserManagement = () => {
 
 
     const handleDeleteUser = async (userId) => {
-        const deleteType = window.confirm('⚠️ Choose delete type:\n\nOK = Soft Delete (can be restored)\nCancel = Abort');
-        if (deleteType === null) return;
-
         const confirmDelete = window.confirm(
-            deleteType
-                ? '⚠️ Soft delete this user? User will be deactivated but data will be preserved.'
-                : '⚠️ PERMANENTLY delete this user? This CANNOT be undone!'
+            '⚠️ PERMANENTLY delete this user? This will remove all their data and cannot be undone!'
         );
 
         if (confirmDelete) {
             try {
-                await adminUsersAPI.delete(userId, !deleteType);
-                alert('✅ User deleted successfully!');
+                await adminUsersAPI.delete(userId, true);
+                alert('✅ User permanently deleted successfully!');
                 fetchUsers();
             } catch (error) {
                 console.error('Error deleting user:', error);
@@ -252,14 +247,14 @@ const AdminUserManagement = () => {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                            <div className="relative w-full sm:w-72 lg:w-96">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <div className="relative w-full sm:w-80 lg:w-[450px]">
+                                <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
                                 <input
                                     type="text"
                                     placeholder="Search users..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723] transition-all shadow-sm"
+                                    className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723] transition-all shadow-sm"
                                 />
                             </div>
                             <select
@@ -436,6 +431,7 @@ const AdminUserManagement = () => {
 
                                                             <button
                                                                 onClick={() => {
+                                                                    handleEditUser(user);
                                                                     setOpenMenuId(null);
                                                                 }}
                                                                 className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#D7CCC8]/10 flex items-center gap-3 transition-colors"
@@ -454,9 +450,6 @@ const AdminUserManagement = () => {
                                                                 <Lock className="w-4 h-4 text-gray-600" />
                                                                 <span className="font-medium">Reset Password</span>
                                                             </button>
-
-                                                            <div className="border-t border-gray-200 my-1"></div>
-
 
                                                             <div className="border-t border-gray-200 my-1"></div>
 

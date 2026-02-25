@@ -253,10 +253,35 @@ const getBestPerformingTeams = async (req, res) => {
                 const completedTasks = tasks.filter(t => t.status === 'completed').length;
                 const totalTasksProgress = tasks.reduce((acc, t) => acc + (t.progressPercentage || 0), 0);
                 const totalTasks = tasks.length;
-                const completionRate = totalTasks > 0 ? (totalTasksProgress / totalTasks) : 0;
-
-                // Get team leads (if they exist)
+                // NEW: Blended Performance Calculation
                 const leads = await Lead.find({ assignedTeam: team._id, ...dateFilter });
+                const leadStatusWeights = {
+                    'new': 5,
+                    'contacted': 25,
+                    'qualified': 50,
+                    'proposal': 80,
+                    'converted': 100,
+                    'lost': 0
+                };
+
+                const taskProgressAvg = totalTasks > 0 
+                    ? totalTasksProgress / totalTasks 
+                    : null;
+                
+                const leadProgressAvg = leads.length > 0
+                    ? leads.reduce((acc, l) => acc + (leadStatusWeights[l.status] || 0), 0) / leads.length
+                    : null;
+
+                // Blended Performance Logic
+                let performanceRate = team.projectProgress || 0;
+                if (taskProgressAvg !== null && leadProgressAvg !== null) {
+                    performanceRate = Math.round((taskProgressAvg * 0.5) + (leadProgressAvg * 0.5));
+                } else if (taskProgressAvg !== null) {
+                    performanceRate = Math.round(taskProgressAvg);
+                } else if (leadProgressAvg !== null) {
+                    performanceRate = Math.round(leadProgressAvg);
+                }
+
                 const convertedLeads = leads.filter(l => l.status === 'converted').length;
                 const leadConversionRate = leads.length > 0 ? (convertedLeads / leads.length) * 100 : 0;
 
@@ -267,11 +292,11 @@ const getBestPerformingTeams = async (req, res) => {
                     memberCount: team.members.length,
                     tasksCompleted: completedTasks,
                     totalTasks,
-                    completionRate: Math.round(completionRate),
+                    completionRate: performanceRate,
                     leadsConverted: convertedLeads,
                     totalLeads: leads.length,
                     leadConversionRate: Math.round(leadConversionRate),
-                    overallScore: Math.round((completionRate + leadConversionRate) / 2)
+                    overallScore: Math.round((performanceRate + leadConversionRate) / 2)
                 };
             })
         );
@@ -447,8 +472,13 @@ const getDashboardStats = async (req, res) => {
                 return {
                     teamId: team._id,
                     teamName: team.name,
-                    completionRate: teamTasks.length > 0 ?
-                        Math.round((completed / teamTasks.length) * 100) : 0
+                    completionRate: (() => {
+                        const Lead = require('../models/Lead');
+                        // Simplistic blended check for dashboard list
+                        const taskAvg = teamTasks.length > 0 ? Math.round((completed / teamTasks.length) * 100) : null;
+                        // We don't want to over-fetch in this list, but for consistency:
+                        return taskAvg !== null ? taskAvg : (team.projectProgress || 0);
+                    })()
                 };
             })
         );

@@ -48,7 +48,7 @@ const FollowUpList = () => {
 
     if (loading) {
         return (
-            <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+            <div className="bg-[#FDF8F3] rounded-xl border border-[#EBD9C1] p-6">
                 <div className="flex items-center justify-center h-40">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3E2723]"></div>
                 </div>
@@ -57,7 +57,7 @@ const FollowUpList = () => {
     }
 
     return (
-        <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+        <div className="bg-[#FDF8F3] rounded-xl border border-[#EBD9C1] p-6">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900">Upcoming Follow-Ups</h3>
                 <Calendar className="text-gray-400" size={20} />
@@ -78,7 +78,7 @@ const FollowUpList = () => {
                         return (
                             <div
                                 key={followUp._id}
-                                className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-[#BCAAA4] transition-all"
+                                className="p-4 bg-white rounded-lg border border-[#EBD9C1] hover:border-[#3E2723]/30 transition-all shadow-sm"
                             >
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1">

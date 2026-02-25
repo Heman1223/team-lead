@@ -502,7 +502,7 @@ const AdminTaskAssignment = () => {
                                                         className="w-full px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-[#FAF9F8] hover:text-[#1D1110] flex items-center gap-4 transition-all"
                                                     >
                                                         <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center"><Edit className="w-4 h-4 text-amber-500" /></div>
-                                                        Refine Parameters
+                                                        Edit Task
                                                     </button>
                                                     <div className="h-px bg-gray-50 my-2 mx-5"></div>
                                                     <button
@@ -510,7 +510,7 @@ const AdminTaskAssignment = () => {
                                                         className="w-full px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 flex items-center gap-4 transition-all"
                                                       >
                                                         <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><Trash2 className="w-4 h-4 text-red-500" /></div>
-                                                        Abort Directive
+                                                        Delete Task
                                                     </button>
                                                 </div>
                                             )}
@@ -529,7 +529,7 @@ const AdminTaskAssignment = () => {
                                             {getInitials(task.assignedTo?.name)}
                                         </div>
                                         <div>
-                                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Asset In-Charge</p>
+                                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Assigned To</p>
                                             <p className="text-xs font-black text-[#1D1110] uppercase tracking-tight">{task.assignedTo?.name || 'Unassigned'}</p>
                                         </div>
                                     </div>
@@ -556,7 +556,7 @@ const AdminTaskAssignment = () => {
 
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center">
-                                            <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Task Success Rate</p>
+                                            <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Task Progress</p>
                                             <span className="text-[10px] font-black text-[#1D1110] bg-gray-50 px-2 py-0.5 rounded-md">{task.progressPercentage || 0}%</span>
                                         </div>
                                         <div className="h-3 bg-gray-50 rounded-full overflow-hidden border border-gray-100 p-0.5 shadow-inner relative">
@@ -590,30 +590,30 @@ const AdminTaskAssignment = () => {
                     
                     <div className="relative bg-[#FAF9F8] w-full max-w-5xl h-full lg:h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500 border border-white/20">
                         
-                        {/* PREMIUM MODAL HEADER */}
-                        <div className="shrink-0 p-8 lg:p-10 bg-gradient-to-br from-[#1D1110] to-[#3E2723] text-white flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+                        {/* MODAL HEADER */}
+                        <div className="shrink-0 p-3 lg:p-4 bg-gradient-to-br from-[#1D1110] to-[#3E2723] text-white flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl" />
                             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24 blur-3xl" />
                             
-                            <div className="relative z-10 space-y-3">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg">
-                                        <Target className="w-6 h-6 text-white" />
+                            <div className="relative z-10 space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
+                                        <Target className="w-4 h-4 text-white" />
                                     </div>
-                                    <div className="h-px w-8 bg-white/20" />
-                                    <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em]">Task Creation</p>
+                                    <div className="h-px w-4 bg-white/20" />
+                                    <p className="text-[8px] font-black text-white/50 uppercase tracking-[0.3em]">Task Assignment</p>
                                 </div>
-                                <h2 className="text-4xl lg:text-5xl font-black text-white tracking-tighter uppercase leading-none">
+                                <h2 className="text-xl lg:text-2xl font-black text-white tracking-tighter uppercase leading-none">
                                     {selectedTask ? 'Edit Task' : 'Create Task'}
                                 </h2>
-                                <p className="text-white/40 text-[10px] font-medium tracking-widest uppercase ml-1">Assign tasks to team leads</p>
+                                <p className="text-white/40 text-[8px] font-medium tracking-widest uppercase ml-1">Assign tasks to team leads</p>
                             </div>
                             
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="relative z-10 w-14 h-14 flex items-center justify-center bg-white/10 text-white/60 rounded-2xl hover:bg-red-500 hover:text-white hover:rotate-90 transition-all duration-500 backdrop-blur-md border border-white/10 group shadow-xl"
+                                className="relative z-10 w-8 h-8 flex items-center justify-center bg-white/10 text-white/60 rounded-lg hover:bg-red-500 hover:text-white hover:rotate-90 transition-all duration-500 backdrop-blur-md border border-white/10 group shadow-xl"
                             >
-                                <X className="w-7 h-7" />
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
 
@@ -656,7 +656,7 @@ const AdminTaskAssignment = () => {
                                             required
                                             rows="4"
                                             className="w-full bg-white border border-gray-100 rounded-2xl px-8 py-6 text-sm font-bold text-[#1D1110] focus:ring-8 focus:ring-[#3E2723]/5 focus:outline-none transition-all resize-none shadow-sm leading-relaxed"
-                                            placeholder="Specify the full mission scope..."
+                                            placeholder="Specify the full task description..."
                                         />
                                     </div>
 
@@ -703,11 +703,11 @@ const AdminTaskAssignment = () => {
                                                     onChange={(e) => setFormData({...formData, category: e.target.value})}
                                                     className="w-full bg-white border border-gray-100 rounded-2xl px-8 py-5 text-[10px] font-black text-[#1D1110] uppercase tracking-widest focus:ring-8 focus:ring-[#3E2723]/5 focus:outline-none appearance-none cursor-pointer shadow-sm"
                                                 >
-                                                    <option value="development">Strategic Dev</option>
-                                                    <option value="testing">Operational Test</option>
-                                                    <option value="design">Blueprint Design</option>
-                                                    <option value="documentation">Intelligence Docs</option>
-                                                    <option value="other">General Mission</option>
+                                                    <option value="development">Development</option>
+                                                    <option value="testing">Testing</option>
+                                                    <option value="design">Design</option>
+                                                    <option value="documentation">Documentation</option>
+                                                    <option value="other">General Task</option>
                                                 </select>
                                                 <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover:text-[#1D1110] transition-colors" />
                                             </div>
@@ -722,7 +722,7 @@ const AdminTaskAssignment = () => {
                                             <User className="w-5 h-5 text-white" />
                                         </div>
                                         <div>
-                                            <h3 className="text-[10px] font-black text-[#1D1110] uppercase tracking-[0.3em]">Assignment</h3>
+                                            <h3 className="text-[10px] font-black text-[#1D1110] uppercase tracking-[0.3em]">Member Assignment</h3>
                                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Designate leadership and team allocation</p>
                                         </div>
                                     </div>
@@ -853,14 +853,14 @@ const AdminTaskAssignment = () => {
                                 {/* SECTION: TACTICAL NOTES */}
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 flex items-center gap-3">
-                                        <MessageSquare className="w-4 h-4" /> Additional Instructions
+                                        <MessageSquare className="w-4 h-4" /> Additional Information
                                     </label>
                                     <textarea
                                         value={formData.notes}
                                         onChange={(e) => setFormData({...formData, notes: e.target.value})}
                                         rows="4"
                                         className="w-full bg-[#FAF9F8] border border-gray-50 rounded-[2.5rem] px-10 py-8 text-sm font-bold text-[#1D1110] focus:ring-12 focus:ring-[#1D1110]/5 focus:outline-none transition-all italic leading-relaxed placeholder-gray-300 shadow-inner"
-                                        placeholder="Add high-level tactical considerations for the lead..."
+                                        placeholder="Add any extra instructions or notes for the lead..."
                                         maxLength={1000}
                                     />
                                     <div className="flex justify-end pr-8">
@@ -960,37 +960,37 @@ const AdminTaskAssignment = () => {
                     
                     <div className="relative bg-[#FAF9F8] w-full max-w-5xl h-full lg:h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500 border border-white/20">
                         
-                        {/* PREMIUM MODAL HEADER */}
-                        <div className="shrink-0 p-8 lg:p-10 bg-gradient-to-br from-[#1D1110] to-[#3E2723] text-white flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+                        {/* MODAL HEADER */}
+                        <div className="shrink-0 p-3 lg:p-4 bg-gradient-to-br from-[#1D1110] to-[#3E2723] text-white flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl" />
                             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24 blur-3xl" />
                             
-                            <div className="relative z-10 space-y-3">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg">
-                                        <ClipboardList className="w-6 h-6 text-white" />
+                            <div className="relative z-10 space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
+                                        <ClipboardList className="w-4 h-4 text-white" />
                                     </div>
-                                    <div className="h-px w-8 bg-white/20" />
+                                    <div className="h-px w-4 bg-white/20" />
                                     <div className="flex items-center gap-2">
-                                        <span className={`px-3 py-1 text-[8px] font-black uppercase rounded-lg ${getStatusColor(selectedTask.status)} shadow-lg`}>
+                                        <span className={`px-2 py-0.5 text-[6px] font-black uppercase rounded-lg ${getStatusColor(selectedTask.status)} shadow-lg`}>
                                             {selectedTask.status}
                                         </span>
-                                        <span className={`px-3 py-1 text-[8px] font-black uppercase rounded-lg ${getPriorityColor(selectedTask.priority)} shadow-lg`}>
+                                        <span className={`px-2 py-0.5 text-[6px] font-black uppercase rounded-lg ${getPriorityColor(selectedTask.priority)} shadow-lg`}>
                                             {selectedTask.priority}
                                         </span>
                                     </div>
                                 </div>
-                                <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tighter uppercase leading-tight max-w-2xl">
+                                <h1 className="text-xl lg:text-2xl font-black text-white tracking-tighter uppercase leading-tight max-w-2xl">
                                     {selectedTask.title}
                                 </h1>
-                                <p className="text-white/40 text-[10px] font-medium tracking-widest uppercase ml-1">Task Details Review</p>
+                                <p className="text-white/40 text-[8px] font-medium tracking-widest uppercase ml-1">Task Details</p>
                             </div>
                             
                             <button
                                 onClick={() => setShowDetailsModal(false)}
-                                className="relative z-10 w-14 h-14 flex items-center justify-center bg-white/10 text-white/60 rounded-2xl hover:bg-red-500 hover:text-white hover:rotate-90 transition-all duration-500 backdrop-blur-md border border-white/10 group shadow-xl"
+                                className="relative z-10 w-8 h-8 flex items-center justify-center bg-white/10 text-white/60 rounded-lg hover:bg-red-500 hover:text-white hover:rotate-90 transition-all duration-500 backdrop-blur-md border border-white/10 group shadow-xl"
                             >
-                                <X className="w-7 h-7" />
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
 

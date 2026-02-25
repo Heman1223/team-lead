@@ -90,12 +90,10 @@ const getLedTeams = async (req, res) => {
             const tasks = await Task.find({ teamId: team._id });
 
             // Compute per-task progress:
-            // Progress = (completed member subtasks / total assigned members) × 100
             const tasksWithProgress = tasks.map(task => {
                 const subtasks = task.subtasks || [];
 
                 if (subtasks.length > 0) {
-                    // Count how many members have completed their subtask
                     const completedMemberSubtasks = subtasks.filter(
                         st => st.status === 'completed'
                     ).length;
@@ -113,7 +111,6 @@ const getLedTeams = async (req, res) => {
                         totalCount: totalSubtasks
                     };
                 } else {
-                    // No subtasks — use the task's own status
                     const progress = task.status === 'completed' ? 100 : 
                                      task.status === 'in_progress' ? (task.progressPercentage || 50) : 0;
                     return {
@@ -127,14 +124,39 @@ const getLedTeams = async (req, res) => {
                 }
             });
 
-            // Overall team completion rate = average of all task progress
-            const overallProgress = tasksWithProgress.length > 0
-                ? Math.round(tasksWithProgress.reduce((sum, t) => sum + t.progress, 0) / tasksWithProgress.length)
-                : 0;
+            // NEW: Get all leads assigned to this team for performance progress
+            const Lead = require('../models/Lead');
+            const leads = await Lead.find({ assignedTeam: team._id });
+            const leadStatusWeights = {
+                'new': 5,
+                'contacted': 25,
+                'qualified': 50,
+                'proposal': 80,
+                'converted': 100,
+                'lost': 0
+            };
+
+            const taskProgressAvg = tasksWithProgress.length > 0
+                ? tasksWithProgress.reduce((sum, t) => sum + t.progress, 0) / tasksWithProgress.length
+                : null;
+            
+            const leadProgressAvg = leads.length > 0
+                ? leads.reduce((sum, l) => sum + (leadStatusWeights[l.status] || 0), 0) / leads.length
+                : null;
+
+            // Blended Performance Progress Logic
+            let finalProgress = team.projectProgress || 0;
+            if (taskProgressAvg !== null && leadProgressAvg !== null) {
+                finalProgress = Math.round((taskProgressAvg * 0.5) + (leadProgressAvg * 0.5));
+            } else if (taskProgressAvg !== null) {
+                finalProgress = Math.round(taskProgressAvg);
+            } else if (leadProgressAvg !== null) {
+                finalProgress = Math.round(leadProgressAvg);
+            }
 
             return {
                 ...teamObj,
-                completionRate: overallProgress,
+                completionRate: finalProgress,
                 tasksWithProgress
             };
         }));

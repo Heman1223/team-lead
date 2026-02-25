@@ -164,11 +164,15 @@ teamSchema.methods.calculateHealthStatus = function(score) {
 teamSchema.methods.updateStatistics = async function() {
     const Task = mongoose.model('Task');
     const User = mongoose.model('User');
+    const Lead = mongoose.model('Lead');
     
     // Get all tasks for this team
     const tasks = await Task.find({ teamId: this._id });
     
-    // Calculate statistics
+    // Get all leads for this team
+    const leads = await Lead.find({ assignedTeam: this._id });
+    
+    // 1. Calculate Task Statistics
     const totalTasks = tasks.length;
     this.activeTasksCount = tasks.filter(t => 
         t.status !== 'completed' && t.status !== 'cancelled'
@@ -178,18 +182,42 @@ teamSchema.methods.updateStatistics = async function() {
         t.isOverdue && t.status !== 'completed'
     ).length;
     
-    const completedTasksNum = tasks.filter(t => t.status === 'completed').length;
-    this.completionRate = totalTasks > 0 
-        ? Math.round((completedTasksNum / totalTasks) * 100) 
-        : 0;
-    
-    // Calculate overall progress across all tasks
-    const totalProgress = tasks.reduce((sum, t) => sum + (t.progressPercentage || 0), 0);
-    this.overallProgress = totalTasks > 0 ? Math.round(totalProgress / totalTasks) : 0;
+    // Calculate Task Progress Average
+    const taskProgressAvg = totalTasks > 0 
+        ? Math.round(tasks.reduce((sum, t) => sum + (t.progressPercentage || 0), 0) / totalTasks)
+        : null;
 
-    // Calculate total projects (grouped by title/project field if exists, otherwise assume task groups)
-    // For now, let's look at unique currentProject values if any, or just count distinct tasks as projects if they are major
-    // Actually, let's just use a projects count field for now or unique categories.
+    // 2. Calculate Lead Progress
+    const leadStatusWeights = {
+        'new': 5,
+        'contacted': 25,
+        'qualified': 50,
+        'proposal': 80,
+        'converted': 100,
+        'lost': 0
+    };
+
+    const leadProgressAvg = leads.length > 0
+        ? Math.round(leads.reduce((sum, l) => sum + (leadStatusWeights[l.status] || 0), 0) / leads.length)
+        : null;
+
+    // 3. Blended Performance Progress
+    // If both exist, 50/50 split. If only one exists, 100% weight. If neither, fallback to projectProgress.
+    if (taskProgressAvg !== null && leadProgressAvg !== null) {
+        this.completionRate = Math.round((taskProgressAvg * 0.5) + (leadProgressAvg * 0.5));
+        this.overallProgress = this.completionRate;
+    } else if (taskProgressAvg !== null) {
+        this.completionRate = taskProgressAvg;
+        this.overallProgress = taskProgressAvg;
+    } else if (leadProgressAvg !== null) {
+        this.completionRate = leadProgressAvg;
+        this.overallProgress = leadProgressAvg;
+    } else {
+        this.completionRate = this.projectProgress || 0;
+        this.overallProgress = this.projectProgress || 0;
+    }
+
+    // Calculate total projects
     const uniqueProjects = new Set(tasks.map(t => t.projectScope || 'General').filter(p => p));
     this.totalProjects = uniqueProjects.size;
 
@@ -205,7 +233,7 @@ teamSchema.methods.updateStatistics = async function() {
     const nonOverdueRatio = totalTasks > 0 ? ((totalTasks - this.overdueTasksCount) / totalTasks) * 100 : 100;
 
     // Calculate team health score (0-100)
-    // 40% Completion Rate, 30% Active Members, 30% Non-overdue tasks
+    // 40% Performance Rate, 30% Active Members, 30% Non-overdue tasks
     this.healthScore = Math.round(
         (this.completionRate * 0.4) + 
         (activeMembersRatio * 0.3) + 

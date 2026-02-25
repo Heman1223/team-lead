@@ -113,13 +113,13 @@ const LeadActivities = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Search */}
                 <div className="relative">
-                    <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
                     <input
                         type="text"
                         placeholder="Search activities..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white border border-gray-300 text-gray-900 pl-10 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 rounded-lg focus:ring-2 focus:ring-[#3E2723] focus:border-transparent outline-none text-sm sm:text-base"
+                        className="w-full bg-white border border-gray-300 text-gray-900 pl-11 sm:pl-12 pr-4 py-2 sm:py-2.5 rounded-lg focus:ring-2 focus:ring-[#3E2723] focus:border-transparent outline-none text-sm sm:text-base"
                     />
                 </div>
 

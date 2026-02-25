@@ -4,7 +4,10 @@ import { FilterProvider } from './context/FilterContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
+
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUserManagement from './pages/AdminUserManagement';
 import AdminTeamManagement from './pages/AdminTeamManagement';
@@ -22,6 +25,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import LeadsPage from './pages/leads/LeadsPage';
 import EODDashboard from './pages/EODDashboard';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import './index.css';
 
 function App() {
@@ -32,6 +36,7 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
             {/* Protected Routes - Role-Based Dashboards */}
             <Route path="/dashboard" element={
@@ -125,12 +130,9 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* Default Redirect - Role Based */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <RoleBasedRedirect />
-              </ProtectedRoute>
-            } />
+            {/* Default Route - Landing Page */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="*" element={
               <ProtectedRoute>
                 <RoleBasedRedirect />

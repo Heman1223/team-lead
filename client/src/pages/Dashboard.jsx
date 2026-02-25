@@ -144,10 +144,19 @@ const Dashboard = () => {
                 // Team Performance
                 const performanceRes = await reportsAPI.getTeamPerformance();
                 if (performanceRes.data.data) {
-                    const perfData = performanceRes.data.data;
+                    const perfArray = performanceRes.data.data;
+                    const avgPerf = perfArray.length > 0 
+                        ? Math.round(perfArray.reduce((acc, curr) => acc + (curr.completionRate || 0), 0) / perfArray.length) 
+                        : 0;
+                    
                     setTeamLeadStats({
-                        performance: perfData.averagePerformance || 0,
-                        teamLeadsStats: perfData.memberStats || []
+                        performance: avgPerf,
+                        teamLeadsStats: perfArray.map(item => ({
+                            name: item.member?.name || 'Unknown',
+                            assignedLeads: item.totalTasks || 0,
+                            convertedLeads: item.tasksCompleted || 0,
+                            efficiencyScore: item.completionRate || 0
+                        }))
                     });
                 }
 
@@ -308,30 +317,30 @@ const Dashboard = () => {
             <div className="space-y-6">
                 {/* Welcome & Alerts Section */}
                 <div className="flex flex-col lg:flex-row gap-6">
-                    <div className="flex-1 bg-gradient-to-r from-[#3E2723] to-[#5D4037] rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+                    <div className="flex-1 bg-[#FDF8F3] rounded-3xl border border-[#EBD9C1] p-8 text-[#3E2723] relative overflow-hidden">
                         <div className="relative z-10">
                             <h2 className="text-3xl font-semibold mb-2">
                                 Welcome back, {user?.name?.split(' ')[0]}
                             </h2>
-                            <p className="text-[#EFEBE9] text-lg opacity-90">
+                            <p className="text-gray-600 text-lg">
                                 {isTeamLead 
-                                    ? "Your team's performance is at " + teamLeadStats.performance + "% today." 
-                                    : "You have " + taskStats.inProgress + " tasks in progress."}
+                                    ? "Your team's performance is at " + (teamLeadStats.performance || 0) + "% today." 
+                                    : "You have " + (taskStats.inProgress || 0) + " tasks in progress."}
                             </p>
                             <div className="mt-6 flex gap-3">
-                                <button onClick={() => navigate('/leads')} className="px-5 py-2.5 bg-white text-[#3E2723] rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all flex items-center gap-2">
+                                <button onClick={() => navigate('/leads')} className="px-5 py-2.5 bg-[#3E2723] text-white rounded-xl font-bold text-sm hover:bg-[#5D4037] transition-all flex items-center gap-2">
                                     <Plus className="w-4 h-4" /> New Lead
                                 </button>
-                                <button onClick={() => navigate('/tasks')} className="px-5 py-2.5 bg-[#5D4037] bg-opacity-50 border border-white border-opacity-20 text-white rounded-xl font-bold text-sm hover:bg-opacity-70 transition-all flex items-center gap-2">
+                                <button onClick={() => navigate('/tasks')} className="px-5 py-2.5 bg-white border border-[#EBD9C1] text-[#3E2723] rounded-xl font-bold text-sm hover:bg-gray-50 transition-all flex items-center gap-2">
                                     <ListTodo className="w-4 h-4" /> My Tasks
                                 </button>
                             </div>
                         </div>
-                        <Activity className="absolute right-[-20px] bottom-[-20px] w-64 h-64 text-white opacity-5 rotate-12" />
+                        <Activity className="absolute right-[-20px] bottom-[-20px] w-64 h-64 text-[#3E2723] opacity-[0.03] rotate-12" />
                     </div>
 
                     {/* Alerts Section */}
-                    <div className="lg:w-1/3 bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                    <div className="lg:w-1/3 bg-white rounded-3xl border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                                 <Bell className="w-5 h-5 text-amber-500" />
@@ -365,19 +374,16 @@ const Dashboard = () => {
                 {/* 1️⃣ Top Summary Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     {[
-                        { label: 'Assigned Tasks', value: taskStats.total, icon: ListTodo, color: 'blue', sub: 'My queue' },
-                        { label: 'Active Projects', value: taskStats.activeProjects, icon: Briefcase, color: 'indigo', sub: 'In progress' },
-                        { label: 'Assigned Leads', value: leadStats.total, icon: Target, color: 'purple', sub: 'Pipeline' },
-                        { label: 'Leads Converted', value: leadStats.converted, icon: Trophy, color: 'green', sub: 'Won leads' },
-                        { label: 'Overdue Tasks', value: taskStats.overdue, icon: AlertCircle, color: 'red', sub: 'Needs action' },
-                        { label: 'Team Performance', value: `${teamLeadStats.performance}%`, icon: TrendingUp, color: 'amber', sub: 'Average %' }
+                        { label: 'Assigned Tasks', value: taskStats.total, color: 'blue', sub: 'My queue' },
+                        { label: 'Active Projects', value: taskStats.activeProjects, color: 'indigo', sub: 'In progress' },
+                        { label: 'Assigned Leads', value: leadStats.total, color: 'purple', sub: 'Pipeline' },
+                        { label: 'Leads Converted', value: leadStats.converted, color: 'green', sub: 'Won leads' },
+                        { label: 'Overdue Tasks', value: taskStats.overdue, color: 'red', sub: 'Needs action' },
+                        { label: 'Team Performance', value: `${teamLeadStats.performance || 0}%`, color: 'amber', sub: 'Average %' }
                     ].map((card, i) => (
-                        <div key={i} className="bg-[#F5E6D3] p-5 rounded-3xl border border-[#EBD9C1] hover:shadow-xl transition-all group cursor-pointer overflow-hidden relative">
-                            <div className={`absolute top-0 right-0 w-16 h-16 bg-white/50 rounded-bl-full flex items-center justify-center -mr-4 -mt-4 group-hover:bg-white transition-colors`}>
-                                <card.icon className={`w-5 h-5 text-amber-600/60`} />
-                            </div>
-                            <p className="text-[10px] font-medium text-gray-500 tracking-wider mb-1">{card.label}</p>
-                            <h4 className="text-2xl font-semibold text-gray-900 leading-none mb-1">{card.value}</h4>
+                        <div key={i} className="bg-[#FDF8F3] p-5 rounded-3xl border border-[#EBD9C1] hover:border-[#3E2723]/30 transition-all group cursor-pointer">
+                            <p className="text-[10px] font-medium text-gray-400 tracking-wider mb-1 uppercase">{card.label}</p>
+                            <h4 className="text-2xl font-bold text-[#3E2723] leading-none mb-1">{card.value}</h4>
                             <p className="text-[10px] text-gray-400 font-medium">{card.sub}</p>
                         </div>
                     ))}
@@ -569,7 +575,9 @@ const Dashboard = () => {
                                     <div key={proj._id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/30">
                                         <div className="flex items-center justify-between mb-3">
                                             <h4 className="font-semibold text-gray-900 text-sm">{proj.title}</h4>
-                                            <span className="text-[10px] font-medium px-2 py-0.5 bg-green-100 text-green-700 rounded-lg">Live</span>
+                                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-lg text-white ${getStatusColor(proj.status)}`}>
+                                                {proj.status.replace('_', ' ')}
+                                            </span>
                                         </div>
                                         <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
                                             <span className="flex items-center gap-1"><FileCheck className="w-3.5 h-3.5" /> {proj.progressPercentage}% Progress</span>
@@ -610,7 +618,7 @@ const Dashboard = () => {
                                     </div>
                                     <div className="col-span-4">
                                         <p className="font-semibold text-gray-900 text-sm leading-none">{member.name}</p>
-                                        <p className="text-[10px] text-gray-400 font-medium">Team Alpha</p>
+                                        <p className="text-[10px] text-gray-400 font-medium">Team Member</p>
                                     </div>
                                     <div className="col-span-2 text-center font-bold text-gray-600">{member.assignedLeads || 0}</div>
                                     <div className="col-span-2 text-center font-black text-green-600">{member.convertedLeads || 0}</div>
@@ -626,28 +634,28 @@ const Dashboard = () => {
                 </div>
 
                 {/* Bottom -> Activity Feed (Simplified from Upcoming Deadlines / Global Feed) */}
-                <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+                <div className="bg-[#FDF8F3] rounded-3xl border border-[#EBD9C1] p-8 text-[#3E2723] relative overflow-hidden">
                     <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex-1">
                             <h3 className="text-xl font-semibold mb-2">Activity Feed & Deadlines</h3>
-                            <p className="text-[#EFEBE9] opacity-80 text-sm leading-relaxed max-w-xl text-balance">
+                            <p className="text-gray-600 opacity-80 text-sm leading-relaxed max-w-xl text-balance">
                                 You have {upcomingDeadlines.length} critical deadlines in the next 7 days. 
                                 Make sure to check follow-ups for {leadStats.followUpsToday} leads today.
                             </p>
                         </div>
                         <div className="flex gap-4">
                             {upcomingDeadlines.slice(0, 2).map((item, i) => (
-                                <div key={i} className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 min-w-[200px]">
-                                    <p className="text-[10px] font-medium text-white/50 mb-1">{formatDeadline(item.deadline)}</p>
-                                    <p className="font-semibold text-sm text-white line-clamp-1">{item.title}</p>
+                                <div key={i} className="bg-white p-4 rounded-2xl border border-[#EBD9C1] min-w-[200px] shadow-sm">
+                                    <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wider">{formatDeadline(item.deadline)}</p>
+                                    <p className="font-semibold text-sm text-[#3E2723] line-clamp-1">{item.title}</p>
                                 </div>
                             ))}
-                            <button onClick={() => navigate('/notifications')} className="h-full px-6 bg-white text-[#3E2723] rounded-2xl font-semibold text-xs hover:bg-opacity-90 transition-all flex items-center gap-2">
+                            <button onClick={() => navigate('/notifications')} className="h-full px-6 bg-[#3E2723] text-white rounded-2xl font-semibold text-xs hover:bg-[#5D4037] transition-all flex items-center gap-2">
                                 All Alerts <ArrowUpRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
-                    <Activity className="absolute left-[-10px] top-[-10px] w-48 h-48 text-white opacity-5" />
+                    <Activity className="absolute left-[-10px] top-[-10px] w-48 h-48 text-[#3E2723] opacity-[0.03]" />
                 </div>
             </div>
         </Layout>

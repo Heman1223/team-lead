@@ -129,11 +129,11 @@ const IndividualTaskBreakdown = () => {
 
                     <div className="flex items-center gap-3">
                         <div className="relative group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#3E2723] transition-colors pointer-events-none" />
                             <input 
                                 type="text"
                                 placeholder="Search Member or Team..."
-                                className="pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#3E2723] outline-none w-full md:w-64 transition-all"
+                                className="pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#3E2723] outline-none w-full md:w-[400px] transition-all shadow-sm"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />

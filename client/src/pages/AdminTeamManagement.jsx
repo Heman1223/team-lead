@@ -127,7 +127,9 @@ const AdminTeamManagement = () => {
         // Calculate team progress from subtask completion data
         // Formula: per-task progress = (completed subtasks / total subtasks) × 100
         // Overall = average of all task progress values
-        let calculatedProgress = 0;
+        // Fallback: use manual projectProgress if no tasks exist
+        let calculatedProgress = team.projectProgress || 0;
+
         if (teamTasks.length > 0) {
           const totalProgress = teamTasks.reduce((sum, task) => {
             const subtasks = task.subtasks || [];

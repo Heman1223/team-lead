@@ -154,14 +154,14 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                         Email <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
-                                        <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                         <input
                                             required
                                             type="email"
                                             name="email"
                                             value={formData.email}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
+                                            className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
                                             placeholder="john@example.com"
                                         />
                                     </div>
@@ -171,13 +171,13 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                         Phone <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
-                                        <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                         <input
                                             required
                                             name="phone"
                                             value={formData.phone}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
+                                            className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
                                             placeholder="+1 (555) 000-0000"
                                         />
                                     </div>
@@ -217,13 +217,13 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                         Estimated Value ($)
                                     </label>
                                     <div className="relative">
-                                        <DollarSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <DollarSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                         <input
                                             type="number"
                                             name="estimatedValue"
                                             value={formData.estimatedValue}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
+                                            className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
                                             placeholder="5000"
                                         />
                                     </div>
@@ -233,13 +233,13 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                         Expected Close Date
                                     </label>
                                     <div className="relative">
-                                        <Calendar size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <Calendar size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                         <input
                                             type="date"
                                             name="expectedCloseDate"
                                             value={formData.expectedCloseDate}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
+                                            className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
                                         />
                                     </div>
                                 </div>

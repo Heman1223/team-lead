@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-    LineChart, Line, PieChart, Pie, Cell, ComposedChart, Area
+    LineChart, Line, PieChart, Pie, Cell, ComposedChart, Area, AreaChart
 } from 'recharts';
 import Layout from '../components/Layout';
 import { useFilters } from '../context/FilterContext';
@@ -69,20 +69,51 @@ const AdminDashboard = () => {
             // 3. Build performance trend from tasks
             if (tasksResult.status === 'fulfilled') {
                 const allTasks = tasksResult.value.data.data || [];
-                const filteredTasks = allTasks.filter(t => {
-                    const taskDate = new Date(t.createdAt);
-                    return taskDate >= startDate && taskDate <= endDate;
+                // Build daily trend for the selected date range
+                const trendMap = {};
+                const current = new Date(startDate);
+                const end = new Date(endDate);
+                
+                while (current <= end) {
+                    const key = `${current.getMonth() + 1}/${current.getDate()}`;
+                    trendMap[key] = { name: key, tasks: 0, completed: 0, ongoing: 0, leads: 0 };
+                    current.setDate(current.getDate() + 1);
+                }
+
+                // Populate counts
+                allTasks.forEach(task => {
+                    const createdDate = new Date(task.createdAt);
+                    const createdKey = `${createdDate.getMonth() + 1}/${createdDate.getDate()}`;
+                    
+                    if (trendMap[createdKey]) {
+                        trendMap[createdKey].tasks++;
+                    }
+                    
+                    if (task.status === 'completed' && task.updatedAt) {
+                        const completedDate = new Date(task.updatedAt);
+                        const completedKey = `${completedDate.getMonth() + 1}/${completedDate.getDate()}`;
+                        if (trendMap[completedKey]) {
+                            trendMap[completedKey].completed++;
+                        }
+                    } else if (task.status === 'in_progress') {
+                        const updatedDate = new Date(task.updatedAt || task.createdAt);
+                        const updatedKey = `${updatedDate.getMonth() + 1}/${updatedDate.getDate()}`;
+                        if (trendMap[updatedKey]) {
+                            trendMap[updatedKey].ongoing++;
+                        }
+                    }
                 });
 
-                // Build daily trend
-                const trendMap = {};
-                filteredTasks.forEach(task => {
-                    const d = new Date(task.createdAt);
+                // Add leads to trend
+                const leadsRes = await leadsAPI.getAll();
+                const allLeads = leadsRes.data.data || [];
+                allLeads.forEach(lead => {
+                    const d = new Date(lead.createdAt);
                     const key = `${d.getMonth() + 1}/${d.getDate()}`;
-                    if (!trendMap[key]) trendMap[key] = { name: key, tasks: 0, leads: 0 };
-                    trendMap[key].tasks++;
+                    if (trendMap[key]) trendMap[key].leads++;
                 });
-                setPerformanceTrend(Object.values(trendMap).slice(-14));
+
+                setPerformanceTrend(Object.values(trendMap));
             }
 
             // 4. Lead Stats
@@ -246,30 +277,51 @@ const AdminDashboard = () => {
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h3 className="text-lg font-black text-[#1D1110]">Performance Measurement</h3>
-                            <p className="text-sm text-gray-400 font-medium mt-0.5">Daily tasks created over the date range</p>
+                            <p className="text-sm text-gray-400 font-medium mt-0.5">Completion vs Ongoing trends over time</p>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-1.5">
-                                <div className="w-2.5 h-2.5 rounded-full bg-[#3E2723]"></div>
-                                <span className="text-xs font-bold text-gray-500">Tasks</span>
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></div>
+                                <span className="text-xs font-bold text-gray-500">Completed</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                                <div className="w-2.5 h-2.5 rounded-full bg-[#D7CCC8]"></div>
-                                <span className="text-xs font-bold text-gray-500">Leads</span>
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></div>
+                                <span className="text-xs font-bold text-gray-500">Ongoing</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#3E2723]"></div>
+                                <span className="text-xs font-bold text-gray-500">New Tasks</span>
                             </div>
                         </div>
                     </div>
                     <div className="h-[350px]">
                         {performanceTrend.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={performanceTrend}>
+                                <AreaChart data={performanceTrend}>
+                                    <defs>
+                                        <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3E2723" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#3E2723" stopOpacity={0}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorOngoing" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F0F0" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} dy={10} />
                                     <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
-                                    <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '13px'}} />
-                                    <Area type="monotone" dataKey="leads" fill="#D7CCC8" fillOpacity={0.3} stroke="#D7CCC8" strokeWidth={2} />
-                                    <Bar dataKey="tasks" barSize={16} fill="#3E2723" radius={[4, 4, 0, 0]} />
-                                </ComposedChart>
+                                    <Tooltip 
+                                        contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontSize: '13px', padding: '12px'}}
+                                    />
+                                    <Area type="monotone" dataKey="completed" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorCompleted)" />
+                                    <Area type="monotone" dataKey="ongoing" stroke="#F59E0B" strokeWidth={2} fillOpacity={1} fill="url(#colorOngoing)" />
+                                    <Area type="monotone" dataKey="tasks" stroke="#3E2723" strokeWidth={3} fillOpacity={1} fill="url(#colorTasks)" />
+                                </AreaChart>
                             </ResponsiveContainer>
                         ) : (
                             <div className="flex items-center justify-center h-full text-gray-300">
@@ -360,18 +412,18 @@ const AdminDashboard = () => {
                 {/* THREE COLUMN: Activity + Teams + Leaders */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                     {/* Recent Activity */}
-                    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col h-full">
-                        <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-base font-black text-[#1D1110]">Recent Activity</h3>
-                            <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg">
+                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm flex flex-col h-full overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+                        <div className="bg-[#3E2723] px-6 py-4 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Recent Activity</h3>
+                            <span className="text-[10px] font-bold text-[#EAD8D0] bg-white/10 px-2 py-0.5 rounded-lg">
                                 {recentActivity.tasksCreated || 0} this week
                             </span>
                         </div>
-                        <div className="space-y-4 flex-1">
+                        <div className="p-6 space-y-4 flex-1">
                             {activities.length > 0 ? activities.slice(0, 5).map((activity, index, arr) => (
-                                <div key={index} className="flex gap-3 group">
+                                <div key={index} className="flex gap-3 group/item">
                                     <div className="relative">
-                                        <div className="w-8 h-8 bg-[#F3EFE7] rounded-xl flex items-center justify-center text-[#3E2723] group-hover:scale-110 transition-transform">
+                                        <div className="w-8 h-8 bg-[#F3EFE7] rounded-xl flex items-center justify-center text-[#3E2723] group-hover/item:scale-110 transition-transform">
                                             {activity.action?.includes('lead') ? <Target size={14} /> : 
                                              activity.action?.includes('task') ? <CheckCircle size={14} /> :
                                              <Activity size={14} />}
@@ -381,8 +433,8 @@ const AdminDashboard = () => {
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-[#1D1110] leading-tight truncate">{activity.details || activity.action}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5 font-medium">
+                                        <p className="text-sm font-normal text-[#1D1110] leading-tight truncate">{activity.details || activity.action}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5 font-normal">
                                             {new Date(activity.createdAt).toLocaleDateString()} • {new Date(activity.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                         </p>
                                     </div>
@@ -390,34 +442,34 @@ const AdminDashboard = () => {
                             )) : (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-300 py-8">
                                     <Activity size={24} className="mb-2 opacity-20" />
-                                    <p className="text-sm font-bold text-gray-400">No recent activities</p>
+                                    <p className="text-sm font-normal text-gray-400">No recent activities</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
                     {/* Active Teams */}
-                    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col h-full">
-                        <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-base font-black text-[#1D1110]">Active Teams</h3>
-                            <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg">
+                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm flex flex-col h-full overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+                        <div className="bg-[#3E2723] px-6 py-4 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Active Teams</h3>
+                            <span className="text-[10px] font-bold text-[#EAD8D0] bg-white/10 px-2 py-0.5 rounded-lg">
                                 {bestTeams.length} teams
                             </span>
                         </div>
-                        <div className="space-y-4 flex-1">
+                        <div className="p-6 space-y-4 flex-1">
                             {bestTeams.length > 0 ? bestTeams.slice(0, 5).map((team) => (
-                                <div key={team.teamId} className="flex items-center justify-between group">
+                                <div key={team.teamId} className="flex items-center justify-between group/item">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 bg-[#F3EFE7] rounded-xl flex items-center justify-center text-[#3E2723] text-xs font-black group-hover:rotate-6 transition-transform">
+                                        <div className="w-9 h-9 bg-[#F3EFE7] rounded-xl flex items-center justify-center text-[#3E2723] text-xs font-black group-hover/item:rotate-6 transition-transform">
                                             {team.teamName?.charAt(0)}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-[#1D1110]">{team.teamName}</p>
-                                            <p className="text-xs text-gray-400 font-medium">{team.leadName}</p>
+                                            <p className="text-sm font-normal text-[#1D1110]">{team.teamName}</p>
+                                            <p className="text-xs text-gray-400 font-normal">{team.leadName}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs font-black text-[#1D1110]">{team.memberCount} members</p>
+                                        <p className="text-xs font-normal text-[#1D1110]">{team.memberCount} members</p>
                                         <div className="w-14 h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
                                             <div className="h-full bg-[#3E2723] rounded-full" style={{width: `${team.completionRate}%`}}></div>
                                         </div>
@@ -426,23 +478,23 @@ const AdminDashboard = () => {
                             )) : (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-300 py-8">
                                     <Briefcase size={24} className="mb-2 opacity-20" />
-                                    <p className="text-sm font-bold text-gray-400">No active teams</p>
+                                    <p className="text-sm font-normal text-gray-400">No active teams</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
                     {/* Top Leaders */}
-                    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col h-full">
-                        <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-base font-black text-[#1D1110]">Top Leaders</h3>
+                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm flex flex-col h-full overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                        <div className="bg-[#3E2723] px-6 py-4">
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Top Leaders</h3>
                         </div>
-                        <div className="space-y-3 flex-1">
+                        <div className="p-6 space-y-3 flex-1">
                             {bestTeams.length > 0 ? bestTeams.slice(0, 5).map((team, index) => (
                                 <div key={index} className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-[#1D1110]">{team.leadName}</span>
-                                        <span className="text-xs font-black text-[#3E2723]">{team.completionRate}%</span>
+                                        <span className="text-xs font-normal text-[#1D1110]">{team.leadName}</span>
+                                        <span className="text-xs font-normal text-[#3E2723]">{team.completionRate}%</span>
                                     </div>
                                     <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
                                         <div 
@@ -454,16 +506,16 @@ const AdminDashboard = () => {
                             )) : (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-300 py-8">
                                     <Award size={24} className="mb-2 opacity-20" />
-                                    <p className="text-sm font-bold text-gray-400">No performance data</p>
+                                    <p className="text-sm font-normal text-gray-400">No performance data</p>
                                 </div>
                             )}
                         </div>
-                        <div className="mt-5 p-3 bg-[#1D1110] rounded-2xl flex items-center justify-between text-white">
+                        <div className="mx-6 mb-6 p-4 bg-[#1D1110] rounded-2xl flex items-center justify-between text-white">
                             <div>
-                                <p className="text-xs font-medium opacity-70">Lead Conversion</p>
-                                <p className="text-lg font-black">{leadData.conversionRate || leadStats.conversionRate || 0}%</p>
+                                <p className="text-[10px] font-medium opacity-60 uppercase tracking-widest">Lead Conversion</p>
+                                <p className="text-xl font-normal mt-0.5">{leadData.conversionRate || leadStats.conversionRate || 0}%</p>
                             </div>
-                            <TrendingUp size={18} className="opacity-50" />
+                            <TrendingUp size={20} className="opacity-40" />
                         </div>
                     </div>
                 </div>

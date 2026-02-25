@@ -57,7 +57,7 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         console.log('Login attempt received:', { email: req.body.email });
-        const { email, password } = req.body;
+        const { email, password, requiredRole } = req.body;
 
         // Validate input
         if (!email || !password) {
@@ -70,6 +70,21 @@ const login = async (req, res) => {
         if (!user) {
             console.log('User not found:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        // Role restriction logic
+        if (requiredRole) {
+            if (requiredRole === 'admin') {
+                if (user.role !== 'admin') {
+                    console.log('Admin login attempted by non-admin:', email);
+                    return res.status(403).json({ success: false, message: 'Only administrators can access this portal.' });
+                }
+            } else if (requiredRole === 'team_member') {
+                if (user.role === 'admin') {
+                    console.log('Tean portal login attempted by admin:', email);
+                    return res.status(403).json({ success: false, message: 'Administrators must log in through the HR Admin portal.' });
+                }
+            }
         }
 
         // user.isActive check removed to eliminate "block" feature

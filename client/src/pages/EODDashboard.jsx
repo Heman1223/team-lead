@@ -120,8 +120,8 @@ const EODDashboard = () => {
                 {/* Filter & Search Dashboard */}
                 <div className="bg-white border border-gray-100 rounded-[32px] p-2 shadow-sm">
                     <div className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <div className="relative flex-1 max-w-xl">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                             <input 
                                 type="text"
                                 placeholder="Filter by Member, Project, or Task..."

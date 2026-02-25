@@ -34,10 +34,10 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     };
 
-    const login = async (email, password) => {
+    const login = async (email, password, requiredRole) => {
         try {
             setError(null);
-            const response = await authAPI.login({ email, password });
+            const response = await authAPI.login({ email, password, requiredRole });
             const { token, ...userData } = response.data.data;
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(userData));

@@ -25,7 +25,7 @@ const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
     };
 
     return (
-        <div className="bg-white rounded-lg sm:rounded-xl border-2 border-gray-200 p-3 sm:p-4 lg:p-6 hover:shadow-lg transition-all">
+        <div className="bg-[#FDF8F3] rounded-lg sm:rounded-xl border border-[#EBD9C1] p-3 sm:p-4 lg:p-6 hover:border-[#3E2723]/30 transition-all">
             <div className="flex items-start justify-between mb-2 sm:mb-3 lg:mb-4">
                 <div className={`p-2 sm:p-2.5 lg:p-3 rounded-lg ${colorClasses[color]}`}>
                     <Icon size={18} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
@@ -115,7 +115,7 @@ const LeadDashboard = ({ refreshTrigger }) => {
             {/* Status Breakdown & Follow-Ups */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
                 {/* Lead Status Distribution */}
-                <div className="bg-white rounded-lg sm:rounded-xl border-2 border-gray-200 p-3 sm:p-4 lg:p-6">
+                <div className="bg-[#FDF8F3] rounded-lg sm:rounded-xl border border-[#EBD9C1] p-3 sm:p-4 lg:p-6">
                     <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6">
                         <h3 className="text-base sm:text-lg font-bold text-gray-900">Lead Status</h3>
                         <BarChart3 className="text-gray-400" size={16} />
@@ -158,7 +158,7 @@ const LeadDashboard = ({ refreshTrigger }) => {
             </div>
 
             {/* Lead Sources */}
-            <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+            <div className="bg-[#FDF8F3] rounded-xl border border-[#EBD9C1] p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-6">Lead Sources</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {Object.entries(stats?.sourcesDist || {}).map(([source, count]) => (
@@ -172,7 +172,7 @@ const LeadDashboard = ({ refreshTrigger }) => {
 
             {/* Employee Performance (Admin & Team Lead only) */}
             {(user?.role === 'admin' || user?.role === 'team_lead') && stats?.employeePerformance?.length > 0 && (
-                <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+                <div className="bg-[#FDF8F3] rounded-xl border border-[#EBD9C1] p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-6">Team Performance</h3>
                     {/* Fixed height container with scroll - shows 4 rows */}
                     <div className="overflow-x-auto">

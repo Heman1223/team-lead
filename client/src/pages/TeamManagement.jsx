@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
     Users, User, Phone, Mail, MapPin, Calendar, TrendingUp,
     CheckCircle, Clock, AlertCircle, X, Search, Filter,
-    PhoneCall, PhoneOff, PhoneMissed
+    PhoneCall, PhoneOff, PhoneMissed, Target, Activity, AlertTriangle,
+    ChevronDown, ChevronRight, Briefcase, ClipboardList
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +33,8 @@ const TeamManagement = () => {
     const [callDuration, setCallDuration] = useState(0);
     const [callTimer, setCallTimer] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [teamSearchTerm, setTeamSearchTerm] = useState('');
+    const [teamSpecFilter, setTeamSpecFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
 
     useEffect(() => {
@@ -248,6 +251,31 @@ const TeamManagement = () => {
         return matchesSearch && matchesStatus;
     });
 
+    const filteredTeams = teams.filter(t => {
+        const matchesSearch = t.name?.toLowerCase().includes(teamSearchTerm.toLowerCase()) ||
+                            t.description?.toLowerCase().includes(teamSearchTerm.toLowerCase());
+        const matchesSpec = teamSpecFilter === 'all' || 
+                           t.specialization?.toLowerCase() === teamSpecFilter.toLowerCase() ||
+                           t.name?.toLowerCase().includes(teamSpecFilter.toLowerCase()); // Fallback if specialization not explicitly defined
+        return matchesSearch && matchesSpec;
+    });
+
+    const getTeamStats = () => {
+        const total = teams.length;
+        const active = teams.filter(t => t.status === 'active').length;
+        const done = teams.filter(t => t.completionRate === 100).length;
+        const avgProgress = total > 0 
+            ? Math.round(teams.reduce((acc, t) => acc + (t.completionRate || 0), 0) / total) 
+            : 0;
+
+        return {
+            total,
+            active,
+            done,
+            avgProgress
+        };
+    };
+
     if (loading) {
         return (
             <Layout title="Team Management">
@@ -264,99 +292,305 @@ const TeamManagement = () => {
     return (
         <>
         <Layout title="Team Management">
-            <div className="space-y-6">
+            <div className="max-w-[1600px] mx-auto px-4 lg:px-10 py-8 space-y-8 bg-[#FAF9F8]">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">
+                        <h2 className="text-2xl lg:text-3xl font-black text-[#1D1110] tracking-tighter uppercase">
                             {viewMode === 'teams' ? 'My Teams' : currentTeam?.name || 'Team Members'}
                         </h2>
-                        <p className="text-gray-600 mt-1">
-                            {viewMode === 'teams' 
-                                ? 'Manage and oversee all your teams' 
-                                : `Manage members and view performance for ${currentTeam?.name}`}
-                        </p>
+                        {viewMode === 'members' && (
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">
+                                Manage members and view performance for {currentTeam?.name}
+                            </p>
+                        )}
                     </div>
                     {viewMode === 'members' && isTeamLead && (
                          <button 
                             onClick={handleBackToTeams}
-                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                            className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-[#1D1110] rounded-[1.25rem] hover:bg-gray-50 transition-all shadow-sm hover:shadow-md font-black text-[10px] uppercase tracking-widest"
                          >
-                            <User className="w-4 h-4" /> {/* Fallback icon, ensure ArrowLeft is imported if strictly needed, using User as placeholder or imported lucide icons */}
+                            <ChevronRight className="w-3.5 h-3.5 rotate-180" />
                             Back to Teams
                          </button>
                     )}
                 </div>
 
+                {/* KPI METRICS ROW */}
+                {viewMode === 'teams' && isTeamLead && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {(() => {
+                            const stats = getTeamStats();
+                            return (
+                                <>
+                                    <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                                        <div className="flex items-center justify-between">
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">Total Teams</p>
+                                                <div className="flex items-baseline gap-2 mt-2">
+                                                    <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter">{stats.total}</h3>
+                                                    <span className="text-[10px] font-bold text-[#3E2723] tracking-tighter">UNITS</span>
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                                <Users className="w-5 h-5" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                                        <div className="flex items-center justify-between">
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">Active Teams</p>
+                                                <div className="flex items-baseline gap-2 mt-2">
+                                                    <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter">{stats.active}</h3>
+                                                    <span className="text-[10px] font-bold text-green-500 tracking-tighter">LIVE</span>
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                                <Activity className="w-5 h-5" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                                        <div className="flex items-center justify-between">
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">Avg Progress</p>
+                                                <div className="flex items-baseline gap-2 mt-2">
+                                                    <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter">{stats.avgProgress}%</h3>
+                                                    <span className="text-[10px] font-bold text-purple-500 tracking-tighter">EFFORT</span>
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                                <TrendingUp className="w-5 h-5" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                                        <div className="flex items-center justify-between">
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">Teams Done</p>
+                                                <div className="flex items-baseline gap-2 mt-2">
+                                                    <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter">{stats.done}</h3>
+                                                    <span className="text-[10px] font-bold text-blue-500 tracking-tighter">COMPLETE</span>
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                                <CheckCircle className="w-5 h-5" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                )}
+
+                {viewMode === 'members' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {/* TOTAL MEMBERS */}
+                        <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                            <div className="flex items-center justify-between">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                        Total Members
+                                    </p>
+                                    <div className="flex items-baseline gap-2 mt-2">
+                                        <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter">
+                                            {members.length}
+                                        </h3>
+                                        <span className="text-[10px] font-bold text-blue-500 tracking-tighter">
+                                            STAFF
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                    <Users className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ONLINE MEMBERS */}
+                        <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                            <div className="flex items-center justify-between">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                        Online Now
+                                    </p>
+                                    <div className="flex items-baseline gap-2 mt-2">
+                                        <h3 className="text-3xl font-black text-green-600 tracking-tighter">
+                                            {members.filter(m => m.status === 'online').length}
+                                        </h3>
+                                        <span className="text-[10px] font-bold text-green-500 tracking-tighter">
+                                            ACTIVE
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                    <Activity className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* TEAM EFFICIENCY */}
+                        <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                            <div className="flex items-center justify-between">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                        Avg. Completion
+                                    </p>
+                                    <div className="flex items-baseline gap-2 mt-2">
+                                        <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter">
+                                            {members.length > 0 
+                                                ? Math.round(members.reduce((acc, curr) => acc + (getMemberStats(curr._id).completionRate || 0), 0) / members.length) 
+                                                : 0}%
+                                        </h3>
+                                        <span className="text-[10px] font-bold text-purple-500 tracking-tighter">
+                                            YIELD
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                    <TrendingUp className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ACTIVE MISSIONS */}
+                        <div className="bg-[#F3EFE7] rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+                            <div className="flex items-center justify-between">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                        Active Tasks
+                                    </p>
+                                    <div className="flex items-baseline gap-2 mt-2">
+                                        <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter">
+                                            {teamTasks.filter(t => t.status !== 'completed').length}
+                                        </h3>
+                                        <span className="text-[10px] font-bold text-amber-500 tracking-tighter">
+                                            ONGOING
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="shrink-0 p-3 bg-white/50 rounded-2xl group-hover:bg-[#1D1110] group-hover:text-white transition-all duration-500">
+                                    <ClipboardList className="w-5 h-5" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex flex-wrap lg:flex-nowrap gap-4 items-center">
+                    <div className="flex-1 min-w-[300px] bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#3E2723]/5 transition-all">
+                        <div className="pl-4">
+                            <Search className="w-5 h-5 text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder={viewMode === 'teams' ? "Search teams by name or description..." : "Search members by name, email or designation..."}
+                            value={viewMode === 'teams' ? teamSearchTerm : searchTerm}
+                            onChange={(e) => viewMode === 'teams' ? setTeamSearchTerm(e.target.value) : setSearchTerm(e.target.value)}
+                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#3E2723] placeholder-gray-400 flex-1 px-4 py-4"
+                        />
+                    </div>
+                    
+                    <div className="flex items-center gap-3 w-full lg:w-auto">
+                        <div className="bg-white rounded-[1.25rem] shadow-sm border border-gray-100 p-1 flex items-center flex-1 lg:min-w-[200px]">
+                            <select
+                                value={viewMode === 'teams' ? teamSpecFilter : statusFilter}
+                                onChange={(e) => viewMode === 'teams' ? setTeamSpecFilter(e.target.value) : setStatusFilter(e.target.value)}
+                                className="w-full pl-5 pr-10 py-2.5 bg-transparent border-none focus:ring-0 text-[10px] font-black uppercase tracking-widest text-[#3E2723] appearance-none cursor-pointer"
+                            >
+                                {viewMode === 'teams' ? (
+                                    <>
+                                        <option value="all">All Specialties</option>
+                                        <option value="web dev">Web Development</option>
+                                        <option value="sales">Sales</option>
+                                        <option value="marketing">Marketing</option>
+                                        <option value="hr">Human Resources</option>
+                                    </>
+                                ) : (
+                                    <>
+                                        <option value="all">All Status</option>
+                                        <option value="online">Online</option>
+                                        <option value="busy">Busy</option>
+                                        <option value="offline">Offline</option>
+                                    </>
+                                )}
+                            </select>
+                            <div className="pr-4 pointer-events-none">
+                                <Filter className="w-3 h-3 text-gray-400" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* TEAMS GRID VIEW */}
                 {viewMode === 'teams' && isTeamLead && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-                        {teams.map(team => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-4">
+                        {filteredTeams.map(team => (
                             <div 
                                 key={team._id} 
                                 onClick={() => handleTeamClick(team)}
-                                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-[#5D4037] transition-all cursor-pointer group"
+                                className="group bg-white rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 cursor-pointer overflow-hidden transform hover:-translate-y-2 flex flex-col"
                             >
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="w-12 h-12 bg-[#F3EFE7] rounded-xl flex items-center justify-center text-[#3E2723] group-hover:bg-[#3E2723] group-hover:text-white transition-colors">
-                                        <Users className="w-6 h-6" />
-                                    </div>
-                                    <span className={`px-2 py-1 text-xs font-bold rounded-lg uppercase ${
-                                        team.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                                    }`}>
-                                        {team.status}
-                                    </span>
-                                </div>
-                                
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">{team.name}</h3>
-                                <p className="text-sm text-gray-500 line-clamp-2 mb-4 h-10">{team.description || 'No description provided.'}</p>
-                                
-                                <div className="space-y-3">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Members</span>
-                                        <span className="font-bold text-gray-900">{team.members?.length || 0}</span>
+                                <div className="p-8 space-y-6 flex-1">
+                                    <div className="flex justify-between items-start">
+                                        <div className="w-14 h-14 bg-[#F3EFE7] rounded-2xl flex items-center justify-center text-[#3E2723] group-hover:bg-[#3E2723] group-hover:text-white transition-all duration-500 shadow-sm">
+                                            <Users className="w-7 h-7" />
+                                        </div>
+                                        <span className={`px-4 py-1.5 text-[10px] font-black rounded-full uppercase tracking-widest ${
+                                            team.status === 'active' 
+                                                ? 'bg-green-100 text-green-700 border border-green-200' 
+                                                : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                        }`}>
+                                            {team.status}
+                                        </span>
                                     </div>
                                     
-                                    {/* Overall Progress */}
-                                    <div className="pt-2">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="text-xs font-semibold text-gray-500">Overall Progress</span>
-                                            <span className="text-xs font-bold text-[#3E2723]">{team.completionRate || 0}%</span>
-                                        </div>
-                                        <div className="w-full bg-gray-100 rounded-full h-2">
-                                            <div 
-                                                className="bg-[#3E2723] h-2 rounded-full transition-all"
-                                                style={{ width: `${team.completionRate || 0}%` }}
-                                            ></div>
-                                        </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-[#1D1110] mb-2 group-hover:text-[#3E2723] transition-colors tracking-tight">{team.name}</h3>
+                                        <p className="text-xs font-medium text-gray-400 leading-relaxed line-clamp-2 h-10">{team.description || 'No description provided.'}</p>
                                     </div>
-
-                                    {/* Per-Task/Project Progress */}
-                                    {team.tasksWithProgress && team.tasksWithProgress.length > 0 && (
-                                        <div className="pt-2 space-y-2 border-t border-gray-100">
-                                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Projects</span>
-                                            {team.tasksWithProgress.slice(0, 3).map(task => (
-                                                <div key={task._id}>
-                                                    <div className="flex justify-between items-center mb-0.5">
-                                                        <span className="text-xs font-medium text-gray-700 truncate max-w-[60%]">{task.title}</span>
-                                                        <span className="text-xs font-bold text-gray-500">{task.completedCount}/{task.totalCount}</span>
-                                                    </div>
-                                                    <div className="w-full bg-gray-100 rounded-full h-1.5">
-                                                        <div 
-                                                            className={`h-1.5 rounded-full transition-all ${
-                                                                task.progress === 100 ? 'bg-green-500' : 
-                                                                task.progress > 0 ? 'bg-[#5D4037]' : 'bg-gray-300'
-                                                            }`}
-                                                            style={{ width: `${task.progress}%` }}
-                                                        ></div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {team.tasksWithProgress.length > 3 && (
-                                                <p className="text-xs text-gray-400 text-center">+{team.tasksWithProgress.length - 3} more tasks</p>
-                                            )}
+                                    
+                                    <div className="space-y-4 pt-4 border-t border-gray-50">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Members</span>
+                                            <span className="text-sm font-black text-[#1D1110]">{team.members?.length || 0}</span>
                                         </div>
-                                    )}
+                                        
+                                        {/* Overall Progress */}
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team Progress</span>
+                                                <span className="text-xs font-black text-[#3E2723]">{team.completionRate || 0}%</span>
+                                            </div>
+                                            <div className="w-full bg-gray-50 rounded-full h-2.5 p-0.5 border border-gray-100 shadow-inner overflow-hidden">
+                                                <div 
+                                                    className="bg-[#3E2723] h-full rounded-full transition-all duration-1000"
+                                                    style={{ width: `${team.completionRate || 0}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <div className="px-8 py-5 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between group-hover:bg-[#F3EFE7]/30 transition-colors">
+                                    <div className="flex -space-x-3">
+                                        {(team.members || []).slice(0, 4).map((m, idx) => (
+                                            <div key={idx} className="w-8 h-8 rounded-full border-2 border-white bg-[#3E2723] flex items-center justify-center text-[10px] font-black text-white shadow-sm overflow-hidden">
+                                                {m.name?.charAt(0)}
+                                            </div>
+                                        ))}
+                                        {(team.members || []).length > 4 && (
+                                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-400 shadow-sm">
+                                                +{(team.members || []).length - 4}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] font-black text-[#1D1110] uppercase tracking-widest group-hover:text-[#3E2723] transition-colors">
+                                        View Details <ChevronRight className="w-4 h-4" />
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -366,254 +600,180 @@ const TeamManagement = () => {
                 {/* MEMBERS VIEW (Existing Logic wrapped) */}
                 {viewMode === 'members' && (
                     <>
-                {/* Stats Cards (Filtered by current team) */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Total Members</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">{members.length}</p>
-                            </div>
-                            <div className="p-4 bg-blue-100 rounded-xl">
-                                <Users className="w-8 h-8 text-blue-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Online</p>
-                                <p className="text-3xl font-bold text-green-600 mt-2">
-                                    {members.filter(m => m.status === 'online').length}
-                                </p>
-                            </div>
-                            <div className="p-4 bg-green-100 rounded-xl">
-                                <div className="w-8 h-8 bg-green-500 rounded-full"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Busy</p>
-                                <p className="text-3xl font-bold text-yellow-600 mt-2">
-                                    {members.filter(m => m.status === 'busy').length}
-                                </p>
-                            </div>
-                            <div className="p-4 bg-yellow-100 rounded-xl">
-                                <div className="w-8 h-8 bg-yellow-500 rounded-full"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-600">Offline</p>
-                                <p className="text-3xl font-bold text-gray-600 mt-2">
-                                    {members.filter(m => m.status === 'offline').length}
-                                </p>
-                            </div>
-                            <div className="p-4 bg-gray-100 rounded-xl">
-                                <div className="w-8 h-8 bg-gray-400 rounded-full"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Search and Filter */}
-                <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
-                    <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-2.5 sm:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5 pointer-events-none" />
-                            <input
-                                type="text"
-                                placeholder="Search members..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 sm:pl-10 lg:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 lg:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent"
-                            />
-                        </div>
-                        <div className="flex gap-2 overflow-x-auto">
-                            {['all', 'online', 'busy', 'offline'].map(status => (
-                                <button
-                                    key={status}
-                                    onClick={() => setStatusFilter(status)}
-                                    className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
-                                        statusFilter === status
-                                            ? 'bg-[#3E2723] text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                                    <span className="ml-2 px-2 py-0.5 bg-white bg-opacity-20 rounded-lg text-xs">
-                                        {status === 'all' ? members.length : members.filter(m => m.status === status).length}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
                 {/* Members Grid */}
-                {filteredMembers.length === 0 ? (
-                    <div className="bg-white rounded-2xl shadow-sm p-16 text-center border border-gray-200">
-                        <Users className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">No members found</h3>
-                        <p className="text-gray-600">Try adjusting your search or filters.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredMembers.map(member => {
-                            const stats = isTeamLead ? getMemberStats(member._id) : null;
-                            
-                            return (
-                                <div key={member._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-all">
-                                    <div className="p-6">
-                                        {/* Member Header */}
-                                        <div className="flex items-start gap-4 mb-4">
-                                            <div className="relative">
-                                                <div className="w-16 h-16 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-xl flex items-center justify-center text-white text-2xl font-bold shadow-md">
-                                                    {member.name?.charAt(0).toUpperCase()}
+                <div className="relative">
+                    {filteredMembers.length === 0 ? (
+                        <div className="py-24 text-center bg-white rounded-[2.5rem] border border-gray-100 shadow-sm">
+                            <div className="p-8 bg-gray-50 rounded-full w-32 h-32 flex items-center justify-center mx-auto mb-8 shadow-inner">
+                                <Users className="w-12 h-12 text-gray-200" />
+                            </div>
+                            <h3 className="text-3xl font-black text-[#3E2723] mb-4 tracking-tighter uppercase">No Members Found</h3>
+                            <p className="text-gray-400 font-medium max-w-md mx-auto leading-relaxed">Try adjusting your search or filters to find team members.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {filteredMembers.map(member => {
+                                const stats = isTeamLead ? getMemberStats(member._id) : null;
+                                
+                                return (
+                                    <div 
+                                        key={member._id} 
+                                        onClick={() => handleViewDetails(member)}
+                                        className="group bg-white rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 cursor-pointer overflow-hidden transform hover:-translate-y-2 flex flex-col"
+                                    >
+                                        <div className="p-8 space-y-6 flex-1">
+                                            {/* CARD HEADER */}
+                                            <div className="flex items-start gap-5">
+                                                <div className="relative shrink-0">
+                                                    <div className="w-16 h-16 rounded-2xl bg-[#3E2723] flex items-center justify-center text-white text-xl font-black shadow-lg group-hover:scale-110 transition-transform duration-500">
+                                                        {member.name?.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor(member.status)} rounded-full border-4 border-white shadow-sm`}></div>
                                                 </div>
-                                                <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor(member.status)} rounded-full border-2 border-white`}></div>
+                                                <div className="min-w-0 pt-1">
+                                                    <h3 className="text-lg font-bold text-[#1D1110] tracking-tight group-hover:text-[#3E2723] transition-colors truncate">
+                                                        {member.name}
+                                                    </h3>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                                        {member.designation || 'Team Member'}
+                                                    </p>
+                                                    <div className="mt-2 text-[9px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor(member.status)}`} />
+                                                        {getStatusLabel(member.status)}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-bold text-gray-900 text-lg truncate">{member.name}</h3>
-                                                <p className="text-sm text-gray-600 truncate">{member.designation || 'Team Member'}</p>
-                                                <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded-lg ${
-                                                    member.status === 'online' ? 'bg-green-100 text-green-700' :
-                                                    member.status === 'busy' ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-gray-100 text-gray-700'
-                                                }`}>
-                                                    {getStatusLabel(member.status)}
-                                                </span>
-                                            </div>
-                                        </div>
 
-                                        {/* Contact Info */}
-                                        <div className="space-y-2 mb-4">
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <Mail className="w-4 h-4" />
-                                                <span className="truncate">{member.email}</span>
+                                            {/* CONTACT INFO */}
+                                            <div className="space-y-3 py-4 border-y border-gray-50">
+                                                <div className="flex items-center gap-3 text-sm text-gray-400 font-medium">
+                                                    <Mail className="w-4 h-4 text-gray-300" />
+                                                    <span className="truncate">{member.email}</span>
+                                                </div>
+                                                {member.phone && (
+                                                    <div className="flex items-center gap-3 text-sm text-gray-400 font-medium">
+                                                        <Phone className="w-4 h-4 text-gray-300" />
+                                                        <span>{member.phone}</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                            {member.phone && (
-                                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                    <Phone className="w-4 h-4" />
-                                                    <span>{member.phone}</span>
+
+                                            {/* PERFORMANCE INDICATORS (Team Lead Only) */}
+                                            {isTeamLead && stats && (
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Efficiency</p>
+                                                        <span className="text-xs font-black text-[#1D1110]">{stats.completionRate}%</span>
+                                                    </div>
+                                                    <div className="h-2 bg-gray-50 rounded-full overflow-hidden border border-gray-100 p-0.5 shadow-inner">
+                                                        <div 
+                                                            className="h-full bg-[#1D1110] rounded-full transition-all duration-1000"
+                                                            style={{ width: `${stats.completionRate}%` }}
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                                        <div className="text-center p-2 bg-gray-50 rounded-xl border border-gray-100">
+                                                            <p className="text-[9px] font-bold text-gray-400 uppercase">Tasks</p>
+                                                            <p className="text-xs font-black text-[#1D1110]">{stats.totalTasks}</p>
+                                                        </div>
+                                                        <div className="text-center p-2 bg-green-50 rounded-xl border border-green-100">
+                                                            <p className="text-[9px] font-bold text-green-400 uppercase tracking-tight">Done</p>
+                                                            <p className="text-xs font-black text-green-700">{stats.completed}</p>
+                                                        </div>
+                                                        <div className="text-center p-2 bg-amber-50 rounded-xl border border-amber-100">
+                                                            <p className="text-[9px] font-bold text-amber-400 uppercase tracking-tight">Active</p>
+                                                            <p className="text-xs font-black text-amber-700">{stats.inProgress}</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* Performance Stats (Team Lead Only) */}
-                                        {isTeamLead && stats && (
-                                            <div className="mb-4 p-3 bg-gray-50 rounded-xl">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-xs font-semibold text-gray-600">Performance</span>
-                                                    <span className="text-xs font-bold text-[#3E2723]">{stats.completionRate}%</span>
-                                                </div>
-                                                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                                                    <div
-                                                        className="bg-[#3E2723] h-2 rounded-full transition-all"
-                                                        style={{ width: `${stats.completionRate}%` }}
-                                                    ></div>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-2 text-xs">
-                                                    <div className="text-center">
-                                                        <p className="font-bold text-gray-900">{stats.totalTasks}</p>
-                                                        <p className="text-gray-600">Tasks</p>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="font-bold text-green-600">{stats.completed}</p>
-                                                        <p className="text-gray-600">Done</p>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="font-bold text-blue-600">{stats.inProgress}</p>
-                                                        <p className="text-gray-600">Active</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="flex gap-2">
-                                            {isTeamLead && member._id !== user._id && (
-                                                <button
-                                                    onClick={() => handleInitiateCall(member)}
-                                                    disabled={member.status === 'offline'}
-                                                    className={`flex-1 px-4 py-2 rounded-xl transition-all font-semibold text-sm flex items-center justify-center gap-2 ${
-                                                        member.status === 'offline'
-                                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                            : 'bg-green-50 text-green-700 hover:bg-green-100'
-                                                    }`}
-                                                >
-                                                    <Phone className="w-4 h-4" />
-                                                    Call
-                                                </button>
-                                            )}
+                                        {/* ACTIONS FOOTER */}
+                                        <div className="px-8 py-4 bg-gray-50/30 border-t border-gray-100 backdrop-blur-sm self-end w-full flex items-center justify-between">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleInitiateCall(member); }}
+                                                className="w-10 h-10 flex items-center justify-center bg-white border border-gray-100 rounded-xl text-[#3E2723] hover:bg-[#3E2723] hover:text-white transition-all shadow-sm"
+                                                title="Initiate Call"
+                                            >
+                                                <PhoneCall className="w-4 h-4" />
+                                            </button>
+                                            <button className="text-[10px] font-black text-[#1D1110] uppercase tracking-widest hover:text-[#3E2723] transition-colors flex items-center gap-2">
+                                                View Profile <ChevronRight className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
                     </>
                 )}
             </div>
         </Layout>
 
-        {/* Member Details Modal */}
         {showDetailsModal && selectedMember && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-hidden">
-                    <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] px-6 py-5 rounded-t-2xl">
+            <div className="fixed inset-0 bg-[#1D1110]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-[3rem] max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-100">
+                    <div className="bg-[#3E2723] px-10 py-8 relative">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-bold text-white">Member Details</h3>
+                            <div>
+                                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Member Intel</h3>
+                                <p className="text-[10px] font-bold text-[#EBD9C1] uppercase tracking-[0.2em] mt-1">Detailed personnel records</p>
+                            </div>
                             <button
                                 onClick={() => setShowDetailsModal(false)}
-                                className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-1"
+                                className="bg-white/10 hover:bg-white/20 text-white rounded-2xl p-2 transition-colors"
                             >
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
                     </div>
 
-                    <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+                    <div className="p-10 overflow-y-auto max-h-[calc(90vh-120px)] space-y-8 custom-scrollbar">
                         {/* Member Info */}
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-20 h-20 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-xl flex items-center justify-center text-white text-3xl font-bold shadow-md">
-                                {selectedMember.name?.charAt(0).toUpperCase()}
+                        <div className="flex items-center gap-8">
+                            <div className="relative">
+                                <div className="w-24 h-24 bg-[#FAF9F8] border border-gray-100 rounded-3xl flex items-center justify-center text-[#3E2723] text-3xl font-black shadow-inner">
+                                    {selectedMember.name?.charAt(0).toUpperCase()}
+                                </div>
+                                <div className={`absolute -bottom-1 -right-1 w-6 h-6 ${getStatusColor(selectedMember.status)} rounded-full border-4 border-white shadow-sm`}></div>
                             </div>
                             <div>
-                                <h4 className="text-2xl font-bold text-gray-900">{selectedMember.name}</h4>
-                                <p className="text-gray-600">{selectedMember.designation || 'Team Member'}</p>
-                                <span className={`inline-block mt-1 px-3 py-1 text-xs font-semibold rounded-lg ${
-                                    selectedMember.status === 'online' ? 'bg-green-100 text-green-700' :
-                                    selectedMember.status === 'busy' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-gray-100 text-gray-700'
-                                }`}>
-                                    {getStatusLabel(selectedMember.status)}
-                                </span>
+                                <h4 className="text-3xl font-black text-[#1D1110] tracking-tighter uppercase">{selectedMember.name}</h4>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{selectedMember.designation || 'Team Member'}</p>
+                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full">
+                                    <span className={`w-2 h-2 rounded-full ${getStatusColor(selectedMember.status)}`} />
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-[#1D1110]">
+                                        {getStatusLabel(selectedMember.status)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
                         {/* Contact Details */}
-                        <div className="mb-6 p-4 bg-gray-50 rounded-xl">
-                            <h5 className="font-bold text-gray-900 mb-3">Contact Information</h5>
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-3">
-                                    <Mail className="w-5 h-5 text-gray-400" />
-                                    <span className="text-gray-700">{selectedMember.email}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-6 bg-[#FAF9F8] rounded-[2rem] border border-gray-100 flex items-center gap-4">
+                                <div className="p-3 bg-white rounded-xl shadow-sm text-gray-400">
+                                    <Mail className="w-5 h-5" />
                                 </div>
-                                {selectedMember.phone && (
-                                    <div className="flex items-center gap-3">
-                                        <Phone className="w-5 h-5 text-gray-400" />
-                                        <span className="text-gray-700">{selectedMember.phone}</span>
-                                    </div>
-                                )}
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Email Address</p>
+                                    <p className="text-sm font-black text-[#1D1110] truncate mt-0.5">{selectedMember.email}</p>
+                                </div>
                             </div>
+                            {selectedMember.phone && (
+                                <div className="p-6 bg-[#FAF9F8] rounded-[2rem] border border-gray-100 flex items-center gap-4">
+                                    <div className="p-3 bg-white rounded-xl shadow-sm text-gray-400">
+                                        <Phone className="w-5 h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Phone Line</p>
+                                        <p className="text-sm font-black text-[#1D1110] mt-0.5">{selectedMember.phone}</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Performance Stats */}
@@ -622,48 +782,65 @@ const TeamManagement = () => {
                             const memberTasks = getMemberTasks(selectedMember._id);
                             
                             return (
-                                <>
-                                    <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                                        <h5 className="font-bold text-gray-900 mb-3">Performance Metrics</h5>
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                            <div className="text-center p-3 bg-white rounded-lg">
-                                                <p className="text-2xl font-bold text-gray-900">{stats.totalTasks}</p>
-                                                <p className="text-sm text-gray-600">Total Tasks</p>
+                                <div className="space-y-8">
+                                    <div className="p-8 bg-[#F3EFE7] rounded-[2.5rem] border border-gray-100">
+                                        <h5 className="text-[10px] font-black text-[#3E2723] uppercase tracking-[0.2em] mb-6">Efficiency Analytics</h5>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                            <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center space-y-1">
+                                                <p className="text-2xl font-black text-[#1D1110]">{stats.totalTasks}</p>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase">Assigned</p>
                                             </div>
-                                            <div className="text-center p-3 bg-white rounded-lg">
-                                                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
-                                                <p className="text-sm text-gray-600">Completed</p>
+                                            <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center space-y-1">
+                                                <p className="text-2xl font-black text-green-600">{stats.completed}</p>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase">Deployed</p>
                                             </div>
-                                            <div className="text-center p-3 bg-white rounded-lg">
-                                                <p className="text-2xl font-bold text-blue-600">{stats.inProgress}</p>
-                                                <p className="text-sm text-gray-600">In Progress</p>
+                                            <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center space-y-1">
+                                                <p className="text-2xl font-black text-amber-600">{stats.inProgress}</p>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase">Active</p>
                                             </div>
-                                            <div className="text-center p-3 bg-white rounded-lg">
-                                                <p className="text-2xl font-bold text-[#3E2723]">{stats.completionRate}%</p>
-                                                <p className="text-sm text-gray-600">Completion Rate</p>
+                                            <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center space-y-1">
+                                                <p className="text-2xl font-black text-[#3E2723]">{stats.completionRate}%</p>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase">Yield</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Assigned Tasks */}
-                                    <div className="mb-4">
-                                        <h5 className="font-bold text-gray-900 mb-3">Assigned Tasks ({memberTasks.length})</h5>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h5 className="text-[10px] font-black text-[#1D1110] uppercase tracking-[0.2em]">Mission Logs</h5>
+                                            <span className="px-3 py-1 bg-gray-100 text-[10px] font-black rounded-lg text-gray-400 uppercase tracking-widest">
+                                                {memberTasks.length} Active
+                                            </span>
+                                        </div>
                                         {memberTasks.length === 0 ? (
-                                            <p className="text-gray-600 text-sm">No tasks assigned yet</p>
+                                            <div className="py-10 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
+                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No active missions</p>
+                                            </div>
                                         ) : (
-                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            <div className="space-y-3 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
                                                 {memberTasks.map(task => (
-                                                    <div key={task._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                        <p className="font-semibold text-gray-900 text-sm">{task.title}</p>
-                                                        <p className="text-xs text-gray-600 mt-1">
-                                                            Status: <span className="font-semibold capitalize">{task.status?.replace('_', ' ')}</span>
-                                                        </p>
+                                                    <div key={task._id} className="p-5 bg-white rounded-[1.5rem] border border-gray-100 shadow-sm flex items-center justify-between group/task hover:bg-[#F3EFE7]/30 transition-colors">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 bg-[#FAF9F8] rounded-xl flex items-center justify-center text-[#3E2723]">
+                                                                <Target className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-[#1D1110] group-hover/task:text-[#3E2723] transition-colors">{task.title}</p>
+                                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">
+                                                                    Priority: <span className="text-[#3E2723]">{task.priority}</span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <span className="px-3 py-1.5 bg-[#FAF9F8] text-[9px] font-black rounded-lg text-gray-400 uppercase tracking-widest group-hover/task:bg-white transition-colors">
+                                                            {task.status?.replace('_', ' ')}
+                                                        </span>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                </>
+                                </div>
                             );
                         })()}
                     </div>
@@ -673,95 +850,123 @@ const TeamManagement = () => {
 
         {/* Call Modal */}
         {showCallModal && selectedMember && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-                    <div className="p-8 text-center">
+            <div className="fixed inset-0 bg-[#1D1110]/90 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+                <div className="bg-white rounded-[3rem] max-w-md w-full shadow-2xl overflow-hidden border border-white/20 relative">
+                    {/* Decorative Background Element */}
+                    <div className="absolute top-0 left-0 w-full h-32 bg-[#3E2723] -skew-y-6 -translate-y-16" />
+                    
+                    <div className="p-10 text-center relative pt-16">
                         {/* Member Avatar */}
-                        <div className="w-24 h-24 bg-gradient-to-br from-[#3E2723] to-[#3E2723] rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-lg mx-auto mb-4">
-                            {selectedMember.name?.charAt(0).toUpperCase()}
+                        <div className="relative inline-block mb-6">
+                            <div className="w-32 h-32 bg-[#FAF9F8] border-4 border-white rounded-[2.5rem] flex items-center justify-center text-[#3E2723] text-4xl font-black shadow-2xl relative z-10">
+                                {selectedMember.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <div className={`absolute -bottom-2 -right-2 w-10 h-10 ${getStatusColor(selectedMember.status)} rounded-2xl border-4 border-white z-20 shadow-lg flex items-center justify-center`}>
+                                <div className="w-2 h-2 rounded-full bg-white animate-ping" />
+                            </div>
                         </div>
 
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedMember.name}</h3>
-                        <p className="text-gray-600 mb-6">{selectedMember.designation || 'Team Member'}</p>
+                        <h3 className="text-3xl font-black text-[#1D1110] tracking-tighter uppercase mb-1">{selectedMember.name}</h3>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-8">{selectedMember.designation || 'Team Member'}</p>
 
-                        {/* Call Status */}
-                        {callStatus === 'checking' && (
-                            <div className="mb-6">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#3E2723] mx-auto mb-3"></div>
-                                <p className="text-gray-700 font-semibold">Checking availability...</p>
-                            </div>
-                        )}
-
-                        {callStatus === 'unavailable' && (
-                            <div className="mb-6">
-                                <PhoneOff className="w-12 h-12 text-red-600 mx-auto mb-3" />
-                                <p className="text-red-600 font-semibold">Member is currently unavailable</p>
-                            </div>
-                        )}
-
-                        {callStatus === 'ringing' && (
-                            <div className="mb-6">
-                                <div className="relative">
-                                    <PhoneCall className="w-12 h-12 text-green-600 mx-auto mb-3 animate-pulse" />
+                        {/* Call Status UI */}
+                        <div className="min-h-[160px] flex flex-col items-center justify-center mb-8">
+                            {callStatus === 'checking' && (
+                                <div className="space-y-4">
+                                    <div className="relative">
+                                        <div className="w-16 h-16 rounded-full border-4 border-gray-100 border-t-[#3E2723] animate-spin mx-auto" />
+                                        <Search className="w-6 h-6 text-[#3E2723] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                    </div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scanning availability...</p>
                                 </div>
-                                <p className="text-gray-700 font-semibold">Calling...</p>
-                            </div>
-                        )}
+                            )}
 
-                        {callStatus === 'oncall' && (
-                            <div className="mb-6">
-                                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
-                                    <Phone className="w-8 h-8 text-white" />
+                            {callStatus === 'unavailable' && (
+                                <div className="space-y-4">
+                                    <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-600">
+                                        <PhoneOff className="w-8 h-8" />
+                                    </div>
+                                    <p className="text-xs font-black text-red-600 uppercase tracking-widest">Member Offline</p>
                                 </div>
-                                <p className="text-green-600 font-semibold text-lg mb-2">Call in progress</p>
-                                <p className="text-3xl font-bold text-gray-900">{formatDuration(callDuration)}</p>
-                            </div>
-                        )}
+                            )}
 
-                        {callStatus === 'missed' && (
-                            <div className="mb-6">
-                                <PhoneMissed className="w-12 h-12 text-red-600 mx-auto mb-3" />
-                                <p className="text-red-600 font-semibold">Call not answered</p>
-                            </div>
-                        )}
+                            {callStatus === 'ringing' && (
+                                <div className="space-y-4">
+                                    <div className="relative">
+                                        <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto text-green-600 scale-110">
+                                            <PhoneCall className="w-10 h-10 animate-shake" />
+                                        </div>
+                                        <div className="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-20" />
+                                    </div>
+                                    <p className="text-xs font-black text-green-600 uppercase tracking-[0.3em] animate-pulse">ESTABLISHING LINK...</p>
+                                </div>
+                            )}
 
-                        {callStatus === 'ended' && (
-                            <div className="mb-6">
-                                <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-3" />
-                                <p className="text-green-600 font-semibold">Call ended</p>
-                                <p className="text-gray-600 text-sm mt-2">Duration: {formatDuration(callDuration)}</p>
-                            </div>
-                        )}
+                            {callStatus === 'oncall' && (
+                                <div className="space-y-4">
+                                    <div className="w-24 h-24 bg-[#3E2723] rounded-[2.5rem] flex items-center justify-center mx-auto text-white shadow-xl shadow-[#3E2723]/20">
+                                        <Phone className="w-10 h-10" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-[#3E2723] uppercase tracking-[0.2em]">CONNECTION LIVE</p>
+                                        <p className="text-4xl font-black text-[#1D1110] tracking-tighter">{formatDuration(callDuration)}</p>
+                                    </div>
+                                </div>
+                            )}
 
-                        {callStatus === 'error' && (
-                            <div className="mb-6">
-                                <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-3" />
-                                <p className="text-red-600 font-semibold">Call failed</p>
-                            </div>
-                        )}
+                            {callStatus === 'missed' && (
+                                <div className="space-y-4">
+                                    <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-600">
+                                        <PhoneMissed className="w-8 h-8" />
+                                    </div>
+                                    <p className="text-xs font-black text-amber-600 uppercase tracking-widest">No Response</p>
+                                </div>
+                            )}
+
+                            {callStatus === 'ended' && (
+                                <div className="space-y-4">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-400">
+                                        <CheckCircle className="w-8 h-8" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">COMMS SECURED</p>
+                                        <p className="text-sm font-bold text-[#1D1110]">Duration: {formatDuration(callDuration)}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {callStatus === 'error' && (
+                                <div className="space-y-4">
+                                    <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-600">
+                                        <AlertTriangle className="w-8 h-8" />
+                                    </div>
+                                    <p className="text-xs font-black text-red-600 uppercase tracking-widest">Signal Interrupted</p>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Action Buttons */}
-                        {callStatus === 'oncall' && (
-                            <button
-                                onClick={handleEndCall}
-                                className="w-full px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold flex items-center justify-center gap-2"
-                            >
-                                <PhoneOff className="w-5 h-5" />
-                                End Call
-                            </button>
-                        )}
-
-                        {(callStatus === 'checking' || callStatus === 'ringing') && (
-                            <button
-                                onClick={() => {
-                                    setShowCallModal(false);
-                                    setCallStatus(null);
-                                }}
-                                className="w-full px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold"
-                            >
-                                Cancel
-                            </button>
-                        )}
+                        <div className="space-y-3">
+                            {callStatus === 'oncall' ? (
+                                <button
+                                    onClick={handleEndCall}
+                                    className="w-full py-4 bg-red-600 text-white rounded-[1.25rem] hover:bg-red-700 transition-all font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-200 flex items-center justify-center gap-3"
+                                >
+                                    <PhoneOff className="w-5 h-5" />
+                                    Terminate Connection
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        setShowCallModal(false);
+                                        setCallStatus(null);
+                                    }}
+                                    className="w-full py-4 bg-[#FAF9F8] text-[#1D1110] border border-gray-100 rounded-[1.25rem] hover:bg-gray-50 transition-all font-black text-[10px] uppercase tracking-widest"
+                                >
+                                    Close Terminal
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

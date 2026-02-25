@@ -256,7 +256,7 @@ const AdminTaskManagement = () => {
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#3E2723] mx-auto"></div>
-                        <p className="mt-4 text-[#3E2723] font-bold uppercase tracking-[0.2em] text-xs">Synchronizing Intel...</p>
+                        <p className="mt-4 text-[#3E2723] font-bold uppercase tracking-[0.2em] text-xs">Syncing Tasks...</p>
                     </div>
                 </div>
             </Layout>
@@ -268,11 +268,11 @@ const AdminTaskManagement = () => {
             <Layout title="Task Management">
                 <div className="max-w-[1600px] mx-auto px-4 lg:px-10 py-8 space-y-10 bg-[#FAF9F8]">
                     {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-gray-100 pb-8">
-                        <div className="space-y-1">
-                            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-[0.3em]">Command Center</h2>
-                            <h1 className="text-4xl font-black text-[#1D1110] tracking-tight">Task Operations</h1>
-                            <p className="text-gray-500 font-medium text-sm">Strategic deployment and oversight of unit operations</p>
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-gray-100 pb-4">
+                        <div className="space-y-0.5">
+                            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em]">Dashboard</h2>
+                            <h1 className="text-2xl font-black text-[#1D1110] tracking-tight">Task Management</h1>
+                            <p className="text-gray-500 font-medium text-xs">Assign and manage tasks for your team Leads.</p>
                         </div>
                         <button
                             onClick={handleCreateTask}
@@ -286,11 +286,11 @@ const AdminTaskManagement = () => {
                     {/* Stats KPI Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                         {[
-                            { label: 'Total Deployments', value: tasks.length, icon: ClipboardList, color: 'bg-blue-500', trend: '+12.5%' },
-                            { label: 'Awaiting Action', value: tasks.filter(t => t.status === 'not_started').length, icon: Clock, color: 'bg-amber-500', trend: 'Active' },
-                            { label: 'In Progress', value: tasks.filter(t => t.status === 'in_progress').length, icon: Activity, color: 'bg-indigo-500', trend: 'Critical' },
-                            { label: 'Mission Success', value: tasks.filter(t => t.status === 'completed').length, icon: CheckCircle, color: 'bg-green-500', trend: '94%' },
-                            { label: 'Delayed Units', value: tasks.filter(t => t.isOverdue).length, icon: AlertCircle, color: 'bg-red-500', trend: '-2.4%' }
+                            { label: 'Total Tasks', value: tasks.length, icon: ClipboardList, color: 'bg-blue-500', trend: '+12.5%' },
+                            { label: 'Pending', value: tasks.filter(t => t.status === 'not_started').length, icon: Clock, color: 'bg-amber-500', trend: 'Active' },
+                            { label: 'In Progress', value: tasks.filter(t => t.status === 'in_progress').length, icon: Activity, color: 'bg-indigo-500', trend: 'High' },
+                            { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, icon: CheckCircle, color: 'bg-green-500', trend: '94%' },
+                            { label: 'Overdue', value: tasks.filter(t => t.isOverdue).length, icon: AlertCircle, color: 'bg-red-500', trend: '-2.4%' }
                         ].map((stat, idx) => (
                             <div key={idx} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-xl hover:border-[#3E2723]/10 transition-all group">
                                 <div className="flex items-center justify-between">
@@ -400,21 +400,21 @@ const AdminTaskManagement = () => {
                                                                 className="w-full px-4 py-3 text-left text-xs font-bold text-gray-600 hover:bg-gray-50 flex items-center gap-3 transition-colors"
                                                             >
                                                                 <Eye className="w-4 h-4 text-gray-400" />
-                                                                View Operation Intel
+                                                                View Details
                                                             </button>
                                                             <button
                                                                 onClick={() => { handleEditTask(task); setOpenMenuId(null); }}
                                                                 className="w-full px-4 py-3 text-left text-xs font-bold text-gray-600 hover:bg-gray-50 flex items-center gap-3 transition-colors"
                                                             >
                                                                 <Edit className="w-4 h-4 text-gray-400" />
-                                                                Modify Parameters
+                                                                Edit Task
                                                             </button>
                                                             <button
                                                                 onClick={() => { handleReassignTask(task); setOpenMenuId(null); }}
                                                                 className="w-full px-4 py-3 text-left text-xs font-bold text-[#3E2723] hover:bg-[#3E2723]/5 flex items-center gap-3 transition-colors"
                                                             >
                                                                 <RefreshCw className="w-4 h-4 text-[#3E2723]/50" />
-                                                                Reassign Unit
+                                                                Reassign Task
                                                             </button>
                                                             <div className="h-px bg-gray-100 my-1 mx-2"></div>
                                                             {task.status !== 'cancelled' && task.status !== 'completed' && (
@@ -423,7 +423,7 @@ const AdminTaskManagement = () => {
                                                                     className="w-full px-4 py-3 text-left text-xs font-bold text-red-500 hover:bg-red-50 flex items-center gap-3 transition-colors"
                                                                 >
                                                                     <X className="w-4 h-4" />
-                                                                    Abort Mission
+                                                                    Cancel Task
                                                                 </button>
                                                             )}
                                                         </div>
@@ -439,7 +439,7 @@ const AdminTaskManagement = () => {
                                                     {getInitials(task.assignedTo?.name)}
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lead Agent</p>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Assigned To</p>
                                                     <p className="text-xs font-black text-[#1D1110]">{task.assignedTo?.name || 'Unassigned'}</p>
                                                 </div>
                                             </div>
@@ -466,7 +466,7 @@ const AdminTaskManagement = () => {
 
                                             <div className="space-y-2">
                                                 <div className="flex justify-between items-center">
-                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Operation Progress</p>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Task Progress</p>
                                                     <span className="text-xs font-black text-[#1D1110]">{task.progressPercentage || 0}%</span>
                                                 </div>
                                                 <div className="h-2 bg-gray-50 rounded-full overflow-hidden border border-gray-100 p-0.5 shadow-inner">
@@ -484,14 +484,14 @@ const AdminTaskManagement = () => {
                     ) : (
                         <div className="bg-white rounded-[2.5rem] p-20 text-center border border-gray-100 shadow-sm">
                             <ClipboardList className="mx-auto h-20 w-20 text-gray-200 mb-6" />
-                            <h3 className="text-2xl font-black text-[#1D1110] mb-2">No Active Operations</h3>
-                            <p className="text-gray-400 font-medium mb-8">Deploy your first strategic objective to start monitoring.</p>
+                            <h3 className="text-2xl font-black text-[#1D1110] mb-2">No Active Tasks</h3>
+                            <p className="text-gray-400 font-medium mb-8">Create your first task to start monitoring.</p>
                             <button
                                 onClick={handleCreateTask}
                                 className="inline-flex items-center gap-3 px-10 py-4 bg-[#1D1110] text-white rounded-[1.5rem] hover:bg-black transition-all font-bold text-sm tracking-widest uppercase shadow-xl"
                             >
                                 <Plus className="w-5 h-5" />
-                                Initialize Objective
+                                Add New Task
                             </button>
                         </div>
                     )}
@@ -502,16 +502,16 @@ const AdminTaskManagement = () => {
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 backdrop-blur-md z-[9999]" onClick={() => setShowCreateModal(false)}>
                     <div className="bg-white rounded-[2.5rem] max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] px-10 py-8">
+                        <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] px-4 py-3">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-1">
-                                    <h3 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-                                        <Plus className="w-8 h-8" /> Initialize Objective
+                                    <h3 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
+                                        <Plus className="w-5 h-5" /> Assign Task
                                     </h3>
-                                    <p className="text-[#D7CCC8] text-xs font-bold uppercase tracking-widest">Strategic Deployment Protocol</p>
+                                    <p className="text-[#D7CCC8] text-[8px] font-bold uppercase tracking-widest">Task Creation</p>
                                 </div>
-                                <button onClick={() => setShowCreateModal(false)} className="text-white hover:bg-white/10 rounded-2xl p-2 transition-all">
-                                    <X className="w-8 h-8" />
+                                <button onClick={() => setShowCreateModal(false)} className="text-white hover:bg-white/10 rounded-lg p-1 transition-all">
+                                    <X className="w-6 h-6" />
                                 </button>
                             </div>
                         </div>
@@ -519,14 +519,14 @@ const AdminTaskManagement = () => {
                         <form onSubmit={handleSubmitCreate} className="p-10 space-y-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
                             <div className="space-y-6">
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Objective Title</label>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Task Title</label>
                                     <input
                                         type="text"
                                         required
                                         value={formData.title}
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                         className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all font-bold text-[#1D1110]"
-                                        placeholder="Enter operation title..."
+                                        placeholder="Enter task title..."
                                     />
                                 </div>
 
@@ -540,7 +540,7 @@ const AdminTaskManagement = () => {
                                                 onChange={(e) => setFormData({ ...formData, teamLeadId: e.target.value })}
                                                 className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all font-bold text-[#1D1110] appearance-none"
                                             >
-                                                <option value="">Select Command Lead</option>
+                                                <option value="">Select Team Lead</option>
                                                 {teamLeads.map(lead => (
                                                     <option key={lead._id} value={lead._id}>{lead.name}</option>
                                                 ))}
@@ -596,12 +596,12 @@ const AdminTaskManagement = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Objective Parameters</label>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Task Description</label>
                                     <textarea
                                         value={formData.description}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                         className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all font-bold text-[#1D1110] min-h-[120px]"
-                                        placeholder="Detailed mission brief..."
+                                        placeholder="Detailed task description..."
                                     />
                                 </div>
                             </div>
@@ -618,7 +618,7 @@ const AdminTaskManagement = () => {
                                     type="submit"
                                     className="flex-[2] px-8 py-4 bg-[#3E2723] text-white rounded-2xl hover:bg-[#5D4037] transition-all shadow-xl hover:shadow-2xl font-bold text-sm tracking-widest uppercase"
                                 >
-                                    Authorize Deployment
+                                    Create Task
                                 </button>
                             </div>
                         </form>
@@ -630,16 +630,16 @@ const AdminTaskManagement = () => {
             {showViewModal && selectedTask && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 backdrop-blur-md z-[9999]" onClick={() => setShowViewModal(false)}>
                     <div className="bg-white rounded-[2.5rem] max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-[#3E2723] px-10 py-8">
+                        <div className="bg-[#3E2723] px-4 py-3">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-1">
-                                    <h3 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-                                        <FileText className="w-8 h-8" /> Operation Intel
+                                    <h3 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
+                                        <FileText className="w-5 h-5" /> Task Details
                                     </h3>
-                                    <p className="text-[#D7CCC8] text-xs font-bold uppercase tracking-widest">Unit Status: {selectedTask.status?.replace('_', ' ')}</p>
+                                    <p className="text-[#D7CCC8] text-[8px] font-bold uppercase tracking-widest">Status: {selectedTask.status?.replace('_', ' ')}</p>
                                 </div>
-                                <button onClick={() => setShowViewModal(false)} className="text-white hover:bg-white/10 rounded-2xl p-2 transition-all">
-                                    <X className="w-8 h-8" />
+                                <button onClick={() => setShowViewModal(false)} className="text-white hover:bg-white/10 rounded-lg p-1 transition-all">
+                                    <X className="w-6 h-6" />
                                 </button>
                             </div>
                         </div>
@@ -651,7 +651,7 @@ const AdminTaskManagement = () => {
                                         {getInitials(selectedTask.assignedTo?.name)}
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight">Lead Agent</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight">Assigned To</p>
                                         <h4 className="text-lg font-black text-[#1D1110]">{selectedTask.assignedTo?.name}</h4>
                                     </div>
                                 </div>
@@ -671,13 +671,13 @@ const AdminTaskManagement = () => {
                                 <div className="grid grid-cols-2 gap-8 py-6 border-y border-gray-50">
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                            <Calendar className="w-4 h-4 text-[#3E2723]" /> Commencement
+                                            <Calendar className="w-4 h-4 text-[#3E2723]" /> Start Date
                                         </p>
                                         <p className="text-sm font-black text-[#1D1110]">{new Date(selectedTask.startDate).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
                                     </div>
                                     <div className="space-y-2 text-right">
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-end gap-2">
-                                            Terminus <Clock className="w-4 h-4 text-[#3E2723]" />
+                                            Due Date <Clock className="w-4 h-4 text-[#3E2723]" />
                                         </p>
                                         <p className="text-sm font-black text-[#1D1110]">{new Date(selectedTask.dueDate || selectedTask.deadline).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
                                     </div>
@@ -685,7 +685,7 @@ const AdminTaskManagement = () => {
 
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Operation Progress</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Task Progress</p>
                                         <span className="text-sm font-black text-[#1D1110]">{selectedTask.progressPercentage || 0}%</span>
                                     </div>
                                     <div className="h-4 bg-gray-50 rounded-full overflow-hidden border border-gray-100 p-1 shadow-inner">
@@ -702,7 +702,7 @@ const AdminTaskManagement = () => {
                                     onClick={() => { handleEditTask(selectedTask); setShowViewModal(false); }}
                                     className="flex-1 px-8 py-4 bg-[#3E2723] text-white rounded-2xl hover:bg-[#5D4037] transition-all font-bold text-sm tracking-widest uppercase shadow-xl"
                                 >
-                                    Modify Operation
+                                    Edit Task
                                 </button>
                                 <button
                                     onClick={() => setShowViewModal(false)}
@@ -720,16 +720,16 @@ const AdminTaskManagement = () => {
             {showEditModal && selectedTask && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 backdrop-blur-md z-[9999]" onClick={() => setShowEditModal(false)}>
                     <div className="bg-white rounded-[2.5rem] max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] px-10 py-8">
+                        <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] px-4 py-3">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-1">
-                                    <h3 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-                                        <Edit className="w-8 h-8" /> Modify Parameters
+                                    <h3 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
+                                        <Edit className="w-5 h-5" /> Edit Task
                                     </h3>
-                                    <p className="text-[#D7CCC8] text-xs font-bold uppercase tracking-widest">Operation: {selectedTask.title}</p>
+                                    <p className="text-[#D7CCC8] text-[8px] font-bold uppercase tracking-widest">Task: {selectedTask.title}</p>
                                 </div>
-                                <button onClick={() => setShowEditModal(false)} className="text-white hover:bg-white/10 rounded-2xl p-2 transition-all">
-                                    <X className="w-8 h-8" />
+                                <button onClick={() => setShowEditModal(false)} className="text-white hover:bg-white/10 rounded-lg p-1 transition-all">
+                                    <X className="w-6 h-6" />
                                 </button>
                             </div>
                         </div>
@@ -737,7 +737,7 @@ const AdminTaskManagement = () => {
                         <form onSubmit={handleSubmitEdit} className="p-10 space-y-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
                             <div className="space-y-6">
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Objective Title</label>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Task Title</label>
                                     <input
                                         type="text"
                                         required
@@ -745,6 +745,48 @@ const AdminTaskManagement = () => {
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                         className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all font-bold text-[#1D1110]"
                                     />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Lead Agent</label>
+                                        <div className="relative">
+                                            <select
+                                                required
+                                                value={formData.teamLeadId}
+                                                onChange={(e) => setFormData({ ...formData, teamLeadId: e.target.value })}
+                                                className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all font-bold text-[#1D1110] appearance-none"
+                                            >
+                                                <option value="">Select Team Lead</option>
+                                                {teamLeads.map(lead => (
+                                                    <option key={lead._id} value={lead._id}>{lead.name}</option>
+                                                ))}
+                                            </select>
+                                            <Users className="w-5 h-5 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Intel Category</label>
+                                        <div className="relative">
+                                            <select
+                                                value={formData.category}
+                                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                                className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all font-bold text-[#1D1110] appearance-none"
+                                            >
+                                                <option value="development">Development</option>
+                                                <option value="testing">Testing</option>
+                                                <option value="research">Research</option>
+                                                <option value="design">Design</option>
+                                                <option value="documentation">Documentation</option>
+                                                <option value="meeting">Meeting</option>
+                                                <option value="review">Review</option>
+                                                <option value="deployment">Deployment</option>
+                                                <option value="maintenance">Maintenance</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                            <Target className="w-5 h-5 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-6">
@@ -768,17 +810,17 @@ const AdminTaskManagement = () => {
                                             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                             className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all font-bold text-[#1D1110]"
                                         >
-                                            <option value="not_started">Awaiting Action</option>
+                                            <option value="not_started">Pending</option>
                                             <option value="in_progress">In Progress</option>
-                                            <option value="completed">Mission Accomplished</option>
-                                            <option value="cancelled">Mission Aborted</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="cancelled">Cancelled</option>
                                         </select>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Commencement</label>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Start Date</label>
                                         <input
                                             type="date"
                                             required
@@ -788,7 +830,7 @@ const AdminTaskManagement = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Terminus</label>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Due Date</label>
                                         <input
                                             type="date"
                                             required

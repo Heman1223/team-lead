@@ -1,34 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-    Eye, EyeOff, AlertCircle, ArrowRight, 
-    User, Shield, Briefcase, Calendar, BarChart, 
-    ChevronRight, X
+    Eye, EyeOff, AlertCircle, 
+    User, Briefcase, BarChart, 
+    ChevronRight, Mail, Lock, UserPlus
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
-const Login = () => {
-    const [showPassword, setShowPassword] = useState(false);
+const Register = () => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
-        role: 'team_member' // Default to Employee/Team Member
+        role: 'team_member'
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const { login, register } = useAuth();
+    const { register } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
-        if (e.target.name === 'email' || e.target.name === 'password') {
-            setError('');
-        }
+        setError('');
     };
 
     const handleSubmit = async (e) => {
@@ -37,9 +35,9 @@ const Login = () => {
         setError('');
 
         try {
-            const result = await login(formData.email, formData.password, formData.role);
-
+            const result = await register(formData.name, formData.email, formData.password, formData.role);
             if (result.success) {
+                // Get the user data to check role for redirection
                 const userData = JSON.parse(localStorage.getItem('user'));
                 if (userData?.role === 'admin') {
                     navigate('/admin/dashboard');
@@ -47,10 +45,10 @@ const Login = () => {
                     navigate('/dashboard');
                 }
             } else {
-                setError(result.message || 'Invalid credentials. Please try again.');
+                setError(result.message || 'Sign Up failed. Please try again.');
             }
         } catch (err) {
-            console.error('Auth error:', err);
+            console.error('Registration error:', err);
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);
@@ -58,9 +56,9 @@ const Login = () => {
     };
 
     return (
-        <div className="login-page-wrapper" style={{ 
+        <div className="register-page-wrapper" style={{ 
             minHeight: '100vh', 
-            backgroundColor: '#F5ECE5',
+            backgroundColor: '#F5ECE5', 
             fontFamily: 'var(--font-primary)',
             display: 'flex',
             flexDirection: 'column',
@@ -92,7 +90,7 @@ const Login = () => {
                     }}
                 >
                     {/* Left Side - Info Panel */}
-                        <div className="auth-info-panel" style={{ 
+                    <div className="auth-info-panel" style={{ 
                     flex: '1', 
                     background: 'linear-gradient(135deg, #5D4037 0%, #3E2723 100%)', 
                     color: 'white', 
@@ -188,23 +186,22 @@ const Login = () => {
                     {/* Right Side - Form Panel */}
                     <div className="auth-form-panel" style={{ 
                         flex: '1', 
-                        backgroundColor: '#F5ECE5', // Reference screenshot uses a soft cream for form side
-                        padding: '60px 45px 60px 65px', // More left padding to accommodate zigzag
+                        backgroundColor: '#F5ECE5', 
+                        padding: '60px 45px 60px 65px',
                         display: 'flex',
                         flexDirection: 'column',
-                        justifyContent: 'center',
-                        position: 'relative'
+                        justifyContent: 'center'
                     }}>
                         <div style={{ textAlign: 'center', marginBottom: '35px' }}>
                             <h2 style={{ fontSize: '2.4rem', color: '#1A110B', marginBottom: '10px', fontFamily: 'var(--font-heading)', fontWeight: '900' }}>
-                                Welcome Back!
+                                Create Account
                             </h2>
                             <p style={{ color: '#5C4033', opacity: 0.6, fontSize: '0.95rem', fontWeight: '500' }}>
-                                Sign in to continue
+                                Select your role to get started
                             </p>
                         </div>
 
-                        {/* Role Selector Tabs - Reference style: pill-like */}
+                        {/* Role Selector Tabs - Pill-like design */}
                         <div style={{ 
                             display: 'flex', 
                             background: 'white', 
@@ -214,6 +211,7 @@ const Login = () => {
                             border: '1px solid #DBC1AD'
                         }}>
                             <button 
+                                type="button"
                                 onClick={() => setFormData({...formData, role: 'team_member'})}
                                 style={{ 
                                     flex: 1, 
@@ -222,15 +220,34 @@ const Login = () => {
                                     border: 'none', 
                                     cursor: 'pointer',
                                     fontWeight: '700',
-                                    fontSize: '0.9rem',
+                                    fontSize: '0.85rem',
                                     transition: 'all 0.3s ease',
                                     backgroundColor: formData.role === 'team_member' ? '#3E2723' : 'transparent',
                                     color: formData.role === 'team_member' ? 'white' : '#8D6E63'
                                 }}
                             >
-                                Team Portal
+                                Member
                             </button>
                             <button 
+                                type="button"
+                                onClick={() => setFormData({...formData, role: 'team_lead'})}
+                                style={{ 
+                                    flex: 1, 
+                                    padding: '10px', 
+                                    borderRadius: '6px', 
+                                    border: 'none', 
+                                    cursor: 'pointer',
+                                    fontWeight: '700',
+                                    fontSize: '0.85rem',
+                                    transition: 'all 0.3s ease',
+                                    backgroundColor: formData.role === 'team_lead' ? '#3E2723' : 'transparent',
+                                    color: formData.role === 'team_lead' ? 'white' : '#8D6E63'
+                                }}
+                            >
+                                Lead
+                            </button>
+                            <button 
+                                type="button"
                                 onClick={() => setFormData({...formData, role: 'admin'})}
                                 style={{ 
                                     flex: 1, 
@@ -239,7 +256,7 @@ const Login = () => {
                                     border: 'none', 
                                     cursor: 'pointer',
                                     fontWeight: '700',
-                                    fontSize: '0.9rem',
+                                    fontSize: '0.85rem',
                                     transition: 'all 0.3s ease',
                                     backgroundColor: formData.role === 'admin' ? '#3E2723' : 'transparent',
                                     color: formData.role === 'admin' ? 'white' : '#8D6E63'
@@ -268,106 +285,118 @@ const Login = () => {
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-
-                            <div className="form-group">
-                                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.9rem', color: '#1A110B' }}>Email Address</label>
-                                <input 
-                                    type="email" 
-                                    name="email"
-                                    placeholder="you@example.com"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '12px 16px', 
-                                        borderRadius: '8px', 
-                                        border: '1px solid #DBC1AD',
-                                        outline: 'none',
-                                        fontSize: '0.95rem',
-                                        transition: 'all 0.3s ease',
-                                        backgroundColor: 'white'
-                                    }}
-                                    className="input-focus"
-                                />
-                            </div>
-
-                            <div className="form-group" style={{ position: 'relative' }}>
-                                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.9rem', color: '#1A110B' }}>Password</label>
-                                <input 
-                                    type={showPassword ? 'text' : 'password'} 
-                                    name="password"
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    required
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '12px 16px', 
-                                        borderRadius: '8px', 
-                                        border: '1px solid #DBC1AD',
-                                        outline: 'none',
-                                        fontSize: '0.95rem',
-                                        transition: 'all 0.3s ease',
-                                        backgroundColor: 'white'
-                                    }}
-                                    className="input-focus"
-                                />
-                                <button 
-                                    type="button" 
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    style={{ 
-                                        position: 'absolute', 
-                                        right: '16px', 
-                                        top: '38px', 
-                                        background: 'none', 
-                                        border: 'none', 
-                                        color: '#A1887F', 
-                                        cursor: 'pointer' 
-                                    }}
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                                <div style={{ textAlign: 'right', marginTop: '8px' }}>
-                                    <button 
-                                        type="button" 
-                                        onClick={() => navigate('/forgot-password')}
-                                        style={{ background: 'none', border: 'none', color: '#A16D47', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer' }}
-                                    >
-                                        Forgot password?
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button 
-                                disabled={loading}
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <div className="form-group">
+                            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.9rem', color: '#1A110B' }}>Full Name</label>
+                            <input 
+                                type="text" 
+                                name="name"
+                                placeholder="Your full name"
+                                value={formData.name}
+                                onChange={handleChange}
+                                required
                                 style={{ 
                                     width: '100%', 
-                                    padding: '14px', 
-                                    backgroundColor: '#3E2723',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    padding: '16px',
-                                    fontSize: '1.1rem',
-                                    fontWeight: '700',
-                                    cursor: loading ? 'not-allowed' : 'pointer',
-                                    marginTop: '10px',
+                                    padding: '12px 16px', 
+                                    borderRadius: '8px', 
+                                    border: '1px solid #DBC1AD',
+                                    outline: 'none',
+                                    fontSize: '0.95rem',
                                     transition: 'all 0.3s ease',
-                                    boxShadow: '0 10px 20px rgba(62, 39, 35, 0.15)'
+                                    backgroundColor: 'white'
                                 }}
-                                className="login-btn-hover"
+                                className="input-focus"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.9rem', color: '#1A110B' }}>Email Address</label>
+                            <input 
+                                type="email" 
+                                name="email"
+                                placeholder="you@example.com"
+                                value={formData.email}
+                                onChange={handleChange}
+                                required
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '12px 16px', 
+                                    borderRadius: '8px', 
+                                    border: '1px solid #DBC1AD',
+                                    outline: 'none',
+                                    fontSize: '0.95rem',
+                                    transition: 'all 0.3s ease',
+                                    backgroundColor: 'white'
+                                }}
+                                className="input-focus"
+                            />
+                        </div>
+
+                        <div className="form-group" style={{ position: 'relative' }}>
+                            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.9rem', color: '#1A110B' }}>Password</label>
+                            <input 
+                                type={showPassword ? 'text' : 'password'} 
+                                name="password"
+                                placeholder="••••••••"
+                                value={formData.password}
+                                onChange={handleChange}
+                                required
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '12px 16px', 
+                                    borderRadius: '8px', 
+                                    border: '1px solid #DBC1AD',
+                                    outline: 'none',
+                                    fontSize: '0.95rem',
+                                    transition: 'all 0.3s ease',
+                                    backgroundColor: 'white'
+                                }}
+                                className="input-focus"
+                            />
+                            <button 
+                                type="button" 
+                                onClick={() => setShowPassword(!showPassword)}
+                                style={{ 
+                                    position: 'absolute', 
+                                    right: '16px', 
+                                    top: '38px', 
+                                    background: 'none', 
+                                    border: 'none', 
+                                    color: '#A1887F', 
+                                    cursor: 'pointer' 
+                                }}
                             >
-                                {loading ? 'Processing...' : 'Login'}
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
+                        </div>
+
+                        <button 
+                            disabled={loading}
+                            style={{ 
+                                width: '100%', 
+                                padding: '14px', 
+                                backgroundColor: '#3E2723', 
+                                color: 'white', 
+                                border: 'none', 
+                                borderRadius: '8px', 
+                                fontWeight: '700',
+                                fontSize: '1.05rem',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                marginTop: '10px',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 4px 12px rgba(62, 39, 35, 0.2)'
+                            }}
+                            className="login-btn-hover"
+                        >
+                            {loading ? 'Processing...' : 'Sign Up'}
+                        </button>
 
                             <div style={{ textAlign: 'center', marginTop: '25px' }}>
                                 <p style={{ fontSize: '1rem', color: '#5C4033', fontWeight: '500' }}>
-                                    Don't have an account? 
+                                    Already have an account? 
                                     <button 
                                         type="button"
-                                        onClick={() => navigate('/register')}
+                                        onClick={() => navigate('/login')}
                                         style={{ 
                                             background: 'none', 
                                             border: 'none', 
@@ -378,7 +407,7 @@ const Login = () => {
                                             fontSize: '1rem'
                                         }}
                                     >
-                                        Sign Up here
+                                        Login here
                                     </button>
                                 </p>
                             </div>
@@ -412,4 +441,4 @@ const Login = () => {
     );
 };
 
-export default Login;
+export default Register;
