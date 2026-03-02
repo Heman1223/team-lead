@@ -38,6 +38,15 @@ const LeadList = ({ onSelectLead }) => {
         fetchLeads();
     }, []);
 
+    // Listen for lead updates from other parts of the app
+    useEffect(() => {
+        const handler = () => {
+            fetchLeads();
+        };
+        window.addEventListener('leadsUpdated', handler);
+        return () => window.removeEventListener('leadsUpdated', handler);
+    }, []);
+
     const fetchLeads = async () => {
         try {
             setLoading(true);

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { leadsAPI, usersAPI, teamsAPI, followUpsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import leadStore from '../../utils/leadStore';
 
 const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     const { user, isAdmin, isTeamLead } = useAuth();
@@ -186,6 +187,11 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         try {
             await leadsAPI.delete(leadId);
             alert('Lead deleted successfully!');
+            console.log('Lead deleted, notifying global store...');
+            
+            // Use global store to notify all components
+            leadStore.notifyUpdate();
+            
             onClose();
             onUpdate();
         } catch (error) {

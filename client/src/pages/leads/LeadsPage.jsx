@@ -6,6 +6,7 @@ import LeadImport from './LeadImportSimple';
 import LeadDetail from './LeadDetailSimple';
 import CreateLeadModal from './CreateLeadModalSimple';
 import LeadActivities from './LeadActivities';
+import leadStore from '../../utils/leadStore';
 import {
     LayoutDashboard,
     List,
@@ -32,6 +33,15 @@ const LeadsPage = () => {
         }
     }, [searchParams]);
 
+    // Listen for lead updates using global store
+    useEffect(() => {
+        const unsubscribe = leadStore.subscribe((version) => {
+            console.log('LeadsPage: Global store update received, version:', version);
+            handleUpdate();
+        });
+        return unsubscribe;
+    }, []);
+
     const tabs = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'list', label: 'All Leads', icon: List },
@@ -42,6 +52,7 @@ const LeadsPage = () => {
     const filteredTabs = tabs.filter(tab => !tab.adminOnly || isAdmin || isTeamLead || isTeamMember);
 
     const handleUpdate = () => {
+        console.log('handleUpdate called, incrementing refreshKey from', refreshKey);
         setRefreshKey(prev => prev + 1);
     };
 

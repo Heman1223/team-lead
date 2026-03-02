@@ -12,6 +12,7 @@ import {
     List
 } from 'lucide-react';
 import { leadsAPI } from '../../services/api';
+import leadStore from '../../utils/leadStore';
 import LeadKanbanBoard from './LeadKanbanBoard';
 
 const LeadList = ({ onSelectLead }) => {
@@ -21,6 +22,7 @@ const LeadList = ({ onSelectLead }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'kanban'
+    const [forceUpdate, setForceUpdate] = useState(0); // Add force update trigger
 
     useEffect(() => {
         fetchLeads();
@@ -34,6 +36,22 @@ const LeadList = ({ onSelectLead }) => {
         return () => clearTimeout(timeoutId);
     }, [searchTerm]);
 
+    // Listen for lead updates using global store
+    useEffect(() => {
+        const unsubscribe = leadStore.subscribe((version) => {
+            console.log('LeadList: Global store update received, version:', version);
+            fetchLeads();
+            // Force re-render by updating state
+            setForceUpdate(prev => prev + 1);
+        });
+        return unsubscribe;
+    }, []);
+
+    // Debug when component mounts or key changes
+    useEffect(() => {
+        console.log('LeadList component mounted/refreshed');
+    }, []);
+
     const fetchLeads = async () => {
         try {
             setLoading(true);
@@ -43,7 +61,9 @@ const LeadList = ({ onSelectLead }) => {
                 search: searchTerm
             };
             const response = await leadsAPI.getAll(params);
-            setLeads(response.data.data || []);
+            const leadsData = response.data.data || [];
+            console.log('fetchLeads: fetched', leadsData.length, 'leads');
+            setLeads(leadsData);
         } catch (error) {
             console.error('Error fetching leads:', error);
             setError('Failed to fetch leads. Please try again.');
@@ -110,7 +130,7 @@ const LeadList = ({ onSelectLead }) => {
     }
 
     return (
-        <div className="space-y-4 sm:space-y-6">
+        <div key={forceUpdate} className="space-y-4 sm:space-y-6">
             {/* Search & Filter Bar */}
             <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
                 {/* Search */}

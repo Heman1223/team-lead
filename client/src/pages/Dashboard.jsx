@@ -10,7 +10,8 @@ import {
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useFilters } from '../context/FilterContext';
-import { tasksAPI, teamsAPI, usersAPI, leadsAPI, analyticsAPI, reportsAPI } from '../services/api';
+import { tasksAPI, teamsAPI, usersAPI, leadsAPI, analyticsAPI, reportsAPI, followUpsAPI } from '../services/api';
+import leadStore from '../utils/leadStore';
 import { 
     BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart as RePieChart, Pie, Cell, Legend
@@ -39,6 +40,7 @@ const Dashboard = () => {
         activeProjects: 0
     });
     const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
+    const [upcomingFollowUps, setUpcomingFollowUps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [myTasks, setMyTasks] = useState([]);
     const [teamMembers, setTeamMembers] = useState([]);
@@ -53,13 +55,13 @@ const Dashboard = () => {
         fetchDashboardData();
     }, [dateRange]); // Re-fetch when global date range changes
 
-    // Listen for global lead updates from other parts of the app
+    // Listen for lead updates using global store
     useEffect(() => {
-        const handler = () => {
+        const unsubscribe = leadStore.subscribe((version) => {
+            console.log('Dashboard: Global store update received, version:', version);
             fetchDashboardData();
-        };
-        window.addEventListener('leadsUpdated', handler);
-        return () => window.removeEventListener('leadsUpdated', handler);
+        });
+        return unsubscribe;
     }, []);
 
     const fetchDashboardData = async () => {
@@ -72,10 +74,11 @@ const Dashboard = () => {
             
             if (isTeamLead) {
                 // Fetch team lead specific data
-                const [tasksRes, teamRes, leadsRes] = await Promise.all([
+                const [tasksRes, teamRes, leadsRes, followUpsRes] = await Promise.all([
                     tasksAPI.getMyTasks(),
                     teamsAPI.getMyTeam(),
-                    leadsAPI.getStats()
+                    leadsAPI.getStats(),
+                    followUpsAPI.getUpcoming()
                 ]);
 
                 const tasks = tasksRes.data.data || [];
@@ -181,14 +184,18 @@ const Dashboard = () => {
                     .slice(0, 5);
                 setUpcomingDeadlines(upcoming);
 
+                // Set upcoming follow-ups
+                setUpcomingFollowUps(followUpsRes.data.data || []);
+
                 if (teamRes.data.data) {
                     setTeamMembers(teamRes.data.data.members || []);
                 }
             } else {
                 // Team member view
-                const [tasksRes, leadsRes] = await Promise.all([
+                const [tasksRes, leadsRes, followUpsRes] = await Promise.all([
                     tasksAPI.getMyTasks(),
-                    leadsAPI.getStats()
+                    leadsAPI.getStats(),
+                    followUpsAPI.getUpcoming()
                 ]);
                 
                 const tasks = tasksRes.data.data || [];

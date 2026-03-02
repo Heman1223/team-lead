@@ -429,11 +429,11 @@ const getOverdueFollowUps = async (req, res) => {
 const getUpcomingFollowUps = async (req, res) => {
     try {
         const now = new Date();
-        const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
         let query = {
             status: 'pending',
-            scheduledDate: { $gte: now, $lte: sevenDaysLater }
+            scheduledDate: { $gte: now, $lte: thirtyDaysLater }
         };
 
         // Role-based filtering
@@ -446,23 +446,38 @@ const getUpcomingFollowUps = async (req, res) => {
                 query.assignedTo = req.user._id;
             }
         } else if (req.user.role === 'team_member') {
-            query.assignedTo = req.user._id;
+            // Team members see follow-ups assigned to them OR for leads they have access to
+            query.$or = [
+                { assignedTo: req.user._id }, // Follow-ups assigned to them
+                { createdBy: req.user._id }   // Follow-ups they created
+            ];
         }
 
         const upcomingFollowUps = await FollowUp.find(query)
-            .populate('leadId', 'clientName email phone status isDeleted isActive')
+            .populate('leadId', 'clientName email phone status assignedTo createdBy')
             .populate('assignedTo', 'name email isActive')
             .sort({ scheduledDate: 1 });
 
         // Filter out follow-ups with deleted/inactive leads or users
+        // Also filter based on lead access for team members
         const validFollowUps = upcomingFollowUps.filter(followUp => {
             // Check if lead exists
-            const hasValidLead = !!followUp.leadId;
+            if (!followUp.leadId) return false;
 
             // Check if assigned user exists
-            const hasValidUser = !!followUp.assignedTo;
+            if (!followUp.assignedTo) return false;
 
-            return hasValidLead && hasValidUser;
+            // Additional check for team members: they should have access to the lead
+            if (req.user.role === 'team_member') {
+                const leadAssignedToUser = followUp.leadId.assignedTo?.toString() === req.user._id.toString();
+                const leadCreatedByUser = followUp.leadId.createdBy?.toString() === req.user._id.toString();
+                const followUpAssignedToUser = followUp.assignedTo._id.toString() === req.user._id.toString();
+                
+                // Show if: follow-up is assigned to them OR they have access to the lead
+                return followUpAssignedToUser || leadAssignedToUser || leadCreatedByUser;
+            }
+
+            return true;
         });
 
         res.json({

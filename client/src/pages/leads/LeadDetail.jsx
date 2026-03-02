@@ -156,6 +156,23 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         try {
             await leadsAPI.delete(leadId);
             alert('Lead deleted successfully!');
+            console.log('Lead deleted, dispatching leadsUpdated event...');
+            
+            // Try multiple refresh mechanisms
+            window.dispatchEvent(new CustomEvent('leadsUpdated'));
+            console.log('leadsUpdated event dispatched');
+            
+            // Also try a more direct approach
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('leadsUpdated'));
+                // Force refresh if event system doesn't work
+                setTimeout(() => {
+                    if (window.location.pathname.includes('/leads')) {
+                        window.location.reload();
+                    }
+                }, 1000);
+            }, 500);
+            
             onClose();
             onUpdate();
         } catch (error) {

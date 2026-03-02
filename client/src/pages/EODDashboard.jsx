@@ -118,14 +118,16 @@ const EODDashboard = () => {
                 </div>
 
                 {/* Filter & Search Dashboard */}
-                <div className="bg-white border border-gray-100 rounded-[32px] p-2 shadow-sm">
-                    <div className="flex items-center gap-2">
-                        <div className="relative flex-1 max-w-xl">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <div className="bg-white border border-gray-100 rounded-[32px] p-4 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="relative max-w-xl flex-1">
+                            <div className="absolute left-4 top-0 bottom-0 flex items-center pointer-events-none">
+                                <Search className="w-4 h-4 text-gray-400" />
+                            </div>
                             <input 
                                 type="text"
                                 placeholder="Filter by Member, Project, or Task..."
-                                className="w-full pl-11 pr-4 py-3 bg-transparent text-sm font-bold outline-none"
+                                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-[#3E2723] focus:border-transparent transition-all"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
@@ -159,102 +161,104 @@ const EODDashboard = () => {
                         <p className="text-gray-400 font-bold uppercase tracking-widest text-sm mt-2">Try selecting another date or check back later</p>
                     </div>
                 ) : (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "space-y-4"}>
-                        {filteredEods.map((eod, idx) => (
-                            <div key={idx} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all group border-l-8 border-l-[#3E2723]">
-                                <div className="flex items-start justify-between mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center text-white text-lg font-black shadow-lg">
-                                            {eod.submittedBy?.name?.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">{eod.submittedBy?.name}</h3>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-[10px] bg-[#FAF7F2] text-[#3E2723] px-2 py-0.5 rounded font-black uppercase tracking-widest">{eod.teamName}</span>
-                                                <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded font-black uppercase tracking-widest">
-                                                    {eod.isSubtask ? 'Team Member' : 'Team Lead'}
-                                                </span>
+                    <div className="w-full">
+                        <div className={viewMode === 'grid' ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "space-y-6"}>
+                            {filteredEods.map((eod, idx) => (
+                                <div key={idx} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all group border-l-8 border-l-[#3E2723] w-full">
+                                    <div className="flex items-start justify-between mb-6">
+                                        <div className="flex items-center gap-4 flex-1">
+                                            <div className="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center text-white text-lg font-black shadow-lg flex-shrink-0">
+                                                {eod.submittedBy?.name?.charAt(0)}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight truncate">{eod.submittedBy?.name}</h3>
+                                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                    <span className="text-[10px] bg-[#FAF7F2] text-[#3E2723] px-2 py-0.5 rounded font-black uppercase tracking-widest">{eod.teamName}</span>
+                                                    <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded font-black uppercase tracking-widest">
+                                                        {eod.isSubtask ? 'Team Member' : 'Team Lead'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="flex items-center gap-2 justify-end mb-1">
-                                            <TrendingUp className="w-3 h-3 text-green-500" />
-                                            <p className="text-lg font-black text-gray-900 leading-none">{eod.progressUpdate}%</p>
-                                        </div>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</p>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                    <div className="space-y-4">
-                                        <div>
-                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                <BarChart3 className="w-3 h-3" /> Project Context
-                                            </p>
-                                            <p className="text-xs font-black text-gray-900 uppercase tracking-tight line-clamp-1">{eod.projectName}</p>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">{eod.taskTitle}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-[#3E2723] uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                <CheckCircle2 className="w-3 h-3" /> Work Completed
-                                            </p>
-                                            <p className="text-sm text-gray-600 font-medium leading-relaxed">{eod.workCompleted}</p>
+                                        <div className="text-right flex-shrink-0 ml-4">
+                                            <div className="flex items-center gap-2 justify-end mb-1">
+                                                <TrendingUp className="w-3 h-3 text-green-500" />
+                                                <p className="text-lg font-black text-gray-900 leading-none">{eod.progressUpdate}%</p>
+                                            </div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</p>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        {eod.blockers && (
-                                            <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
-                                                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                    <AlertCircle className="w-3 h-3" /> Blockers
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                    <BarChart3 className="w-3 h-3" /> Project Context
                                                 </p>
-                                                <p className="text-xs text-red-700 font-bold italic">"{eod.blockers}"</p>
+                                                <p className="text-xs font-black text-gray-900 uppercase tracking-tight line-clamp-1">{eod.projectName}</p>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">{eod.taskTitle}</p>
                                             </div>
-                                        )}
-                                        <div>
-                                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                <TrendingUp className="w-3 h-3" /> Next Day Plan
-                                            </p>
-                                            <p className="text-sm text-gray-600 font-medium leading-relaxed">{eod.nextDayPlan || 'Not specified'}</p>
+                                            <div>
+                                                <p className="text-[10px] font-black text-[#3E2723] uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                    <CheckCircle2 className="w-3 h-3" /> Work Completed
+                                                </p>
+                                                <p className="text-sm text-gray-600 font-medium leading-relaxed break-words">{eod.workCompleted}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
 
-                                {/* Attachments Section in EOD */}
-                                {(eod.links?.length > 0 || eod.images?.length > 0) && (
-                                    <div className="pt-6 border-t border-gray-50">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Evidence & Assets</p>
-                                        <div className="flex flex-wrap gap-4">
-                                            {eod.links?.map((link, lIdx) => (
-                                                <a 
-                                                    key={lIdx} 
-                                                    href={link.url} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-3 bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-xl transition-all group/link"
-                                                >
-                                                    <ExternalLink className="w-4 h-4 text-indigo-500" />
-                                                    <span className="text-xs font-black text-gray-900 uppercase tracking-tight">{link.title}</span>
-                                                    <ChevronRight className="w-3 h-3 text-gray-300 group-hover/link:translate-x-1 transition-all" />
-                                                </a>
-                                            ))}
-                                            {eod.images?.map((img, iIdx) => (
-                                                <a 
-                                                    key={iIdx} 
-                                                    href={img} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="w-12 h-12 rounded-xl overflow-hidden border border-gray-200 hover:ring-2 hover:ring-[#3E2723] transition-all shadow-sm"
-                                                >
-                                                    <img src={img} alt="EOD Proof" className="w-full h-full object-cover" />
-                                                </a>
-                                            ))}
+                                        <div className="space-y-4">
+                                            {eod.blockers && (
+                                                <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
+                                                    <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                        <AlertCircle className="w-3 h-3" /> Blockers
+                                                    </p>
+                                                    <p className="text-xs text-red-700 font-bold italic break-words">"{eod.blockers}"</p>
+                                                </div>
+                                            )}
+                                            <div>
+                                                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                    <TrendingUp className="w-3 h-3" /> Next Day Plan
+                                                </p>
+                                                <p className="text-sm text-gray-600 font-medium leading-relaxed break-words">{eod.nextDayPlan || 'Not specified'}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        ))}
+
+                                    {/* Attachments Section in EOD */}
+                                    {(eod.links?.length > 0 || eod.images?.length > 0) && (
+                                        <div className="pt-6 border-t border-gray-50">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Evidence & Assets</p>
+                                            <div className="flex flex-wrap gap-4">
+                                                {eod.links?.map((link, lIdx) => (
+                                                    <a 
+                                                        key={lIdx} 
+                                                        href={link.url} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-3 bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-xl transition-all group/link flex-shrink-0"
+                                                    >
+                                                        <ExternalLink className="w-4 h-4 text-indigo-500" />
+                                                        <span className="text-xs font-black text-gray-900 uppercase tracking-tight max-w-[150px] truncate">{link.title}</span>
+                                                        <ChevronRight className="w-3 h-3 text-gray-300 group-hover/link:translate-x-1 transition-all" />
+                                                    </a>
+                                                ))}
+                                                {eod.images?.map((img, iIdx) => (
+                                                    <a 
+                                                        key={iIdx} 
+                                                        href={img} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="w-12 h-12 rounded-xl overflow-hidden border border-gray-200 hover:ring-2 hover:ring-[#3E2723] transition-all shadow-sm flex-shrink-0"
+                                                    >
+                                                        <img src={img} alt="EOD Proof" className="w-full h-full object-cover" />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>

@@ -218,7 +218,9 @@ const Notifications = () => {
                         {/* Filters & Search */}
                         <div className="flex flex-col md:flex-row gap-4">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <div className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center pointer-events-none">
+                                    <Search className="w-5 h-5 text-gray-400" />
+                                </div>
                                 <input 
                                     type="text"
                                     placeholder={activeTab === 'inbox' ? "Search inbox..." : "Search sent items..."}

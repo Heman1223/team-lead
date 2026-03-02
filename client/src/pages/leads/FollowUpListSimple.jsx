@@ -13,10 +13,10 @@ const FollowUpList = () => {
     const fetchFollowUps = async () => {
         try {
             const response = await followUpsAPI.getUpcoming();
-            // Filter out follow-ups with deleted leads or users
+            // With hard delete, we only need to check if lead exists
             const validFollowUps = (response.data.data || []).filter(followUp => {
-                // Keep only if lead exists and is not deleted
-                return followUp.leadId && !followUp.leadId.isDeleted;
+                // Keep only if lead exists (hard delete removes leads completely)
+                return followUp.leadId;
             });
             setFollowUps(validFollowUps);
         } catch (error) {

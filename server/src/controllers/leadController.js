@@ -12,8 +12,9 @@ const path = require('path');
 // @desc    Get all leads (with role-based filtering)
 // @route   GET /api/leads
 // @access  Private
-const getLeads = async (req, res) => {
+getLeads = async (req, res) => {
     try {
+        // Initialize empty query for hard delete (no soft delete filtering needed)
         let query = {};
 
         // Query Parameters filtering
@@ -56,7 +57,7 @@ const getLeads = async (req, res) => {
                             ]
                         };
                     } else {
-                        // No existing query, just apply role filter
+                        // No existing filter, just add role filter
                         query.$or = roleFilter;
                     }
                 }
@@ -81,12 +82,12 @@ const getLeads = async (req, res) => {
                         ]
                     };
                 } else {
-                    // No existing query, just apply member filter
+                    // No existing filter, just add member filter
                     Object.assign(query, memberFilter);
                 }
             }
         }
-        // Admins see all (no extra filter)
+        // Admins see all leads
 
         const leads = await Lead.find(query)
             .populate('assignedTo', 'name email')
@@ -102,13 +103,18 @@ const getLeads = async (req, res) => {
         console.error('Get leads error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
-};
+}
 
 // @desc    Get lead details
 // @route   GET /api/leads/:id
 // @access  Private
 const getLeadById = async (req, res) => {
     try {
+        console.log('=== GET LEAD BY ID ===');
+        console.log('Lead ID:', req.params.id);
+        console.log('User ID:', req.user._id);
+        console.log('User Role:', req.user.role);
+        
         const lead = await Lead.findById(req.params.id)
             .populate('assignedTo', 'name email')
             .populate('assignedTeam', 'name')
@@ -119,6 +125,14 @@ const getLeadById = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
+        console.log('Lead found:', {
+            id: lead._id,
+            clientName: lead.clientName,
+            assignedTo: lead.assignedTo,
+            createdBy: lead.createdBy,
+            assignedTeam: lead.assignedTeam
+        });
+
         // Check permissions - Admins can see all
         if (req.user.role !== 'admin') {
             let hasAccess = false;
@@ -127,20 +141,42 @@ const getLeadById = async (req, res) => {
                 // Team leaders can see leads they created or leads assigned to their team
                 if (lead.createdBy?._id?.toString() === req.user._id.toString()) {
                     hasAccess = true;
+                    console.log('Access granted: Lead created by team lead');
                 } else {
                     const team = await Team.findOne({ leadId: req.user._id });
                     if (team && lead.assignedTeam?._id?.toString() === team._id.toString()) {
                         hasAccess = true;
+                        console.log('Access granted: Lead assigned to team leads team');
                     }
                 }
             } else if (req.user.role === 'team_member') {
-                // Team members can only see leads assigned to them
-                hasAccess = lead.assignedTo?._id?.toString() === req.user._id.toString();
+                // Team members can see leads assigned to them OR created by them
+                const assignedMatch = lead.assignedTo?._id?.toString() === req.user._id.toString();
+                const createdMatch = lead.createdBy?._id?.toString() === req.user._id.toString();
+                hasAccess = assignedMatch || createdMatch;
+                
+                console.log('Team member access check:', {
+                    assignedMatch,
+                    createdMatch,
+                    assignedToId: lead.assignedTo?._id?.toString(),
+                    createdById: lead.createdBy?._id?.toString(),
+                    currentUserId: req.user._id.toString()
+                });
             }
 
             if (!hasAccess) {
+                console.log('Lead access denied:', {
+                    userId: req.user._id,
+                    userRole: req.user.role,
+                    leadId: lead._id,
+                    assignedTo: lead.assignedTo,
+                    createdBy: lead.createdBy,
+                    assignedTeam: lead.assignedTeam
+                });
                 return res.status(403).json({ success: false, message: 'Not authorized to view this lead' });
             }
+        } else {
+            console.log('Access granted: User is admin');
         }
 
         // Get activity logs for this lead
@@ -565,7 +601,7 @@ const getLeadStats = async (req, res) => {
         console.log('User:', req.user._id, req.user.role);
 
         const { startDate, endDate } = req.query;
-        let query = { isDeleted: false };
+        let query = {};
 
         if (startDate && endDate) {
             query.createdAt = {
@@ -682,7 +718,7 @@ const getLeadStats = async (req, res) => {
                 : {};
 
             const performance = await Lead.aggregate([
-                { $match: { ...performanceQuery, isDeleted: false, assignedTo: { $ne: null } } },
+                { $match: { ...performanceQuery, assignedTo: { $ne: null } } },
                 {
                     $group: {
                         _id: '$assignedTo',
@@ -758,7 +794,7 @@ const getLeadStats = async (req, res) => {
 // @desc    Soft delete lead (60-day recovery)
 // @route   DELETE /api/leads/:id
 // @access  Private (Admin only)
-const deleteLead = async (req, res) => {
+deleteLead = async (req, res) => {
     try {
         // Only admins can delete leads
         if (req.user.role !== 'admin') {
@@ -770,27 +806,26 @@ const deleteLead = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
-        // Soft delete using model method
-        lead.softDelete(req.user._id);
-        await lead.save();
+        // Hard delete - permanently remove from database
+        await Lead.findByIdAndDelete(req.params.id);
 
         // Log activity
         await ActivityLog.create({
             action: 'lead_deleted',
             userId: req.user._id,
             leadId: lead._id,
-            details: `Lead soft deleted: ${lead.clientName} (Can be recovered within 60 days)`
+            details: `Lead permanently deleted: ${lead.clientName}`
         });
 
         res.json({
             success: true,
-            message: 'Lead deleted successfully. Can be recovered within 60 days.'
+            message: 'Lead permanently deleted successfully.'
         });
     } catch (error) {
         console.error('Delete lead error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
-};
+}
 
 // @desc    Restore deleted lead
 // @route   PUT /api/leads/:id/restore
@@ -917,7 +952,7 @@ const escalateLead = async (req, res) => {
 // @access  Private
 const getLeadActivities = async (req, res) => {
     try {
-        let leadQuery = { isActive: true, isDeleted: false };
+        let leadQuery = { isActive: true };
 
         // Role-based filtering for leads
         if (req.user.role === 'team_lead') {
@@ -931,8 +966,11 @@ const getLeadActivities = async (req, res) => {
                 leadQuery.createdBy = req.user._id;
             }
         } else if (req.user.role === 'team_member') {
-            // Employees see activities on leads assigned to them
-            leadQuery.assignedTo = req.user._id;
+            // Team members see activities on leads assigned to them OR created by them
+            leadQuery.$or = [
+                { assignedTo: req.user._id },
+                { createdBy: req.user._id }
+            ];
         }
         // Admins see all (no extra filter)
 
@@ -1029,7 +1067,8 @@ const checkLeadPermission = async (lead, user) => {
     }
 
     if (user.role === 'team_member') {
-        return lead.assignedTo?.toString() === user._id.toString();
+        return lead.assignedTo?.toString() === user._id.toString() || 
+               lead.createdBy?.toString() === user._id.toString();
     }
 
     return false;

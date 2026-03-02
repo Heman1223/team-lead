@@ -291,6 +291,19 @@ const deleteTask = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
 
+        // Verify the user is authorized to delete this task
+        // Team leads can only delete tasks assigned to them or tasks they created
+        // Admins can delete any task (handled by role-based authorization)
+        if (req.user.role === 'team_lead') {
+            if (task.assignedTo.toString() !== req.user._id.toString() && 
+                task.assignedBy.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'You can only delete tasks assigned to you or created by you' 
+                });
+            }
+        }
+
         await ActivityLog.create({
             action: 'task_deleted',
             userId: req.user._id,
@@ -963,12 +976,17 @@ const deleteSubtask = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
 
-        // Verify the task is assigned to the current user (team lead)
-        if (task.assignedTo.toString() !== req.user._id.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'You can only delete subtasks from your own tasks'
-            });
+        // Verify the user is authorized to delete subtasks from this task
+        // Team leads can only delete subtasks from tasks assigned to them or tasks they created
+        // Admins can delete any subtasks (handled by role-based authorization)
+        if (req.user.role === 'team_lead') {
+            if (task.assignedTo.toString() !== req.user._id.toString() && 
+                task.assignedBy.toString() !== req.user._id.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You can only delete subtasks from tasks assigned to you or created by you'
+                });
+            }
         }
 
         const subtask = task.subtasks.id(req.params.subtaskId);
@@ -1074,6 +1092,19 @@ const deleteAttachment = async (req, res) => {
         const task = await Task.findById(req.params.id);
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        // Verify the user is authorized to delete attachments from this task
+        // Team leads can only delete attachments from tasks assigned to them or tasks they created
+        // Admins can delete any task attachments (handled by role-based authorization)
+        if (req.user.role === 'team_lead') {
+            if (task.assignedTo.toString() !== req.user._id.toString() && 
+                task.assignedBy.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'You can only delete attachments from tasks assigned to you or created by you' 
+                });
+            }
         }
 
         const attachment = task.attachments.id(req.params.attachmentId);

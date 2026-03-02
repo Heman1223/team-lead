@@ -192,7 +192,7 @@ const getTeamPerformance = async (req, res) => {
 
         // Only leads in this team, ignore deleted leads
         const performance = await Lead.aggregate([
-            { $match: { assignedTeam: mongoose.Types.ObjectId(teamId), isDeleted: false, assignedTo: { $ne: null } } },
+            { $match: { assignedTeam: mongoose.Types.ObjectId(teamId), assignedTo: { $ne: null } } },
             {
                 $group: {
                     _id: '$assignedTo',
