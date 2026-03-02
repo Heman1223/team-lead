@@ -13,7 +13,7 @@ const PrivacyPolicy = () => {
 
     return (
         <div className="privacy-policy-page" style={{ backgroundColor: '#ffffff', color: 'var(--text-primary)', fontFamily: 'var(--font-primary)' }}>
-            <Navbar onMenuToggle={() => { }} />
+            <Navbar isPublicPage={true} onMenuToggle={() => { }} />
 
             <main style={{ maxWidth: '1000px', margin: '60px auto 120px', padding: '0 20px' }}>
                 <div className="animate-on-scroll" style={{ 

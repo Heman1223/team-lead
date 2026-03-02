@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { notificationsAPI } from '../services/api';
 
-const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { } }) => {
+const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { }, isPublicPage = false }) => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [notifications, setNotifications] = useState([]);
@@ -12,7 +12,7 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { } }) => {
     const notificationRef = useRef(null);
 
     useEffect(() => {
-        if (user) {
+        if (user && !isPublicPage) {
             fetchNotifications();
         }
 
@@ -24,13 +24,14 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { } }) => {
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [user]);
+    }, [user, isPublicPage]);
 
     const fetchNotifications = async () => {
         try {
             // Get recent notifications
             const response = await notificationsAPI.getAll({ limit: 10 });
-            const recentNotifications = response.data.slice(0, 5).map((n) => ({
+            const notifData = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            const recentNotifications = notifData.slice(0, 5).map((n) => ({
                 id: n._id,
                 type: n.type || 'notification',
                 title: n.title,
@@ -72,7 +73,7 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { } }) => {
     return (
         <header className="navbar">
             <div className="navbar-left">
-                {user && (
+                {user && !isPublicPage && (
                     <button
                         className="hamburger-btn"
                         onClick={onMenuToggle}
@@ -88,7 +89,7 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { } }) => {
             </div>
 
             <div className="navbar-right">
-                {user ? (
+                {user && !isPublicPage ? (
                     <>
                         <div className="notification-wrapper" ref={notificationRef}>
                             <button
@@ -139,29 +140,33 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { } }) => {
                             )}
                         </div>
 
-                        <div className="navbar-profile" onClick={() => navigate('/settings')}>
-                            <div className="navbar-profile-avatar">
-                                {user?.avatar ? (
-                                    <img src={user.avatar} alt="Avatar" style={{
-                                        width: '100%',
-                                        height: '100%',
-                                        borderRadius: '50%',
-                                        objectFit: 'cover'
-                                    }} />
-                                ) : (
-                                    getInitials(userName)
-                                )}
-                            </div>
-                            <div className="navbar-profile-info">
-                                <span>{userName}</span>
-                                <span>{userTitle}</span>
-                            </div>
-                            <ChevronDown size={16} />
-                        </div>
+                        {!isPublicPage && (
+                            <>
+                                <div className="navbar-profile" onClick={() => navigate('/settings')}>
+                                    <div className="navbar-profile-avatar">
+                                        {user?.avatar ? (
+                                            <img src={user.avatar} alt="Avatar" style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                borderRadius: '50%',
+                                                objectFit: 'cover'
+                                            }} />
+                                        ) : (
+                                            getInitials(userName)
+                                        )}
+                                    </div>
+                                    <div className="navbar-profile-info">
+                                        <span>{userName}</span>
+                                        <span>{userTitle}</span>
+                                    </div>
+                                    <ChevronDown size={16} />
+                                </div>
 
-                        <button className="navbar-icon-btn" onClick={handleLogout} title="Logout">
-                            <LogOut size={20} />
-                        </button>
+                                <button className="navbar-icon-btn" onClick={handleLogout} title="Logout">
+                                    <LogOut size={20} />
+                                </button>
+                            </>
+                        )}
                     </>
                 ) : (
                     <div className="auth-buttons" style={{ display: 'flex', gap: '10px' }}>

@@ -61,7 +61,7 @@ const LandingPage = () => {
 
     return (
         <div className="landing-page" style={{ backgroundColor: '#ffffff', color: 'var(--text-primary)', fontFamily: 'var(--font-primary)' }}>
-            <Navbar onMenuToggle={() => { }} />
+            <Navbar isPublicPage={true} onMenuToggle={() => { }} />
 
             <main style={{ maxWidth: '1400px', margin: '40px auto 120px', padding: '0 20px' }}>
                 <div className="unified-card animate-on-scroll" style={{ 

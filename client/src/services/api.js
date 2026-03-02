@@ -166,8 +166,7 @@ export const leadsAPI = {
     }),
     importLeads: (leads) => api.post('/leads/import', { leads }),
     getStats: (params) => api.get('/leads/stats', { params }),
-    getActivities: () => api.get('/leads/activities'),
-    addNote: (id, content, type) => api.post(`/leads/${id}/notes`, { content, type })
+    getActivities: () => api.get('/leads/activities')
 };
 
 // Follow-ups API

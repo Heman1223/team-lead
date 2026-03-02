@@ -9,7 +9,7 @@ const getUsers = async (req, res) => {
     try {
         const { teamId, status, role } = req.query;
 
-        let query = {};
+        let query = { deletedAt: null }; // exclude deleted users
 
         // Only filter by team if explicitly specified in query
         if (teamId) {
@@ -45,7 +45,7 @@ const getUser = async (req, res) => {
             .select('-password')
             .populate('teamId', 'name');
 
-        if (!user) {
+        if (!user || user.deletedAt !== null) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
@@ -169,15 +169,17 @@ const deleteUser = async (req, res) => {
             });
         }
 
-        // Log activity before deletion
+        // Soft delete - mark as deleted with timestamp
+        user.deletedAt = new Date();
+        await user.save();
+
+        // Log activity after deletion
         await ActivityLog.create({
             action: 'user_deleted',
             userId: req.user._id,
             teamId: req.user.teamId,
             details: `User removed: ${user.name}`
         });
-
-        await user.deleteOne();
 
         res.json({
             success: true,

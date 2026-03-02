@@ -37,6 +37,10 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         priority: 'medium',
         type: 'call'
     });
+    const [showLostReason, setShowLostReason] = useState(false);
+    const [lostReason, setLostReason] = useState('');
+    const [showNotInterestedReason, setShowNotInterestedReason] = useState(false);
+    const [notInterestedReason, setNotInterestedReason] = useState('');
 
     useEffect(() => {
         if (leadId) {
@@ -80,11 +84,26 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
 
     const handleUpdateStatus = async (newStatus) => {
         if (newStatus === data.lead.status) return;
+        if (newStatus === 'lost' && !lostReason) {
+            setShowLostReason(true);
+            return;
+        }
+        if (newStatus === 'not_interested' && !notInterestedReason) {
+            setShowNotInterestedReason(true);
+            return;
+        }
+
         setUpdating(true);
         try {
-            await leadsAPI.update(leadId, { status: newStatus });
+            await leadsAPI.update(leadId, {
+                status: newStatus,
+                lostReason: newStatus === 'lost' ? lostReason : '',
+                notInterestedReason: newStatus === 'not_interested' ? notInterestedReason : ''
+            });
             await fetchLeadDetails();
             onUpdate();
+            setShowLostReason(false);
+            setShowNotInterestedReason(false);
         } catch (error) {
             alert(error.response?.data?.message || 'Update failed');
         } finally {
@@ -96,7 +115,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         if (!note.trim()) return;
         setUpdating(true);
         try {
-            await leadsAPI.addNote(leadId, { note: note.trim() });
+            await leadsAPI.addNote(leadId, { content: note.trim(), type: 'note' });
             await fetchLeadDetails();
             setNote('');
             setActiveTab('history'); // Switch to history to see the new note
@@ -259,48 +278,65 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                         <option value="not_interested">Not Interested</option>
                                     </select>
                                 </div>
+                                {/* assignment control */}
+                                {(isAdmin || isTeamLead) ? (
+                                    <select
+                                        value={lead.assignedTo?._id || ''}
+                                        onChange={(e) => handleAssign(e.target.value)}
+                                        disabled={updating}
+                                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
+                                    >
+                                        <option value="">Unassigned</option>
+                                        {allUsers.map(u => (
+                                            <option key={u._id} value={u._id}>{u.name}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm font-medium flex items-center gap-2">
+                                        <User size={16} className="text-gray-400" />
+                                        {lead.assignedTo?.name || 'Unassigned'}
+                                    </div>
+                                )}
 
-                                {/* Assignee */}
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Assigned To</label>
-                                    {(isAdmin || isTeamLead) ? (
-                                        <select
-                                            value={lead.assignedTo?._id || ''}
-                                            onChange={(e) => handleAssign(e.target.value)}
-                                            disabled={updating}
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
-                                        >
-                                            <option value="">Unassigned</option>
-                                            {allUsers.map(u => (
-                                                <option key={u._id} value={u._id}>{u.name}</option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm font-medium flex items-center gap-2">
-                                            <User size={16} className="text-gray-400" />
-                                            {lead.assignedTo?.name || 'Unassigned'}
+                                {showLostReason && (
+                                    <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 mt-3">
+                                        <label className="block text-sm font-semibold text-rose-400 mb-1">
+                                            Reason for losing this lead?
+                                        </label>
+                                        <textarea
+                                            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-2 focus:ring-rose-500"
+                                            placeholder="Enter reason..."
+                                            value={lostReason}
+                                            onChange={(e) => setLostReason(e.target.value)}
+                                        />
+                                        <div className="mt-2 flex gap-2">
+                                            <button onClick={() => handleUpdateStatus('lost')} className="px-3 py-1 bg-rose-500 text-white rounded-lg text-sm">Submit</button>
+                                            <button onClick={() => setShowLostReason(false)} className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm">Cancel</button>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+                                {showNotInterestedReason && (
+                                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mt-3">
+                                        <label className="block text-sm font-semibold text-yellow-600 mb-1">
+                                            Reason for marking not interested?
+                                        </label>
+                                        <textarea
+                                            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-2 focus:ring-yellow-500"
+                                            placeholder="Enter reason..."
+                                            value={notInterestedReason}
+                                            onChange={(e) => setNotInterestedReason(e.target.value)}
+                                        />
+                                        <div className="mt-2 flex gap-2">
+                                            <button onClick={() => handleUpdateStatus('not_interested')} className="px-3 py-1 bg-yellow-500 text-white rounded-lg text-sm">Submit</button>
+                                            <button onClick={() => setShowNotInterestedReason(false)} className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm">Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
 
-                                {/* Details Grid */}
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Category</label>
-                                        <div className="text-sm font-medium text-gray-900 capitalize">{(lead.category || 'other').replace('_', ' ')}</div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Estimated Value</label>
-                                        <div className="text-sm font-medium text-gray-900">${(lead.estimatedValue || 0).toLocaleString()}</div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Source</label>
-                                        <div className="text-sm font-medium text-gray-900 capitalize">{(lead.source || 'unknown').replace('_', ' ')}</div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Priority</label>
-                                        <div className="text-sm font-medium text-gray-900 capitalize">{lead.priority || 'medium'}</div>
-                                    </div>
+                                {/* Priority */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Priority</label>
+                                    <div className="text-sm font-medium text-gray-900 capitalize px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">{lead.priority || 'medium'}</div>
                                 </div>
 
                                 {/* Client Inquiry */}

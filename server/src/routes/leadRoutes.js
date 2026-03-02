@@ -61,8 +61,8 @@ router.route('/')
     .get(getLeads)
     .post(createLead);
 
-router.post('/preview', authorize('admin'), upload.single('file'), previewLeads);
-router.post('/import', authorize('admin'), importLeads);
+router.post('/preview', authorize('admin', 'team_lead', 'team_member'), upload.single('file'), previewLeads);
+router.post('/import', authorize('admin', 'team_lead', 'team_member'), importLeads);
 
 router.route('/:id')
     .get(protect, getLeadById)

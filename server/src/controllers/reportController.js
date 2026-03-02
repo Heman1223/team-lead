@@ -190,36 +190,46 @@ const getTeamPerformance = async (req, res) => {
     try {
         const teamId = req.user.teamId;
 
-        // Get all team members
-        const members = await User.find({ teamId }).select('name avatar');
-
-        // Get performance for each member
-        const performance = await Promise.all(members.map(async (member) => {
-            const taskStats = await Task.aggregate([
-                { $match: { assignedTo: member._id } },
-                { $group: { _id: '$status', count: { $sum: 1 } } }
-            ]);
-
-            let completed = 0, total = 0;
-            taskStats.forEach(s => {
-                if (s._id === 'completed') completed = s.count;
-                total += s.count;
-            });
-
-            return {
-                member: {
-                    _id: member._id,
-                    name: member.name,
-                    avatar: member.avatar
-                },
-                tasksCompleted: completed,
-                totalTasks: total,
-                completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
-            };
-        }));
-
-        // Sort by completion rate
-        performance.sort((a, b) => b.completionRate - a.completionRate);
+        // Only leads in this team, ignore deleted leads
+        const performance = await Lead.aggregate([
+            { $match: { assignedTeam: mongoose.Types.ObjectId(teamId), isDeleted: false, assignedTo: { $ne: null } } },
+            {
+                $group: {
+                    _id: '$assignedTo',
+                    totalLeads: { $sum: 1 },
+                    convertedLeads: {
+                        $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] }
+                    },
+                    totalPipelineValue: { $sum: '$estimatedValue' }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            { $unwind: '$user' },
+            {
+                $project: {
+                    _id: 1,
+                    name: '$user.name',
+                    totalLeads: 1,
+                    convertedLeads: 1,
+                    totalPipelineValue: 1,
+                    conversionRate: {
+                        $cond: [
+                            { $gt: ['$totalLeads', 0] },
+                            { $multiply: [{ $divide: ['$convertedLeads', '$totalLeads'] }, 100] },
+                            0
+                        ]
+                    }
+                }
+            },
+            { $sort: { conversionRate: -1 } }
+        ]);
 
         res.json({
             success: true,
@@ -281,7 +291,7 @@ const exportReport = async (req, res) => {
                 .populate('createdBy', 'name email')
                 .lean();
         } else if (type === 'members') {
-            data = await User.find({ teamId })
+            data = await User.find({ teamId, deletedAt: null })
                 .select('-password')
                 .lean();
         } else {

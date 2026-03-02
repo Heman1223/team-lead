@@ -53,6 +53,15 @@ const Dashboard = () => {
         fetchDashboardData();
     }, [dateRange]); // Re-fetch when global date range changes
 
+    // Listen for global lead updates from other parts of the app
+    useEffect(() => {
+        const handler = () => {
+            fetchDashboardData();
+        };
+        window.addEventListener('leadsUpdated', handler);
+        return () => window.removeEventListener('leadsUpdated', handler);
+    }, []);
+
     const fetchDashboardData = async () => {
         try {
             setLoading(true);

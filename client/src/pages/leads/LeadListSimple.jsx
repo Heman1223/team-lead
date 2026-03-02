@@ -24,13 +24,25 @@ const LeadList = ({ onSelectLead }) => {
 
     useEffect(() => {
         fetchLeads();
-    }, []);
+    }, [filterStatus]); // Refresh when status filter changes
+
+    // Search with debounce
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            fetchLeads();
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm]);
 
     const fetchLeads = async () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await leadsAPI.getAll();
+            const params = {
+                status: filterStatus,
+                search: searchTerm
+            };
+            const response = await leadsAPI.getAll(params);
             setLeads(response.data.data || []);
         } catch (error) {
             console.error('Error fetching leads:', error);
@@ -41,12 +53,8 @@ const LeadList = ({ onSelectLead }) => {
         }
     };
 
-    const filteredLeads = leads.filter(lead => {
-        const matchesSearch = lead.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || lead.status === filterStatus;
-        return matchesSearch && matchesStatus;
-    });
+    // Client-side filtering as fallback or for immediate visual feedback
+    const filteredLeads = leads; // Backend already filtered based on our params
 
     const getStatusColor = (status) => {
         const colors = {

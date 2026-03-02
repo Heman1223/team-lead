@@ -96,15 +96,15 @@ const createUser = async (req, res) => {
     try {
         console.log('=== CREATE USER REQUEST ===');
         console.log('Request body:', req.body);
-        
+
         const { name, email, password, role, phone, designation, department, coreField, teamId } = req.body;
 
         // Validate required fields
         if (!name || !email || !password || !role) {
             console.log('Validation failed: Missing required fields');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide name, email, password, and role' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide name, email, password, and role'
             });
         }
 
@@ -112,18 +112,18 @@ const createUser = async (req, res) => {
         const userExists = await User.findOne({ email });
         if (userExists) {
             console.log('User already exists:', email);
-            return res.status(400).json({ 
-                success: false, 
-                message: 'User already exists with this email' 
+            return res.status(400).json({
+                success: false,
+                message: 'User already exists with this email'
             });
         }
 
         // Validate role
         if (!['team_lead', 'team_member'].includes(role)) {
             console.log('Invalid role:', role);
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Invalid role. Must be team_lead or team_member' 
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid role. Must be team_lead or team_member'
             });
         }
 
@@ -195,9 +195,9 @@ const updateUser = async (req, res) => {
 
         // Prevent admin from changing their own role
         if (user._id.toString() === req.user._id.toString() && role && role !== 'admin') {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Cannot change your own admin role' 
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot change your own admin role'
             });
         }
 
@@ -205,9 +205,9 @@ const updateUser = async (req, res) => {
         if (email && email !== user.email) {
             const emailExists = await User.findOne({ email: email.toLowerCase() });
             if (emailExists) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Email already in use' 
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email already in use'
                 });
             }
             user.email = email;
@@ -220,7 +220,7 @@ const updateUser = async (req, res) => {
         if (designation !== undefined) user.designation = designation;
         if (department !== undefined) user.department = department;
         if (coreField !== undefined) user.coreField = coreField;
-        
+
         // Handle teamId - convert empty string to null
         if (teamId !== undefined) {
             user.teamId = teamId === '' || teamId === null ? null : teamId;
@@ -244,24 +244,24 @@ const updateUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Update user error:', error);
-        
+
         // Handle duplicate key error
         if (error.code === 11000) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Email already exists' 
+            return res.status(400).json({
+                success: false,
+                message: 'Email already exists'
             });
         }
-        
+
         // Handle validation errors
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map(err => err.message);
-            return res.status(400).json({ 
-                success: false, 
-                message: messages.join(', ') 
+            return res.status(400).json({
+                success: false,
+                message: messages.join(', ')
             });
         }
-        
+
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };
@@ -272,7 +272,7 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     try {
         const { permanent } = req.query; // ?permanent=true for hard delete
-        
+
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
@@ -280,49 +280,74 @@ const deleteUser = async (req, res) => {
 
         // Prevent admin from deleting themselves
         if (user._id.toString() === req.user._id.toString()) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Cannot delete your own account' 
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot delete your own account'
             });
         }
 
-        // HARD DELETE - Permanent removal
-        // Remove user from teams
-        await Team.updateMany(
-            { members: user._id },
-            { $pull: { members: user._id } }
-        );
-
-        // If user is a team lead, handle teams
-        const teamsLed = await Team.find({ leadId: user._id });
-        for (const team of teamsLed) {
-            // Reassign tasks from this team to admin or delete team
-            await Task.updateMany(
-                { teamId: team._id },
-                { teamId: null, assignedTo: req.user._id }
+        if (permanent === 'true') {
+            // HARD DELETE - Permanent removal
+            // Remove user from teams
+            await Team.updateMany(
+                { members: user._id },
+                { $pull: { members: user._id } }
             );
-            await team.deleteOne();
+
+            // If user is a team lead, handle teams
+            const teamsLed = await Team.find({ leadId: user._id });
+            for (const team of teamsLed) {
+                // Reassign tasks from this team to admin or delete team
+                await Task.updateMany(
+                    { teamId: team._id },
+                    { teamId: null, assignedTo: req.user._id }
+                );
+                await team.deleteOne();
+            }
+
+            // Reassign user's tasks to admin
+            await Task.updateMany(
+                { assignedTo: user._id },
+                { assignedTo: req.user._id }
+            );
+
+            await user.deleteOne();
+
+            // Log activity
+            await ActivityLog.create({
+                action: 'user_deleted',
+                userId: req.user._id,
+                details: `Admin permanently deleted user: ${user.name} (${user.email})`
+            });
+
+            res.json({
+                success: true,
+                message: 'User permanently deleted successfully'
+            });
+        } else {
+            // SOFT DELETE - Mark as deleted (recoverable)
+            // Remove user from teams
+            await Team.updateMany(
+                { members: user._id },
+                { $pull: { members: user._id } }
+            );
+
+            // Soft delete - mark as deleted with timestamp
+            user.deletedAt = new Date();
+            await user.save();
+
+            // Log activity
+            await ActivityLog.create({
+                action: 'user_deleted',
+                userId: req.user._id,
+                details: `Admin deleted user: ${user.name} (${user.email})`
+            });
+
+            res.json({
+                success: true,
+                message: 'User deleted successfully'
+            });
         }
-
-        // Reassign user's tasks to admin
-        await Task.updateMany(
-            { assignedTo: user._id },
-            { assignedTo: req.user._id }
-        );
-
-        await user.deleteOne();
-
-        // Log activity
-        await ActivityLog.create({
-            action: 'user_deleted',
-            userId: req.user._id,
-            details: `Admin permanently deleted user: ${user.name} (${user.email})`
-        });
-
-        res.json({
-            success: true,
-            message: 'User permanently deleted successfully'
-        });
     } catch (error) {
         console.error('Delete user error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -338,9 +363,9 @@ const resetUserPassword = async (req, res) => {
         const { newPassword, forceChange } = req.body;
 
         if (!newPassword || newPassword.length < 6) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide a password with at least 6 characters' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide a password with at least 6 characters'
             });
         }
 
@@ -379,7 +404,7 @@ const getAllTeams = async (req, res) => {
         const teams = await Team.find()
             .populate('leadId', 'name email avatar coreField designation phone')
             .populate('members', 'name email avatar role coreField designation phone');
-        
+
         // Update statistics for each team to get current data
         const teamsWithStats = await Promise.all(
             teams.map(async (team) => {
@@ -388,7 +413,7 @@ const getAllTeams = async (req, res) => {
                 return team;
             })
         );
-        
+
         res.json({
             success: true,
             count: teamsWithStats.length,
@@ -405,14 +430,14 @@ const getAllTeams = async (req, res) => {
 // @access  Private/Admin
 const createTeam = async (req, res) => {
     try {
-        const { 
-            name, 
-            description, 
+        const {
+            name,
+            description,
             objective,
-            leadId, 
-            memberIds, 
-            department, 
-            coreField, 
+            leadId,
+            memberIds,
+            department,
+            coreField,
             currentProject,
             status,
             priority,
@@ -421,9 +446,9 @@ const createTeam = async (req, res) => {
         } = req.body;
 
         if (!name || !leadId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide team name and lead ID' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide team name and lead ID'
             });
         }
 
@@ -434,9 +459,9 @@ const createTeam = async (req, res) => {
         }
 
         if (teamLead.role !== 'team_lead') {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Selected user is not a team lead' 
+            return res.status(400).json({
+                success: false,
+                message: 'Selected user is not a team lead'
             });
         }
 
@@ -452,7 +477,7 @@ const createTeam = async (req, res) => {
             memberIds.forEach(m => {
                 const id = typeof m === 'object' ? m.userId : m;
                 const role = typeof m === 'object' ? m.role : 'member';
-                
+
                 if (id !== leadId) {
                     if (!members.includes(id)) {
                         members.push(id);
@@ -527,16 +552,16 @@ const createTeam = async (req, res) => {
         console.error('Create team error:', error);
         // Handle duplicate key error (11000)
         if (error.code === 11000) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Team with this name already exists' 
+            return res.status(400).json({
+                success: false,
+                message: 'Team with this name already exists'
             });
         }
         // Return actual error message for debugging
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             message: error.message || 'Server error during team creation',
-            error: error.message 
+            error: error.message
         });
     }
 };
@@ -549,9 +574,9 @@ const assignMembersToTeam = async (req, res) => {
         const { memberIds } = req.body;
 
         if (!memberIds || !Array.isArray(memberIds)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide an array of member IDs' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide an array of member IDs'
             });
         }
 
@@ -620,7 +645,7 @@ const getAllTasks = async (req, res) => {
             .populate('teamId', 'name')
             .populate('subtasks.assignedTo', 'name email avatar')
             .populate('relatedLead', 'clientName email');
-        
+
         // Calculate progress for each task before returning WITHOUT saving in loop
         const tasksWithProgress = tasks.map((task) => {
             const taskObj = task.toObject();
@@ -631,7 +656,7 @@ const getAllTasks = async (req, res) => {
             }
             return taskObj;
         });
-        
+
         res.json({
             success: true,
             count: tasksWithProgress.length,
@@ -655,7 +680,7 @@ const getAllActivities = async (req, res) => {
             .populate('taskId', 'title')
             .sort({ createdAt: -1 })
             .limit(100);
-        
+
         res.json({
             success: true,
             count: activities.length,
@@ -677,7 +702,7 @@ const getDashboardStats = async (req, res) => {
         const totalTeams = await Team.countDocuments();
         const totalTasks = await Task.countDocuments();
         const completedTasks = await Task.countDocuments({ status: 'completed' });
-        
+
         const usersByRole = await User.aggregate([
             { $group: { _id: '$role', count: { $sum: 1 } } }
         ]);
@@ -710,14 +735,14 @@ const getDashboardStats = async (req, res) => {
 // @access  Private/Admin
 const assignTaskToTeamLead = async (req, res) => {
     try {
-        const { 
-            title, 
+        const {
+            title,
             description,
             detailedDescription,
             clientRequirements,
             projectScope,
             category,
-            priority, 
+            priority,
             startDate,
             dueDate,
             estimatedEffort,
@@ -735,9 +760,9 @@ const assignTaskToTeamLead = async (req, res) => {
 
         // Validate required fields
         if (!title || !dueDate || !teamLeadId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide title, due date, and team lead' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide title, due date, and team lead'
             });
         }
 
@@ -764,7 +789,7 @@ const assignTaskToTeamLead = async (req, res) => {
             projectScope: projectScope || '',
             category: category || 'other',
             priority: priority || 'medium',
-            
+
             // Ownership
             assignedTo: teamLeadId,
             assignedBy: req.user._id,
@@ -772,7 +797,7 @@ const assignTaskToTeamLead = async (req, res) => {
             taskType: taskType || 'one_time',
             relatedProject: relatedProject || '',
             relatedLead: relatedLead || null,
-            
+
             // Timeline
             startDate: startDate ? new Date(startDate) : new Date(),
             dueDate: new Date(dueDate),
@@ -781,18 +806,18 @@ const assignTaskToTeamLead = async (req, res) => {
             estimatedEffortUnit: estimatedEffortUnit || 'hours',
             deadlineType: deadlineType || 'soft',
             reminder: reminder ? new Date(reminder) : null,
-            
+
             // Status
             status: 'pending',
             progressPercentage: 0,
             isOverdue: false,
-            
+
             // Hierarchy
             isParentTask: true,
-            
+
             // Audit
             assignedAt: new Date(),
-            
+
             // Additional
             notes: notes || '',
             checklist: checklist || []
@@ -838,10 +863,10 @@ const assignTaskToTeamLead = async (req, res) => {
 // @access  Private/Admin
 const getAllTeamLeads = async (req, res) => {
     try {
-        const teamLeads = await User.find({ role: 'team_lead' })
+        const teamLeads = await User.find({ role: 'team_lead', deletedAt: null })
             .populate('teamId', 'name')
             .select('-password');
-        
+
         res.json({
             success: true,
             count: teamLeads.length,
@@ -968,13 +993,13 @@ const updateTeam = async (req, res) => {
         if (leadId && leadId.toString() !== team.leadId?.toString()) {
             const oldLeadId = team.leadId;
             const newLead = await User.findById(leadId);
-            
+
             if (!newLead || newLead.role !== 'team_lead') {
                 return res.status(400).json({ success: false, message: 'Invalid lead ID or role' });
             }
 
             team.leadId = leadId;
-            
+
             // Ensure new lead is in members
             if (!team.members.includes(leadId)) {
                 team.members.push(leadId);
@@ -991,7 +1016,7 @@ const updateTeam = async (req, res) => {
         if (memberIds && Array.isArray(memberIds)) {
             // Include lead in members if not already there
             const finalMembers = [...new Set([...memberIds, team.leadId.toString()])];
-            
+
             // Sync memberDetails structure
             const newMemberDetails = finalMembers.map(mId => {
                 const existing = team.memberDetails.find(md => md.userId.toString() === mId);
@@ -1155,11 +1180,11 @@ const getTeamPerformance = async (req, res) => {
         for (let i = 0; i < 4; i++) {
             const weekStart = new Date(Date.now() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
             const weekEnd = new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000);
-            
-            const weekTasks = tasks.filter(t => 
+
+            const weekTasks = tasks.filter(t =>
                 new Date(t.createdAt) >= weekStart && new Date(t.createdAt) < weekEnd
             );
-            
+
             weeklyData.unshift({
                 week: `Week ${4 - i}`,
                 tasksCompleted: weekTasks.filter(t => t.status === 'completed').length,
@@ -1204,6 +1229,8 @@ const updateTask = async (req, res) => {
             projectScope,
             category,
             priority,
+            status,
+            progressPercentage,
             startDate,
             dueDate,
             estimatedEffort,
@@ -1238,16 +1265,18 @@ const updateTask = async (req, res) => {
         if (deadlineType) task.deadlineType = deadlineType;
         if (taskType) task.taskType = taskType;
         if (notes !== undefined) task.notes = notes;
+        if (status) task.status = status;
+        if (progressPercentage !== undefined) task.progressPercentage = progressPercentage;
 
         // Update Team Lead and Team if teamLeadId provided
         if (teamLeadId) {
             const isLeadChanged = teamLeadId.toString() !== task.assignedTo.toString();
-            
+
             if (isLeadChanged) {
                 const newTeamLead = await User.findById(teamLeadId);
                 if (newTeamLead && newTeamLead.role === 'team_lead') {
                     task.assignedTo = teamLeadId;
-                    
+
                     // If teamId not explicitly changed but lead is, update teamId to lead's team
                     if (!teamId) {
                         const team = await Team.findOne({ leadId: teamLeadId });
@@ -1309,9 +1338,9 @@ const reassignTask = async (req, res) => {
         const { newTeamLeadId } = req.body;
 
         if (!newTeamLeadId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide new team lead ID' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide new team lead ID'
             });
         }
 
@@ -1328,7 +1357,7 @@ const reassignTask = async (req, res) => {
 
         const oldTeamLead = task.assignedTo;
         task.assignedTo = newTeamLeadId;
-        
+
         // Update team if new team lead has different team
         if (newTeamLead.teamId) {
             task.teamId = newTeamLead.teamId;
@@ -1379,9 +1408,9 @@ const cancelTask = async (req, res) => {
         const { reason } = req.body;
 
         if (!reason || !reason.trim()) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Please provide a reason for cancellation' 
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide a reason for cancellation'
             });
         }
 
@@ -1391,8 +1420,8 @@ const cancelTask = async (req, res) => {
         }
 
         task.status = 'cancelled';
-        task.notes = task.notes 
-            ? `${task.notes}\n\n[CANCELLED] Reason: ${reason}` 
+        task.notes = task.notes
+            ? `${task.notes}\n\n[CANCELLED] Reason: ${reason}`
             : `[CANCELLED] Reason: ${reason}`;
         task.lastUpdatedBy = req.user._id;
         await task.save();
@@ -1432,7 +1461,7 @@ const deleteTask = async (req, res) => {
         }
 
         const taskTitle = task.title;
-        
+
         // Soft delete
         task.isDeleted = true;
         task.deletedAt = new Date();

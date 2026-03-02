@@ -44,6 +44,8 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     const [note, setNote] = useState('');
     const [showLostReason, setShowLostReason] = useState(false);
     const [lostReason, setLostReason] = useState('');
+    const [showNotInterestedReason, setShowNotInterestedReason] = useState(false);
+    const [notInterestedReason, setNotInterestedReason] = useState('');
     const [showEscalateModal, setShowEscalateModal] = useState(false);
     const [escalationReason, setEscalationReason] = useState('');
     const [showFollowUpModal, setShowFollowUpModal] = useState(false);
@@ -91,17 +93,25 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             setShowLostReason(true);
             return;
         }
+        if (newStatus === 'not_interested' && !notInterestedReason) {
+            setShowNotInterestedReason(true);
+            return;
+        }
 
         setUpdating(true);
         try {
             await leadsAPI.update(leadId, {
                 status: newStatus,
                 lostReason: newStatus === 'lost' ? lostReason : '',
+                notInterestedReason: newStatus === 'not_interested' ? notInterestedReason : '',
                 statusNote: statusNote.trim() || undefined
             });
             await fetchLeadDetails();
             onUpdate();
+            // Notify other parts of the app (e.g., main dashboard) to refresh
+            try { window.dispatchEvent(new Event('leadsUpdated')); } catch (e) { /* ignore */ }
             setShowLostReason(false);
+            setShowNotInterestedReason(false);
             setStatusNote(''); // Clear note after update
         } catch (error) {
             alert(error.response?.data?.message || 'Update failed');
@@ -116,6 +126,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             await leadsAPI.assign(leadId, { assignedTo: userId, assignedTeam: teamId });
             await fetchLeadDetails();
             onUpdate();
+            try { window.dispatchEvent(new Event('leadsUpdated')); } catch (e) { }
         } catch (error) {
             alert(error.response?.data?.message || 'Assignment failed');
         } finally {
@@ -131,6 +142,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             alert('Lead converted to project successfully!');
             onClose();
             onUpdate();
+            try { window.dispatchEvent(new Event('leadsUpdated')); } catch (e) { }
         } catch (error) {
             alert(error.response?.data?.message || 'Conversion failed');
         } finally {
@@ -166,6 +178,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             setEscalationReason('');
             await fetchLeadDetails();
             onUpdate();
+            try { window.dispatchEvent(new Event('leadsUpdated')); } catch (e) { }
         } catch (error) {
             alert(error.response?.data?.message || 'Escalation failed');
         } finally {
@@ -189,8 +202,27 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             setShowFollowUpModal(false);
             setFollowUpData({ title: '', scheduledDate: '', notes: '', priority: 'medium' });
             await fetchLeadDetails();
+            try { window.dispatchEvent(new Event('leadsUpdated')); } catch (e) { }
         } catch (error) {
             alert(error.response?.data?.message || 'Failed to schedule follow-up');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleSaveNote = async () => {
+        if (!statusNote.trim()) {
+            alert('Please enter a note first');
+            return;
+        }
+        setUpdating(true);
+        try {
+            await leadsAPI.addNote(leadId, { content: statusNote.trim(), type: 'note' });
+            await fetchLeadDetails();
+            setStatusNote(''); // Clear note after saving
+            try { window.dispatchEvent(new Event('leadsUpdated')); } catch (e) { }
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to add note');
         } finally {
             setUpdating(false);
         }
@@ -205,15 +237,15 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="w-full max-w-4xl h-full bg-gray-900 border-l border-gray-700/50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-500">
                 {/* Header */}
-                <div className="flex items-center justify-between p-10 border-b border-white/5 bg-gray-950 p-12 relative overflow-hidden">
+                <div className="flex items-center justify-between p-6 sm:p-8 border-b border-white/5 bg-gray-950 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-[#3E2723]/5 rounded-full blur-3xl -mr-32 -mt-32" />
-                    <div className="flex items-center gap-8 relative z-10">
-                        <div className={`w-20 h-20 rounded-[2rem] ${statusColors[lead.status]} shadow-2xl flex items-center justify-center border border-white/10 group hover:scale-110 transition-transform duration-500`}>
-                            <Briefcase size={36} />
+                    <div className="flex items-center gap-6 relative z-10">
+                        <div className={`w-16 h-16 rounded-2xl ${statusColors[lead.status]} shadow-2xl flex items-center justify-center border border-white/10 group hover:scale-110 transition-transform duration-500`}>
+                            <Briefcase size={28} />
                         </div>
-                        <div className="space-y-2">
-                            <h2 className="text-4xl font-black text-white tracking-tighter uppercase">{lead.clientName}</h2>
-                            <div className="flex flex-wrap items-center gap-4">
+                        <div className="space-y-1">
+                            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter uppercase break-words">{lead?.clientName || 'Unknown Lead'}</h2>
+                            <div className="flex flex-wrap items-center gap-3">
                                 <span className="px-3 py-1 bg-gray-800 text-gray-400 rounded-lg text-xs font-black uppercase tracking-widest border border-white/5 flex items-center gap-2">
                                     <Mail size={12} className="text-[#3E2723]" /> {lead.email}
                                 </span>
@@ -308,9 +340,19 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                             value={statusNote}
                             onChange={(e) => setStatusNote(e.target.value)}
                         />
-                        <p className="text-xs text-gray-500 mt-2">
-                            This note will be saved when you change the status or can be saved separately
-                        </p>
+                        <div className="flex justify-between items-center mt-4">
+                            <p className="text-xs text-gray-500">
+                                This note will be saved when you change the status or can be saved separately
+                            </p>
+                            <button
+                                onClick={handleSaveNote}
+                                disabled={!statusNote.trim() || updating}
+                                className="px-6 py-2 bg-[#3E2723] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#2E1B17] disabled:opacity-50 transition-all border border-white/5 shadow-lg flex items-center gap-2"
+                            >
+                                <Save size={14} />
+                                {updating ? 'Saving...' : 'Save Note Only'}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Assignment Controls */}
@@ -350,6 +392,24 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                             <div className="flex gap-2">
                                 <button onClick={() => handleUpdateStatus('lost')} className="px-4 py-2 bg-rose-500 text-white rounded-lg font-bold text-sm">Submit</button>
                                 <button onClick={() => setShowLostReason(false)} className="px-4 py-2 bg-gray-800 text-gray-400 rounded-lg text-sm">Cancel</button>
+                            </div>
+                        </div>
+                    )}
+                    {showNotInterestedReason && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 space-y-4">
+                            <div className="flex items-center gap-2 text-yellow-400 font-bold">
+                                <AlertOctagon size={20} />
+                                <span>Reason for marking as not interested?</span>
+                            </div>
+                            <textarea
+                                className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-gray-200 focus:ring-2 focus:ring-yellow-500 outline-none"
+                                placeholder="Enter reason..."
+                                value={notInterestedReason}
+                                onChange={(e) => setNotInterestedReason(e.target.value)}
+                            />
+                            <div className="flex gap-2">
+                                <button onClick={() => handleUpdateStatus('not_interested')} className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-bold text-sm">Submit</button>
+                                <button onClick={() => setShowNotInterestedReason(false)} className="px-4 py-2 bg-gray-800 text-gray-400 rounded-lg text-sm">Cancel</button>
                             </div>
                         </div>
                     )}

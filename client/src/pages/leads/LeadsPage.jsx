@@ -18,7 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 
 const LeadsPage = () => {
-    const { isAdmin, isTeamLead } = useAuth();
+    const { isAdmin, isTeamLead, isTeamMember } = useAuth();
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [selectedLeadId, setSelectedLeadId] = useState(null);
@@ -36,10 +36,10 @@ const LeadsPage = () => {
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'list', label: 'All Leads', icon: List },
         { id: 'activities', label: 'Activities', icon: Activity },
-        { id: 'import', label: 'Import Leads', icon: Upload, adminOnly: true }
+        { id: 'import', label: 'Import Leads', icon: Upload, adminOnly: false }
     ];
 
-    const filteredTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);
+    const filteredTabs = tabs.filter(tab => !tab.adminOnly || isAdmin || isTeamLead || isTeamMember);
 
     const handleUpdate = () => {
         setRefreshKey(prev => prev + 1);
@@ -55,7 +55,7 @@ const LeadsPage = () => {
                         <p className="text-gray-600 mt-0.5 sm:mt-1 text-xs sm:text-sm">Manage your sales pipeline</p>
                     </div>
                     <div className="flex gap-2 sm:gap-3">
-                        {(isAdmin || isTeamLead) && (
+                        {(isAdmin || isTeamLead || isTeamMember) && (
                             <button
                                 onClick={() => setIsCreateModalOpen(true)}
                                 className="flex items-center gap-1.5 sm:gap-2 bg-[#3E2723] text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold hover:bg-[#2E1B17] transition-colors shadow-lg"
@@ -65,7 +65,7 @@ const LeadsPage = () => {
                                 <span className="sm:hidden">New</span>
                             </button>
                         )}
-                        {isAdmin && (
+                        {(isAdmin || isTeamLead || isTeamMember) && (
                             <button
                                 onClick={() => setActiveTab('import')}
                                 className="flex items-center gap-1.5 sm:gap-2 bg-white text-gray-700 border border-gray-300 px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold hover:bg-gray-50 transition-colors"

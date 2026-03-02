@@ -64,7 +64,7 @@ const Register = () => {
             flexDirection: 'column',
             background: 'linear-gradient(180deg, #F5ECE5 0%, #DBC1AD 100%)'
         }}>
-            <Navbar onMenuToggle={() => {}} />
+            <Navbar isPublicPage={true} onMenuToggle={() => {}} />
 
             <div style={{ 
                 flex: 1, 

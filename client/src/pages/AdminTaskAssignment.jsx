@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-    ClipboardList, Plus, Calendar, Clock, AlertCircle, CheckCircle, X, Search, 
-    Target, User, Users, Briefcase, TrendingUp, Filter, Eye, Edit, Trash2, 
+import {
+    ClipboardList, Plus, Calendar, Clock, AlertCircle, CheckCircle, X, Search,
+    Target, User, Users, Briefcase, TrendingUp, Filter, Eye, Edit, Trash2,
     FileText, Paperclip, Upload, Download, AlertTriangle, Check, ChevronRight,
-    MessageSquare, ListTodo, Layers, ArrowRight, Save, RotateCcw, Activity, 
+    MessageSquare, ListTodo, Layers, ArrowRight, Save, RotateCcw, Activity,
     Zap, MoreVertical, ChevronDown, Bookmark
 } from 'lucide-react';
 import { adminTasksAPI } from '../services/adminApi';
@@ -24,7 +24,7 @@ const AdminTaskAssignment = () => {
     const [uploadingFile, setUploadingFile] = useState(false);
     const [openMenuId, setOpenMenuId] = useState(null);
     const menuRef = useRef(null);
-    
+
     // New Task Form State
     const [formData, setFormData] = useState({
         title: '',
@@ -196,7 +196,7 @@ const AdminTaskAssignment = () => {
                 fileSize: file.size,
                 originalName: file.name
             });
-            
+
             alert('✅ File uploaded successfully');
             fetchData();
         } catch (err) {
@@ -212,7 +212,7 @@ const AdminTaskAssignment = () => {
     const handleAddLink = async () => {
         const link = prompt('Enter the full URL for the attachment:');
         if (!link || !selectedTask) return;
-        
+
         try {
             setUploadingFile(true);
             await adminTasksAPI.uploadAttachment(selectedTask._id, {
@@ -264,7 +264,7 @@ const AdminTaskAssignment = () => {
 
     const filteredTasks = tasks.filter(task => {
         const matchesSearch = task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            task.description?.toLowerCase().includes(searchTerm.toLowerCase());
+            task.description?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
         const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
         return matchesSearch && matchesStatus && matchesPriority;
@@ -404,7 +404,7 @@ const AdminTaskAssignment = () => {
                             className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#1D1110] placeholder-gray-400 flex-1 px-2"
                         />
                     </div>
-                    
+
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full lg:w-auto">
                         <div className="bg-white rounded-[1.25rem] shadow-sm border border-gray-100 p-1 flex items-center flex-1 sm:flex-none sm:min-w-[170px]">
                             <select
@@ -441,7 +441,7 @@ const AdminTaskAssignment = () => {
                             </div>
                         </div>
 
-                        <button 
+                        <button
                             onClick={handleCreateTask}
                             className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1D1110] text-white rounded-[1.25rem] hover:bg-[#3E2723] transition-all shadow-md hover:shadow-lg font-black text-[10px] uppercase tracking-widest whitespace-nowrap min-w-[140px]"
                         >
@@ -454,8 +454,8 @@ const AdminTaskAssignment = () => {
                 {/* MISSION GRID (CLEAN THEME) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-12">
                     {filteredTasks.map(task => (
-                        <div 
-                            key={task._id} 
+                        <div
+                            key={task._id}
                             onClick={() => { setSelectedTask(task); setShowDetailsModal(true); }}
                             className="group bg-white rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 cursor-pointer overflow-hidden transform hover:-translate-y-2 flex flex-col"
                         >
@@ -486,7 +486,7 @@ const AdminTaskAssignment = () => {
                                             </button>
 
                                             {openMenuId === task._id && (
-                                                <div 
+                                                <div
                                                     ref={menuRef}
                                                     className="absolute right-0 mt-2 w-56 bg-white rounded-[1.5rem] shadow-2xl border border-gray-100 py-3 z-50 animate-in fade-in zoom-in duration-200"
                                                 >
@@ -508,7 +508,7 @@ const AdminTaskAssignment = () => {
                                                     <button
                                                         onClick={() => { handleDeleteTask(task._id); setOpenMenuId(null); }}
                                                         className="w-full px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 flex items-center gap-4 transition-all"
-                                                      >
+                                                    >
                                                         <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><Trash2 className="w-4 h-4 text-red-500" /></div>
                                                         Delete Task
                                                     </button>
@@ -560,7 +560,7 @@ const AdminTaskAssignment = () => {
                                             <span className="text-[10px] font-black text-[#1D1110] bg-gray-50 px-2 py-0.5 rounded-md">{task.progressPercentage || 0}%</span>
                                         </div>
                                         <div className="h-3 bg-gray-50 rounded-full overflow-hidden border border-gray-100 p-0.5 shadow-inner relative">
-                                            <div 
+                                            <div
                                                 className="h-full bg-gradient-to-r from-[#1D1110] to-amber-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(29,17,16,0.2)]"
                                                 style={{ width: `${task.progressPercentage || 0}%` }}
                                             />
@@ -587,14 +587,14 @@ const AdminTaskAssignment = () => {
             {showModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-10 animate-in fade-in duration-300">
                     <div className="absolute inset-0 bg-[#1D1110]/80 backdrop-blur-xl" onClick={() => setShowModal(false)} />
-                    
+
                     <div className="relative bg-[#FAF9F8] w-full max-w-5xl h-full lg:h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500 border border-white/20">
-                        
+
                         {/* MODAL HEADER */}
                         <div className="shrink-0 p-3 lg:p-4 bg-gradient-to-br from-[#1D1110] to-[#3E2723] text-white flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl" />
                             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24 blur-3xl" />
-                            
+
                             <div className="relative z-10 space-y-1">
                                 <div className="flex items-center gap-2">
                                     <div className="p-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
@@ -608,7 +608,7 @@ const AdminTaskAssignment = () => {
                                 </h2>
                                 <p className="text-white/40 text-[8px] font-medium tracking-widest uppercase ml-1">Assign tasks to team leads</p>
                             </div>
-                            
+
                             <button
                                 onClick={() => setShowModal(false)}
                                 className="relative z-10 w-8 h-8 flex items-center justify-center bg-white/10 text-white/60 rounded-lg hover:bg-red-500 hover:text-white hover:rotate-90 transition-all duration-500 backdrop-blur-md border border-white/10 group shadow-xl"
@@ -619,7 +619,7 @@ const AdminTaskAssignment = () => {
 
                         <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
                             <div className="flex-1 overflow-y-auto p-8 lg:p-12 space-y-12 custom-scrollbar bg-white">
-                                
+
                                 {/* SECTION: CORE INFORMATION */}
                                 <div className="bg-[#FAF9F8] p-10 rounded-[2.5rem] border border-gray-50 shadow-inner space-y-10">
                                     <div className="flex items-center gap-4">
@@ -631,7 +631,7 @@ const AdminTaskAssignment = () => {
                                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Define the primary objective and parameters</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="space-y-4">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 flex items-center gap-2">
                                             Task Title <span className="text-red-400">*</span>
@@ -639,7 +639,7 @@ const AdminTaskAssignment = () => {
                                         <input
                                             type="text"
                                             value={formData.title}
-                                            onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                             required
                                             className="w-full bg-white border border-gray-100 rounded-2xl px-8 py-6 text-xl font-black text-[#1D1110] focus:ring-8 focus:ring-[#3E2723]/5 focus:border-[#1D1110] focus:outline-none transition-all placeholder-gray-200 shadow-sm"
                                             placeholder="Enter descriptive title..."
@@ -652,7 +652,7 @@ const AdminTaskAssignment = () => {
                                         </label>
                                         <textarea
                                             value={formData.description}
-                                            onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             required
                                             rows="4"
                                             className="w-full bg-white border border-gray-100 rounded-2xl px-8 py-6 text-sm font-bold text-[#1D1110] focus:ring-8 focus:ring-[#3E2723]/5 focus:outline-none transition-all resize-none shadow-sm leading-relaxed"
@@ -666,7 +666,7 @@ const AdminTaskAssignment = () => {
                                             <div className="relative group">
                                                 <select
                                                     value={formData.priority}
-                                                    onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                                                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                                                     className="w-full bg-white border border-gray-100 rounded-2xl px-8 py-5 text-[10px] font-black text-[#1D1110] uppercase tracking-widest focus:ring-8 focus:ring-[#3E2723]/5 focus:outline-none appearance-none cursor-pointer shadow-sm"
                                                 >
                                                     <option value="low">Standard</option>
@@ -683,7 +683,7 @@ const AdminTaskAssignment = () => {
                                             <div className="relative group">
                                                 <select
                                                     value={formData.taskType}
-                                                    onChange={(e) => setFormData({...formData, taskType: e.target.value})}
+                                                    onChange={(e) => setFormData({ ...formData, taskType: e.target.value })}
                                                     className="w-full bg-white border border-gray-100 rounded-2xl px-8 py-5 text-[10px] font-black text-[#1D1110] uppercase tracking-widest focus:ring-8 focus:ring-[#3E2723]/5 focus:outline-none appearance-none cursor-pointer shadow-sm"
                                                 >
                                                     <option value="project_task">Project Task</option>
@@ -700,7 +700,7 @@ const AdminTaskAssignment = () => {
                                             <div className="relative group">
                                                 <select
                                                     value={formData.category}
-                                                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                                                     className="w-full bg-white border border-gray-100 rounded-2xl px-8 py-5 text-[10px] font-black text-[#1D1110] uppercase tracking-widest focus:ring-8 focus:ring-[#3E2723]/5 focus:outline-none appearance-none cursor-pointer shadow-sm"
                                                 >
                                                     <option value="development">Development</option>
@@ -735,7 +735,7 @@ const AdminTaskAssignment = () => {
                                             <div className="relative group">
                                                 <select
                                                     value={formData.teamLeadId}
-                                                    onChange={(e) => setFormData({...formData, teamLeadId: e.target.value, teamId: ''})}
+                                                    onChange={(e) => setFormData({ ...formData, teamLeadId: e.target.value, teamId: '' })}
                                                     required
                                                     className="w-full bg-[#FAF9F8] border border-gray-50 rounded-2xl px-8 py-6 text-xs font-black text-[#1D1110] focus:ring-8 focus:ring-amber-500/5 focus:outline-none appearance-none cursor-pointer transition-all"
                                                 >
@@ -755,7 +755,7 @@ const AdminTaskAssignment = () => {
                                             <div className="relative group">
                                                 <select
                                                     value={formData.teamId}
-                                                    onChange={(e) => setFormData({...formData, teamId: e.target.value})}
+                                                    onChange={(e) => setFormData({ ...formData, teamId: e.target.value })}
                                                     disabled={!formData.teamLeadId}
                                                     className="w-full bg-[#FAF9F8] border border-gray-50 rounded-2xl px-8 py-6 text-xs font-black text-[#1D1110] focus:ring-8 focus:ring-amber-500/5 focus:outline-none appearance-none cursor-pointer transition-all disabled:opacity-50"
                                                 >
@@ -778,7 +778,7 @@ const AdminTaskAssignment = () => {
                                             <input
                                                 type="text"
                                                 value={formData.relatedProject}
-                                                onChange={(e) => setFormData({...formData, relatedProject: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, relatedProject: e.target.value })}
                                                 className="w-full bg-[#FAF9F8] border border-gray-50 rounded-2xl px-8 py-6 text-xs font-black text-[#1D1110] focus:ring-8 focus:ring-amber-500/5 focus:outline-none transition-all placeholder-gray-300"
                                                 placeholder="e.g. Website Overhaul v2"
                                             />
@@ -804,7 +804,7 @@ const AdminTaskAssignment = () => {
                                             <input
                                                 type="date"
                                                 value={formData.startDate}
-                                                onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                                                 className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-xs font-black text-[#1D1110] focus:ring-8 focus:ring-blue-500/5 focus:outline-none transition-all"
                                             />
                                         </div>
@@ -813,7 +813,7 @@ const AdminTaskAssignment = () => {
                                             <input
                                                 type="date"
                                                 value={formData.dueDate}
-                                                onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                                                 required
                                                 className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-xs font-black text-[#1D1110] focus:ring-8 focus:ring-blue-500/5 focus:outline-none transition-all shadow-sm"
                                             />
@@ -824,13 +824,13 @@ const AdminTaskAssignment = () => {
                                                 <input
                                                     type="number"
                                                     value={formData.estimatedEffort}
-                                                    onChange={(e) => setFormData({...formData, estimatedEffort: e.target.value})}
+                                                    onChange={(e) => setFormData({ ...formData, estimatedEffort: e.target.value })}
                                                     className="w-full px-6 py-5 text-xs font-black text-[#1D1110] focus:outline-none"
                                                     placeholder="0"
                                                 />
                                                 <select
                                                     value={formData.estimatedEffortUnit}
-                                                    onChange={(e) => setFormData({...formData, estimatedEffortUnit: e.target.value})}
+                                                    onChange={(e) => setFormData({ ...formData, estimatedEffortUnit: e.target.value })}
                                                     className="bg-gray-50 px-4 text-[10px] font-black uppercase text-gray-500 border-l border-gray-100 focus:outline-none"
                                                 >
                                                     <option value="hours">Hrs</option>
@@ -843,7 +843,7 @@ const AdminTaskAssignment = () => {
                                             <input
                                                 type="date"
                                                 value={formData.reminder}
-                                                onChange={(e) => setFormData({...formData, reminder: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, reminder: e.target.value })}
                                                 className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-xs font-black text-[#1D1110] focus:ring-8 focus:ring-blue-500/5 focus:outline-none transition-all"
                                             />
                                         </div>
@@ -857,7 +857,7 @@ const AdminTaskAssignment = () => {
                                     </label>
                                     <textarea
                                         value={formData.notes}
-                                        onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                                         rows="4"
                                         className="w-full bg-[#FAF9F8] border border-gray-50 rounded-[2.5rem] px-10 py-8 text-sm font-bold text-[#1D1110] focus:ring-12 focus:ring-[#1D1110]/5 focus:outline-none transition-all italic leading-relaxed placeholder-gray-300 shadow-inner"
                                         placeholder="Add any extra instructions or notes for the lead..."
@@ -867,7 +867,7 @@ const AdminTaskAssignment = () => {
                                         <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest italic">{formData.notes?.length || 0} / 1000 UNITS</span>
                                     </div>
                                 </div>
-                                
+
                                 {/* ATTACHMENTS (IF EDITING) */}
                                 {selectedTask && (
                                     <div className="p-10 bg-white border border-gray-100 rounded-[2.5rem] shadow-xl space-y-8 animate-in slide-in-from-top-4">
@@ -877,7 +877,7 @@ const AdminTaskAssignment = () => {
                                             </div>
                                             <h3 className="text-[10px] font-black text-[#1D1110] uppercase tracking-[0.3em]">Attachments</h3>
                                         </div>
-                                        
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {selectedTask.attachments?.map((file, idx) => (
                                                 <div key={idx} className="flex items-center justify-between p-4 bg-[#FAF9F8] rounded-2xl border border-gray-50 group hover:border-[#1D1110]/20 transition-all">
@@ -885,7 +885,7 @@ const AdminTaskAssignment = () => {
                                                         <FileText className="w-5 h-5 text-[#3E2723]" />
                                                         <span className="text-[10px] font-black text-[#1D1110] uppercase tracking-widest truncate">{file.originalName}</span>
                                                     </div>
-                                                    <button 
+                                                    <button
                                                         type="button"
                                                         onClick={async () => {
                                                             if (confirm('Declassify and remove asset?')) {
@@ -911,8 +911,8 @@ const AdminTaskAssignment = () => {
                                                 </span>
                                                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploadingFile} />
                                             </label>
-                                            <button 
-                                                type="button" 
+                                            <button
+                                                type="button"
                                                 onClick={handleAddLink}
                                                 className="flex-1 flex flex-col items-center justify-center gap-4 p-10 border-4 border-dashed border-gray-100 rounded-[2.5rem] hover:bg-gray-50 hover:border-amber-100 transition-all group"
                                             >
@@ -924,47 +924,47 @@ const AdminTaskAssignment = () => {
                                         </div>
                                     </div>
                                 )}
-                                    {/* FOOTER (INSIDE SCROLLABLE AREA) */}
-                                    <div className="py-8 border-t border-gray-100 flex items-center justify-between gap-6 relative z-10">
+                                {/* FOOTER (INSIDE SCROLLABLE AREA) */}
+                                <div className="py-8 border-t border-gray-100 flex items-center justify-between gap-6 relative z-10">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowModal(false)}
+                                        className="flex items-center gap-4 px-10 py-5 bg-[#FAF9F8] text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl border border-gray-100 hover:text-red-500 hover:bg-red-50 hover:border-red-100 transition-all duration-300"
+                                    >
+                                        <X className="w-4 h-4" /> Cancel
+                                    </button>
+
+                                    <div className="flex items-center gap-6">
+                                        <p className="hidden md:block text-[10px] font-black text-gray-200 uppercase tracking-widest italic">Ensure all details are correct</p>
                                         <button
-                                            type="button"
-                                            onClick={() => setShowModal(false)}
-                                            className="flex items-center gap-4 px-10 py-5 bg-[#FAF9F8] text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl border border-gray-100 hover:text-red-500 hover:bg-red-50 hover:border-red-100 transition-all duration-300"
+                                            type="submit"
+                                            className="group flex items-center gap-6 px-12 py-5 bg-[#1D1110] text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-[#3E2723] transition-all duration-300 shadow-2xl hover:shadow-[#1D1110]/40 overflow-hidden relative"
                                         >
-                                            <X className="w-4 h-4" /> Cancel
+                                            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                                            <Save className="w-5 h-5 relative z-10" />
+                                            <span className="relative z-10">{selectedTask ? 'Update Task' : 'Create Task'}</span>
+                                            <ChevronRight className="w-5 h-5 relative z-10 group-hover:translate-x-2 transition-transform duration-500" />
                                         </button>
-                                        
-                                        <div className="flex items-center gap-6">
-                                            <p className="hidden md:block text-[10px] font-black text-gray-200 uppercase tracking-widest italic">Ensure all details are correct</p>
-                                            <button
-                                                type="submit"
-                                                className="group flex items-center gap-6 px-12 py-5 bg-[#1D1110] text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-[#3E2723] transition-all duration-300 shadow-2xl hover:shadow-[#1D1110]/40 overflow-hidden relative"
-                                            >
-                                                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                                                <Save className="w-5 h-5 relative z-10" />
-                                                <span className="relative z-10">{selectedTask ? 'Update Task' : 'Create Task'}</span>
-                                                <ChevronRight className="w-5 h-5 relative z-10 group-hover:translate-x-2 transition-transform duration-500" />
-                                            </button>
-                                        </div>
                                     </div>
                                 </div>
-                            </form>
-                        </div>
+                            </div>
+                        </form>
                     </div>
-                )}
+                </div>
+            )}
 
             {/* PREMIUM DETAILS MODAL */}
             {showDetailsModal && selectedTask && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-10 animate-in fade-in duration-300">
                     <div className="absolute inset-0 bg-[#1D1110]/80 backdrop-blur-xl" onClick={() => setShowDetailsModal(false)} />
-                    
+
                     <div className="relative bg-[#FAF9F8] w-full max-w-5xl h-full lg:h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500 border border-white/20">
-                        
+
                         {/* MODAL HEADER */}
                         <div className="shrink-0 p-3 lg:p-4 bg-gradient-to-br from-[#1D1110] to-[#3E2723] text-white flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl" />
                             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24 blur-3xl" />
-                            
+
                             <div className="relative z-10 space-y-1">
                                 <div className="flex items-center gap-2">
                                     <div className="p-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
@@ -985,7 +985,7 @@ const AdminTaskAssignment = () => {
                                 </h1>
                                 <p className="text-white/40 text-[8px] font-medium tracking-widest uppercase ml-1">Task Details</p>
                             </div>
-                            
+
                             <button
                                 onClick={() => setShowDetailsModal(false)}
                                 className="relative z-10 w-8 h-8 flex items-center justify-center bg-white/10 text-white/60 rounded-lg hover:bg-red-500 hover:text-white hover:rotate-90 transition-all duration-500 backdrop-blur-md border border-white/10 group shadow-xl"
@@ -996,7 +996,7 @@ const AdminTaskAssignment = () => {
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
                             <div className="p-8 lg:p-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
-                                
+
                                 {/* MAIN INTELLIGENCE COLUMN */}
                                 <div className="lg:col-span-8 space-y-12">
                                     <div className="bg-[#FAF9F8] p-10 rounded-[2.5rem] border border-gray-50 shadow-inner space-y-8">
@@ -1038,7 +1038,7 @@ const AdminTaskAssignment = () => {
                                                 <h3 className="text-[10px] font-black text-[#1D1110] uppercase tracking-[0.3em]">Attachments</h3>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button 
+                                                <button
                                                     onClick={handleAddLink}
                                                     className="p-2.5 bg-[#FAF9F8] text-[#1D1110] rounded-xl hover:bg-gray-100 transition-all border border-gray-100"
                                                 >
@@ -1062,15 +1062,15 @@ const AdminTaskAssignment = () => {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <a 
-                                                            href={file.url} 
-                                                            target="_blank" 
+                                                        <a
+                                                            href={file.url}
+                                                            target="_blank"
                                                             rel="noreferrer"
                                                             className="p-2 bg-white rounded-lg text-[#1D1110] hover:bg-amber-500 hover:text-white transition-all shadow-sm"
                                                         >
                                                             {file.fileType === 'link' ? <Eye className="w-4 h-4" /> : <Download className="w-4 h-4" />}
                                                         </a>
-                                                        <button 
+                                                        <button
                                                             onClick={async () => {
                                                                 if (confirm('Declassify and remove asset?')) {
                                                                     await adminTasksAPI.deleteAttachment(selectedTask._id, file._id);
@@ -1129,7 +1129,7 @@ const AdminTaskAssignment = () => {
                                             <p className="text-xl font-black text-white">{selectedTask.progressPercentage || 0}%</p>
                                         </div>
                                         <div className="w-full h-4 bg-white/5 rounded-full overflow-hidden p-1 border border-white/10">
-                                            <div 
+                                            <div
                                                 className="h-full bg-gradient-to-r from-amber-500 to-amber-200 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] transition-all duration-1000"
                                                 style={{ width: `${selectedTask.progressPercentage || 0}%` }}
                                             />
@@ -1168,7 +1168,7 @@ const AdminTaskAssignment = () => {
                                     >
                                         <ArrowRight className="w-4 h-4 rotate-180" /> Close
                                     </button>
-                                    
+
                                     <div className="flex items-center gap-6">
                                         <button
                                             onClick={() => { setShowDetailsModal(false); handleEditTask(selectedTask); }}
@@ -1177,10 +1177,25 @@ const AdminTaskAssignment = () => {
                                             <Edit className="w-4 h-4" /> Edit
                                         </button>
                                         <button
-                                            onClick={() => setShowDetailsModal(false)}
-                                            className="px-12 py-5 bg-amber-500 text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-amber-600 transition-all duration-500 shadow-2xl shadow-amber-500/20"
+                                            onClick={async () => {
+                                                try {
+                                                    await adminTasksAPI.updateTask(selectedTask._id, { status: 'completed', progressPercentage: 100 });
+                                                    alert('✅ Task marked as completed!');
+                                                    setShowDetailsModal(false);
+                                                    fetchData();
+                                                } catch (error) {
+                                                    console.error('Error marking task as done:', error);
+                                                    alert('❌ Failed to mark task as done');
+                                                }
+                                            }}
+                                            className={`px-12 py-5 text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl transition-all duration-500 shadow-2xl flex items-center gap-3 ${selectedTask.status === 'completed'
+                                                    ? 'bg-green-500 hover:bg-green-600 shadow-green-500/20 cursor-default'
+                                                    : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
+                                                }`}
+                                            disabled={selectedTask.status === 'completed'}
                                         >
-                                            Done
+                                            <CheckCircle className="w-4 h-4" />
+                                            {selectedTask.status === 'completed' ? 'Completed' : 'Mark as Done'}
                                         </button>
                                     </div>
                                 </div>

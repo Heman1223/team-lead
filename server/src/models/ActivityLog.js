@@ -16,6 +16,8 @@ const activityLogSchema = new mongoose.Schema({
             'task_status_changed',
             'task_completed',
             'task_deleted',
+            'task_reassigned',
+            'task_cancelled',
             'comment_added',
             'team_created',
             'team_updated',
@@ -40,7 +42,13 @@ const activityLogSchema = new mongoose.Schema({
             'lead_assigned',
             'lead_status_changed',
             'lead_converted',
-            'lead_deleted'
+            'lead_deleted',
+            'note_added',
+            'lead_note_added',
+            'lead_restored',
+            'lead_escalated',
+            'follow_up_scheduled',
+            'follow_up_completed'
         ]
     },
     userId: {

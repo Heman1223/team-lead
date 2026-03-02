@@ -16,21 +16,75 @@ const getLeads = async (req, res) => {
     try {
         let query = {};
 
+        // Query Parameters filtering
+        const { status, search } = req.query;
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+        if (search) {
+            query.$or = [
+                { clientName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ];
+        }
+
         // Role-based filtering
         if (req.user.role === 'team_lead') {
             // Team leads see leads assigned to their team
             const team = await Team.findOne({ leadId: req.user._id });
-            if (team) {
-                query.$or = [
-                    { assignedTeam: team._id },
-                    { createdBy: req.user._id }
-                ];
+            const teamFilter = team ? { assignedTeam: team._id } : {};
+            const createdFilter = { createdBy: req.user._id };
+
+            if (query.$or) {
+                // If search is present, merge with role-based restriction
+                const roleFilter = [teamFilter, createdFilter].filter(f => Object.keys(f).length > 0);
+                query = {
+                    $and: [
+                        { $or: query.$or },
+                        { $or: roleFilter }
+                    ]
+                };
             } else {
-                query.createdBy = req.user._id;
+                const roleFilter = [teamFilter, createdFilter].filter(f => Object.keys(f).length > 0);
+                if (roleFilter.length > 0) {
+                    // If there's an existing query (e.g., status), combine with $and
+                    if (Object.keys(query).length > 0) {
+                        query = {
+                            $and: [
+                                query, // Existing status filter
+                                { $or: roleFilter } // Role-based filter
+                            ]
+                        };
+                    } else {
+                        // No existing query, just apply role filter
+                        query.$or = roleFilter;
+                    }
+                }
             }
         } else if (req.user.role === 'team_member') {
-            // Employees see leads assigned to them
-            query.assignedTo = req.user._id;
+            // Employees see leads assigned to them or created by them
+            const memberFilter = { $or: [{ assignedTo: req.user._id }, { createdBy: req.user._id }] };
+            if (query.$or) {
+                query = {
+                    $and: [
+                        { $or: query.$or },
+                        memberFilter
+                    ]
+                };
+            } else {
+                // If there's an existing query (e.g., status), combine with $and
+                if (Object.keys(query).length > 0) {
+                    query = {
+                        $and: [
+                            query, // Existing status filter
+                            memberFilter
+                        ]
+                    };
+                } else {
+                    // No existing query, just apply member filter
+                    Object.assign(query, memberFilter);
+                }
+            }
         }
         // Admins see all (no extra filter)
 
@@ -112,13 +166,8 @@ const getLeadById = async (req, res) => {
 // @access  Private (Admin, Team Lead only)
 const createLead = async (req, res) => {
     try {
-        // Only admins and team leaders can create leads
-        if (req.user.role === 'team_member') {
-            return res.status(403).json({
-                success: false,
-                message: 'Only admins and team leaders can create leads'
-            });
-        }
+        // Only admins, team leaders, and team members can create leads
+        // (Removing the restriction on team_member)
 
         const leadData = {
             ...req.body,
@@ -170,9 +219,9 @@ const updateLead = async (req, res) => {
         const newStatus = req.body.status;
         const statusNote = req.body.statusNote; // New: accept note with status change
 
-        // Handle lost reason
-        if (newStatus === 'lost' && !req.body.lostReason) {
-            return res.status(400).json({ success: false, message: 'Lost leads require a reason' });
+        // Handle not interested reason
+        if (newStatus === 'not_interested' && !req.body.notInterestedReason) {
+            return res.status(400).json({ success: false, message: 'Not Interested leads require a reason' });
         }
 
         lead = await Lead.findByIdAndUpdate(
@@ -183,7 +232,7 @@ const updateLead = async (req, res) => {
 
         // Log status change activity
         if (newStatus && newStatus !== oldStatus) {
-            const statusChangeDetails = `Status changed from ${oldStatus} to ${newStatus}${newStatus === 'lost' ? ' Reason: ' + req.body.lostReason : ''}${statusNote ? ' Note: ' + statusNote : ''}`;
+            const statusChangeDetails = `Status changed from ${oldStatus} to ${newStatus}${newStatus === 'not_interested' ? ' Reason: ' + req.body.notInterestedReason : ''}${statusNote ? ' Note: ' + statusNote : ''}`;
 
             await ActivityLog.create({
                 action: 'lead_status_changed',
@@ -244,22 +293,29 @@ const addNote = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        const { note } = req.body;
-        if (!note || !note.trim()) {
+        const { note, content } = req.body;
+        const noteContent = note || content;
+
+        if (!noteContent || !noteContent.trim()) {
             return res.status(400).json({ success: false, message: 'Note content is required' });
         }
 
         // Add note to lead using schema method
-        lead.addNote(note, req.user._id, 'note');
+        lead.addNote(noteContent, req.user._id, 'note');
         await lead.save();
 
-        // Create activity log
-        await ActivityLog.create({
-            action: 'note_added',
-            userId: req.user._id,
-            leadId: lead._id,
-            details: note.substring(0, 100) + (note.length > 100 ? '...' : '')
-        });
+        // Create activity log (non-fatal)
+        try {
+            await ActivityLog.create({
+                action: 'note_added',
+                userId: req.user._id,
+                leadId: lead._id,
+                details: noteContent.substring(0, 100) + (noteContent.length > 100 ? '...' : '')
+            });
+        } catch (logErr) {
+            console.error('ActivityLog create failed for addNote:', logErr);
+            // don't block the main operation if logging fails
+        }
 
         res.json({
             success: true,
@@ -267,7 +323,13 @@ const addNote = async (req, res) => {
         });
     } catch (error) {
         console.error('Add note error:', error);
-        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+        console.error(error.stack);
+        // If Mongoose validation error, return details to help debugging
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(e => e.message).join('; ');
+            return res.status(400).json({ success: false, message: messages, error: error.message });
+        }
+        res.status(500).json({ success: false, message: error.message || 'Server error', error: error.message });
     }
 };
 
@@ -387,7 +449,7 @@ const convertToProject = async (req, res) => {
 
 // @desc    Preview leads from CSV/Excel (Raw data for mapping)
 // @route   POST /api/leads/preview
-// @access  Private (Admin)
+// @access  Private (Admin, Team Lead, Team Member)
 const previewLeads = async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ success: false, message: 'Please upload a CSV or Excel file' });
@@ -460,7 +522,7 @@ const processRawData = (data, filePath, res) => {
 
 // @desc    Confirm and import leads
 // @route   POST /api/leads/import
-// @access  Private (Admin)
+// @access  Private (Admin, Team Lead, Team Member)
 const importLeads = async (req, res) => {
     try {
         const { leads } = req.body;
@@ -515,25 +577,52 @@ const getLeadStats = async (req, res) => {
         // Role-based filtering
         if (req.user.role === 'team_lead') {
             const team = await Team.findOne({ leadId: req.user._id });
-            if (team) {
-                query.$or = [{ assignedTeam: team._id }, { createdBy: req.user._id }];
-            } else {
-                query.createdBy = req.user._id;
-            }
+            const teamFilter = team ? { assignedTeam: team._id } : {};
+            const createdFilter = { createdBy: req.user._id };
+            query = {
+                $and: [
+                    query,
+                    { $or: [teamFilter, createdFilter].filter(f => Object.keys(f).length > 0) }
+                ]
+            };
         } else if (req.user.role === 'team_member') {
-            query.assignedTo = req.user._id;
+            query = {
+                $and: [
+                    query,
+                    { $or: [{ assignedTo: req.user._id }, { createdBy: req.user._id }] }
+                ]
+            };
         }
 
         console.log('Query:', JSON.stringify(query, null, 2));
 
-        // Get all leads matching query
+        // fetch leads matching the original query (e.g. date‑range filtered) for some
+        // calculations such as follow‑ups, high‑value, inactive etc.
         const leads = await Lead.find(query);
-        console.log(`Found ${leads.length} leads`);
+        console.log(`Found ${leads.length} leads for date-filtered query`);
+
+        // We'll calculate overall stats ignoring the creation date filter, since conversion
+        // and total counts should reflect all leads the user/team can see.
+        // Need to deep‑copy and strip any createdAt that might be buried in $and clauses.
+        const statsQuery = JSON.parse(JSON.stringify(query));
+        const stripCreated = (obj) => {
+            if (!obj || typeof obj !== 'object') return;
+            if ('createdAt' in obj) delete obj.createdAt;
+            Object.values(obj).forEach(v => {
+                if (Array.isArray(v)) v.forEach(stripCreated);
+                else stripCreated(v);
+            });
+        };
+        stripCreated(statsQuery);
+
+        // Get all leads matching statsQuery for counting purposes
+        const allLeadsForStats = await Lead.find(statsQuery);
+        console.log(`Found ${allLeadsForStats.length} leads for stats`);
 
         // Calculate stats
-        const totalLeads = leads.length;
-        const convertedLeads = leads.filter(l => l.status === 'converted').length;
-        const lostLeads = leads.filter(l => l.status === 'lost').length;
+        const totalLeads = allLeadsForStats.length;
+        const convertedLeads = allLeadsForStats.filter(l => l.status === 'converted').length;
+        const lostLeads = allLeadsForStats.filter(l => l.status === 'lost').length;
         const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(2) : 0;
 
         // Alerts & Specific Logic
@@ -542,38 +631,42 @@ const getLeadStats = async (req, res) => {
         const endOfDay = new Date(now.setHours(23, 59, 59, 999));
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-        const followUpsToday = leads.filter(l => 
-            l.followUpDate && 
-            new Date(l.followUpDate) >= startOfDay && 
+        const followUpsToday = leads.filter(l =>
+            l.followUpDate &&
+            new Date(l.followUpDate) >= startOfDay &&
             new Date(l.followUpDate) <= endOfDay
         ).length;
 
         const highValueLeads = leads.filter(l => l.estimatedValue >= 10000).length;
-        const inactiveLeads = leads.filter(l => 
-            new Date(l.updatedAt) < sevenDaysAgo && 
+        const inactiveLeads = leads.filter(l =>
+            new Date(l.updatedAt) < sevenDaysAgo &&
             !['converted', 'lost'].includes(l.status)
         ).length;
 
         console.log('Stats calculated:', { totalLeads, convertedLeads, lostLeads, conversionRate });
 
-        // Leads by status
-        const statusDist = leads.reduce((acc, lead) => {
+        // Leads by status (use full stats set, not date-filtered subset)
+        const statusDist = allLeadsForStats.reduce((acc, lead) => {
             acc[lead.status] = (acc[lead.status] || 0) + 1;
             return acc;
         }, {});
         console.log('Status distribution:', statusDist);
 
-        // Leads by source
-        const sourcesDist = leads.reduce((acc, lead) => {
+        // Leads by source (also using stats set)
+        const sourcesDist = allLeadsForStats.reduce((acc, lead) => {
             const source = lead.source || 'unknown';
             acc[source] = (acc[source] || 0) + 1;
             return acc;
         }, {});
         console.log('Sources distribution:', sourcesDist);
 
-        // Total pipeline value
-        const totalPipelineValue = leads.reduce((sum, lead) => sum + (lead.estimatedValue || 0), 0);
-        console.log('Total pipeline value:', totalPipelineValue);
+        // Total pipeline value - Calculate across ALL active leads (not restricted by date)
+        // because "Pipeline" usually represents the current living state of all active leads.
+        const pipelineQuery = { ...query };
+        delete pipelineQuery.createdAt;
+        const allActiveLeads = await Lead.find(pipelineQuery);
+        const totalPipelineValue = allActiveLeads.reduce((sum, lead) => sum + (lead.estimatedValue || 0), 0);
+        console.log('Total pipeline value (Global):', totalPipelineValue);
 
         // Average conversion time (only for converted leads)
         const convertedLeadsWithDuration = leads.filter(l => l.status === 'converted' && l.conversionDuration);
@@ -792,8 +885,8 @@ const escalateLead = async (req, res) => {
             details: `Lead escalated to Admin. Reason: ${reason}`
         });
 
-        // Create notification for all admins
-        const admins = await User.find({ role: 'admin' });
+        // Create notification for all active admins
+        const admins = await User.find({ role: 'admin', deletedAt: null });
         const Notification = require('../models/Notification');
         const notificationPromises = admins.map(admin =>
             Notification.create({

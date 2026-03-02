@@ -36,7 +36,7 @@ const leadSchema = new mongoose.Schema({
     // Lead Status & Priority (Strictly following workflow)
     status: {
         type: String,
-        enum: ['new', 'contacted', 'qualified', 'proposal', 'converted', 'lost'],
+        enum: ['new', 'contacted', 'interested', 'follow_up', 'converted', 'not_interested'],
         default: 'new',
         required: true
     },
