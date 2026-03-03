@@ -134,7 +134,7 @@ const LeadList = ({ onSelectLead }) => {
             {/* Search & Filter Bar */}
             <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
                 {/* Search */}
-                <div className="relative flex-1 group">
+                <div className="relative flex-1 md:max-w-2xl group flex items-center bg-white border border-gray-300 rounded-xl transition-all shadow-sm focus-within:ring-2 focus-within:ring-[#3E2723] focus-within:border-transparent group-hover:border-gray-400">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <Search 
                             size={20} 
@@ -146,7 +146,7 @@ const LeadList = ({ onSelectLead }) => {
                         placeholder="Search by name or email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 text-sm sm:text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723] focus:border-transparent transition-all shadow-sm group-hover:border-gray-400 bg-white"
+                        className="w-full bg-transparent border-none focus:ring-0 !pl-12 pr-4 py-3 text-sm sm:text-base text-gray-900 placeholder-gray-400"
                     />
                 </div>
 

@@ -392,7 +392,7 @@ const AdminTaskAssignment = () => {
 
                 {/* SEARCH & FILTER ROW (MATCHING TEAMS PAGE) */}
                 <div className="flex flex-wrap lg:flex-nowrap gap-4 items-center">
-                    <div className="flex-1 min-w-[300px] bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#1D1110]/10 transition-all relative">
+                    <div className="flex-1 min-w-[300px] md:max-w-3xl bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#1D1110]/10 transition-all relative">
                         <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                             <Search size={20} className="text-gray-400 group-focus-within:text-[#1D1110] transition-colors" />
                         </div>
@@ -401,7 +401,7 @@ const AdminTaskAssignment = () => {
                             placeholder="Search missions, leads, or categories..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#1D1110] placeholder-gray-400 flex-1 pl-14 pr-4 py-4"
+                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#1D1110] placeholder-gray-400 flex-1 !pl-14 pr-4 py-4"
                         />
                     </div>
 

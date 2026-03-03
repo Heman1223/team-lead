@@ -135,7 +135,7 @@ const IndividualTaskBreakdown = () => {
                             <input 
                                 type="text"
                                 placeholder="Search Member or Team..."
-                                className="pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#3E2723] outline-none w-full md:w-[400px] transition-all shadow-sm"
+                                className="!pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#3E2723] outline-none w-full md:w-[700px] transition-all shadow-sm"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />

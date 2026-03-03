@@ -480,7 +480,7 @@ const TeamManagement = () => {
                 )}
 
                 <div className="flex flex-wrap lg:flex-nowrap gap-4 items-center">
-                    <div className="flex-1 min-w-[300px] bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#3E2723]/5 transition-all">
+                    <div className="flex-1 min-w-[300px] md:max-w-3xl bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#3E2723]/5 transition-all">
                         <div className="pl-4 flex items-center justify-center">
                             <Search size={20} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                         </div>
@@ -489,7 +489,7 @@ const TeamManagement = () => {
                             placeholder={viewMode === 'teams' ? "Search teams by name or description..." : "Search members by name, email or designation..."}
                             value={viewMode === 'teams' ? teamSearchTerm : searchTerm}
                             onChange={(e) => viewMode === 'teams' ? setTeamSearchTerm(e.target.value) : setSearchTerm(e.target.value)}
-                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#3E2723] placeholder-gray-400 flex-1 px-4 py-4"
+                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#3E2723] placeholder-gray-400 flex-1 !pl-4 pr-4 py-4"
                         />
                     </div>
                     

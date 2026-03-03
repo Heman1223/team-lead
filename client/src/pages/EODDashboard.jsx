@@ -120,14 +120,14 @@ const EODDashboard = () => {
                 {/* Filter & Search Dashboard */}
                 <div className="bg-white border border-gray-100 rounded-[32px] p-4 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="relative max-w-xl flex-1 group flex items-center">
+                        <div className="relative max-w-4xl flex-1 group flex items-center">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                 <Search size={18} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                             </div>
                             <input 
                                 type="text"
                                 placeholder="Filter by Member, Project, or Task..."
-                                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-[#3E2723] focus:border-transparent transition-all"
+                                className="w-full !pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-[#3E2723] focus:border-transparent transition-all"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />

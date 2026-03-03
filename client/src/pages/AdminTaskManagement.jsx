@@ -309,7 +309,7 @@ const AdminTaskManagement = () => {
 
                     {/* Filters & Search Row */}
                     <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
-                        <div className="relative group w-full md:w-[450px] flex items-center">
+                        <div className="relative group w-full md:w-[700px] flex items-center">
                             <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
                                 <Search size={20} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                             </div>
@@ -318,7 +318,7 @@ const AdminTaskManagement = () => {
                                 placeholder="Search by title, description or lead..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-14 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-sm focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all text-sm font-bold text-[#1D1110] placeholder-gray-400"
+                                className="w-full !pl-14 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-sm focus:border-[#3E2723]/30 focus:ring-4 focus:ring-[#3E2723]/5 outline-none transition-all text-sm font-bold text-[#1D1110] placeholder-gray-400"
                             />
                         </div>
 

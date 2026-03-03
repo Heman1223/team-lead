@@ -247,7 +247,7 @@ const AdminUserManagement = () => {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                            <div className="relative w-full sm:w-80 lg:w-[450px] group flex items-center">
+                            <div className="relative w-full sm:w-80 lg:w-[700px] group flex items-center">
                                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                                     <Search size={20} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                                 </div>
@@ -256,7 +256,7 @@ const AdminUserManagement = () => {
                                     placeholder="Search users..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723] transition-all shadow-sm"
+                                    className="w-full !pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723] transition-all shadow-sm"
                                 />
                             </div>
                             <select

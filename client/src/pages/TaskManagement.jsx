@@ -520,7 +520,7 @@ const TaskManagement = () => {
 
                 {/* SEARCH & FILTER ROW (MATCHING ADMIN PANEL) */}
                 <div className="flex flex-wrap lg:flex-nowrap gap-4 items-center">
-                    <div className="flex-1 min-w-[300px] bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#3E2723]/10 transition-all relative">
+                    <div className="flex-1 min-w-[300px] md:max-w-3xl bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#3E2723]/10 transition-all relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Search size={20} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                         </div>
@@ -529,7 +529,7 @@ const TaskManagement = () => {
                             placeholder="Search tasks, descriptions, or categories..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#3E2723] placeholder-gray-400 flex-1 pl-12 pr-4 py-4"
+                            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#3E2723] placeholder-gray-400 flex-1 !pl-12 pr-4 py-4"
                         />
                     </div>
                     

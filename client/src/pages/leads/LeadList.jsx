@@ -105,7 +105,7 @@ const LeadList = ({ onSelectLead }) => {
         <div className="space-y-6">
             {/* Filters & Actions */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-4">
-                <div className="relative flex-1 w-full md:max-w-md group">
+                <div className="relative flex-1 w-full md:max-w-2xl group flex items-center bg-gray-900/50 border border-gray-700 rounded-xl transition-all group-hover:border-gray-600 focus-within:ring-2 focus-within:ring-[#3E2723]/50">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <Search 
                             size={20} 
@@ -115,7 +115,7 @@ const LeadList = ({ onSelectLead }) => {
                     <input
                         type="text"
                         placeholder="Search leads by name or email..."
-                        className="w-full bg-gray-900/50 border border-gray-700 text-gray-200 pl-12 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3E2723]/50 transition-all group-hover:border-gray-600"
+                        className="w-full bg-transparent border-none focus:ring-0 text-gray-200 !pl-12 pr-4 py-2.5 rounded-xl"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />

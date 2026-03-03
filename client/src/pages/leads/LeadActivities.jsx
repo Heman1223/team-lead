@@ -112,7 +112,7 @@ const LeadActivities = () => {
             {/* Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Search */}
-                <div className="relative flex-1 group">
+                <div className="relative flex-1 md:max-w-2xl group flex items-center bg-white border border-gray-300 rounded-xl transition-all shadow-sm group-hover:border-gray-400 focus-within:ring-2 focus-within:ring-[#3E2723]">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <Search 
                             size={18} 
@@ -124,7 +124,7 @@ const LeadActivities = () => {
                         placeholder="Search activities..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white border border-gray-300 text-gray-900 pl-12 pr-4 py-2.5 rounded-xl focus:ring-2 focus:ring-[#3E2723] focus:border-transparent outline-none text-sm sm:text-base transition-all shadow-sm group-hover:border-gray-400"
+                        className="w-full bg-transparent border-none focus:ring-0 text-gray-900 !pl-12 pr-4 py-2.5 text-sm sm:text-base placeholder-gray-400"
                     />
                 </div>
 

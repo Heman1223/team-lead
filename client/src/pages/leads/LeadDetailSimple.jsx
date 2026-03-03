@@ -241,7 +241,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                     <div className="bg-gradient-to-r from-[#3E2723] to-[#5D4037] p-6 text-white">
                         <div className="flex items-start justify-between">
                             <div className="flex-1">
-                                <h2 className="text-2xl font-bold mb-2">{lead.clientName || 'Unknown'}</h2>
+                                <h2 className="text-2xl font-bold mb-2 text-white">{lead.clientName || 'Unknown'}</h2>
                                 <div className="flex flex-wrap gap-3 text-sm">
                                     <div className="flex items-center gap-2">
                                         <Mail size={16} />

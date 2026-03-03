@@ -626,7 +626,7 @@ const TeamDetailsPage = () => {
                                     <input 
                                         type="text"
                                         placeholder="FILTER BY NAME OR DESIGNATION..."
-                                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-[10px] font-bold tracking-widest text-[#1D1110] focus:ring-2 focus:ring-[#1D1110]/5 transition-all outline-none placeholder:text-gray-300"
+                                        className="w-full !pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-[10px] font-bold tracking-widest text-[#1D1110] focus:ring-2 focus:ring-[#1D1110]/5 transition-all outline-none placeholder:text-gray-300"
                                         onChange={(e) => setMemberSearchQuery(e.target.value)}
                                     />
                                 </div>
