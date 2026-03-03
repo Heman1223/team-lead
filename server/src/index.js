@@ -26,6 +26,8 @@ app.use(
       "http://localhost:5175",
       "https://gurukripaprojectmanagement.avanienterprises.in",
       "https://www.gurukripaprojectmanagement.avanienterprises.in",
+      "https://gaonseghartaprojectmanagement.avanienterprises.in",
+      "https://www.gaonseghartaprojectmanagement.avanienterprises.in",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
