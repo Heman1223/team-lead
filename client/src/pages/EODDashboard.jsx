@@ -120,9 +120,9 @@ const EODDashboard = () => {
                 {/* Filter & Search Dashboard */}
                 <div className="bg-white border border-gray-100 rounded-[32px] p-4 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="relative max-w-xl flex-1">
-                            <div className="absolute left-4 top-0 bottom-0 flex items-center pointer-events-none">
-                                <Search className="w-4 h-4 text-gray-400" />
+                        <div className="relative max-w-xl flex-1 group flex items-center">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Search size={18} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                             </div>
                             <input 
                                 type="text"

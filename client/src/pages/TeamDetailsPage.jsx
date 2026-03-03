@@ -619,8 +619,10 @@ const TeamDetailsPage = () => {
 
                             <div className="p-8 flex flex-col flex-1 overflow-hidden gap-6">
                                 {/* Search */}
-                                <div className="relative">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <div className="relative group flex items-center">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Search size={18} className="text-gray-400 group-focus-within:text-[#1D1110] transition-colors" />
+                                    </div>
                                     <input 
                                         type="text"
                                         placeholder="FILTER BY NAME OR DESIGNATION..."

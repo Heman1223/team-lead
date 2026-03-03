@@ -137,7 +137,8 @@ const createFollowUp = async (req, res) => {
         // Add note to lead (with error handling)
         try {
             if (typeof lead.addNote === 'function') {
-                lead.addNote(`Follow-up scheduled for ${new Date(scheduledDate).toLocaleDateString()}`, req.user._id, 'follow_up_scheduled');
+                const followUpNote = `Follow-up scheduled for ${new Date(scheduledDate).toLocaleDateString()}${notes ? ': ' + notes : ''}`;
+                lead.addNote(followUpNote, req.user._id, 'follow_up_scheduled');
             }
         } catch (noteError) {
             console.error('Error adding note to lead:', noteError);
@@ -153,7 +154,7 @@ const createFollowUp = async (req, res) => {
                 action: 'follow_up_scheduled',
                 userId: req.user._id,
                 leadId: lead._id,
-                details: `Follow-up scheduled for ${new Date(scheduledDate).toLocaleDateString()}`
+                details: `Follow-up scheduled for ${new Date(scheduledDate).toLocaleDateString()}${notes ? ': ' + notes : ''}`
             });
         } catch (activityError) {
             console.error('Error logging activity:', activityError);
@@ -286,7 +287,7 @@ const markFollowUpComplete = async (req, res) => {
             action: 'follow_up_completed',
             userId: req.user._id,
             leadId: followUp.leadId,
-            details: `Follow-up completed`
+            details: `Follow-up completed${notes ? ': ' + notes : ''}`
         });
 
         const populatedFollowUp = await FollowUp.findById(followUp._id)
@@ -329,6 +330,14 @@ const rescheduleFollowUp = async (req, res) => {
             lead.followUpDate = newDate;
             await lead.save();
         }
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'follow_up_scheduled',
+            userId: req.user._id,
+            leadId: followUp.leadId,
+            details: `Follow-up rescheduled to ${new Date(newDate).toLocaleDateString()}${notes ? ': ' + notes : ''}`
+        });
 
         const populatedFollowUp = await FollowUp.findById(followUp._id)
             .populate('leadId', 'clientName email phone')

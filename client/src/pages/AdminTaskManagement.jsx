@@ -309,9 +309,9 @@ const AdminTaskManagement = () => {
 
                     {/* Filters & Search Row */}
                     <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
-                        <div className="relative group w-full md:w-[450px]">
+                        <div className="relative group w-full md:w-[450px] flex items-center">
                             <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-                                <Search className="w-5 h-5 text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
+                                <Search size={20} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                             </div>
                             <input
                                 type="text"

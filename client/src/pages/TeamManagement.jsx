@@ -481,8 +481,8 @@ const TeamManagement = () => {
 
                 <div className="flex flex-wrap lg:flex-nowrap gap-4 items-center">
                     <div className="flex-1 min-w-[300px] bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#3E2723]/5 transition-all">
-                        <div className="pl-4">
-                            <Search className="w-5 h-5 text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
+                        <div className="pl-4 flex items-center justify-center">
+                            <Search size={20} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                         </div>
                         <input
                             type="text"
@@ -875,7 +875,7 @@ const TeamManagement = () => {
                                 <div className="space-y-4">
                                     <div className="relative">
                                         <div className="w-16 h-16 rounded-full border-4 border-gray-100 border-t-[#3E2723] animate-spin mx-auto" />
-                                        <Search className="w-6 h-6 text-[#3E2723] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                        <Search size={24} className="text-[#3E2723] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                                     </div>
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scanning availability...</p>
                                 </div>

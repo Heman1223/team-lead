@@ -119,7 +119,10 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             await leadsAPI.addNote(leadId, { content: note.trim(), type: 'note' });
             await fetchLeadDetails();
             setNote('');
-            setActiveTab('history'); // Switch to history to see the new note
+            // Stay on current tab if it's notes, or switch to notes to see the new addition
+            if (activeTab !== 'notes' && activeTab !== 'history') {
+                setActiveTab('notes');
+            }
         } catch (error) {
             alert(error.response?.data?.message || 'Failed to add note');
         } finally {
@@ -437,7 +440,19 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                             <p className="text-xs text-gray-400 mt-1">Notes and status changes will appear here</p>
                                         </div>
                                     ) : (
-                                        activities.filter(a => activeTab === 'notes' ? a.action === 'note_added' || a.action === 'lead_status_changed' : true).map((activity, index) => {
+                                        activities.filter(a => {
+                                            if (activeTab === 'notes') {
+                                                return [
+                                                    'note_added',
+                                                    'lead_note_added',
+                                                    'lead_status_changed',
+                                                    'follow_up_scheduled',
+                                                    'follow_up_completed',
+                                                    'lead_escalated'
+                                                ].includes(a.action);
+                                            }
+                                            return true;
+                                        }).map((activity, index) => {
                                             const isNote = activity.action === 'note_added';
                                             const isStatusChange = activity.action === 'lead_status_changed';
                                             const isAssignment = activity.action === 'lead_assigned';
@@ -446,13 +461,17 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                                 <div key={index} className="flex gap-4 group">
                                                     {/* Icon Column */}
                                                     <div className="flex flex-col items-center">
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-gray-50 shadow-sm z-10 ${isNote ? 'bg-[#3E2723]/10 text-[#3E2723]' :
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-gray-50 shadow-sm z-10 ${isNote || activity.action === 'lead_note_added' ? 'bg-[#3E2723]/10 text-[#3E2723]' :
                                                             isStatusChange ? 'bg-blue-100 text-blue-600' :
-                                                                'bg-gray-100 text-gray-500'
+                                                                activity.action.includes('follow_up') ? 'bg-amber-100 text-amber-600' :
+                                                                    activity.action === 'lead_escalated' ? 'bg-rose-100 text-rose-600' :
+                                                                        'bg-gray-100 text-gray-500'
                                                             }`}>
-                                                            {isNote ? <MessageSquare size={18} /> :
+                                                            {isNote || activity.action === 'lead_note_added' ? <MessageSquare size={18} /> :
                                                                 isStatusChange ? <CheckCircle2 size={18} /> :
-                                                                    <Clock size={18} />}
+                                                                    activity.action.includes('follow_up') ? <Bell size={18} /> :
+                                                                        activity.action === 'lead_escalated' ? <AlertCircle size={18} /> :
+                                                                            <Clock size={18} />}
                                                         </div>
                                                         {index < activities.length - 1 && (
                                                             <div className="w-0.5 h-full bg-gray-200 -my-2"></div>
@@ -476,7 +495,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                                                 </span>
                                                             </div>
 
-                                                            <p className={`text-sm ${isNote ? 'text-gray-800' : 'text-gray-600'}`}>
+                                                            <p className={`text-sm whitespace-pre-wrap ${isNote || activity.action === 'lead_note_added' ? 'text-gray-800' : 'text-gray-600'}`}>
                                                                 {activity.details}
                                                             </p>
 

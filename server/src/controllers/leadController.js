@@ -31,14 +31,17 @@ getLeads = async (req, res) => {
 
         // Role-based filtering
         if (req.user.role === 'team_lead') {
-            // Team leads see leads assigned to their team
+            // Team leads see leads assigned to them personally, their team, or created by them
             const team = await Team.findOne({ leadId: req.user._id });
             const teamFilter = team ? { assignedTeam: team._id } : {};
-            const createdFilter = { createdBy: req.user._id };
+            const roleFilter = [
+                { assignedTo: req.user._id },
+                teamFilter,
+                { createdBy: req.user._id }
+            ].filter(f => Object.keys(f).length > 0);
 
             if (query.$or) {
                 // If search is present, merge with role-based restriction
-                const roleFilter = [teamFilter, createdFilter].filter(f => Object.keys(f).length > 0);
                 query = {
                     $and: [
                         { $or: query.$or },
@@ -46,25 +49,29 @@ getLeads = async (req, res) => {
                     ]
                 };
             } else {
-                const roleFilter = [teamFilter, createdFilter].filter(f => Object.keys(f).length > 0);
-                if (roleFilter.length > 0) {
-                    // If there's an existing query (e.g., status), combine with $and
-                    if (Object.keys(query).length > 0) {
-                        query = {
-                            $and: [
-                                query, // Existing status filter
-                                { $or: roleFilter } // Role-based filter
-                            ]
-                        };
-                    } else {
-                        // No existing filter, just add role filter
-                        query.$or = roleFilter;
-                    }
+                if (Object.keys(query).length > 0) {
+                    query = {
+                        $and: [
+                            query, // Existing status filter
+                            { $or: roleFilter } // Role-based filter
+                        ]
+                    };
+                } else {
+                    query.$or = roleFilter;
                 }
             }
         } else if (req.user.role === 'team_member') {
-            // Employees see leads assigned to them or created by them
-            const memberFilter = { $or: [{ assignedTo: req.user._id }, { createdBy: req.user._id }] };
+            // Employees see leads assigned to them personally, their team, or created by them
+            const teams = await Team.find({ members: req.user._id });
+            const teamIds = teams.map(t => t._id);
+            const memberFilter = { 
+                $or: [
+                    { assignedTo: req.user._id }, 
+                    { assignedTeam: { $in: teamIds } },
+                    { createdBy: req.user._id }
+                ] 
+            };
+
             if (query.$or) {
                 query = {
                     $and: [
@@ -138,30 +145,36 @@ const getLeadById = async (req, res) => {
             let hasAccess = false;
 
             if (req.user.role === 'team_lead') {
-                // Team leaders can see leads they created or leads assigned to their team
-                if (lead.createdBy?._id?.toString() === req.user._id.toString()) {
+                // Team leaders can see leads they created, leads assigned to them personally, or leads assigned to their team
+                const isCreatedBy = lead.createdBy?._id?.toString() === req.user._id.toString();
+                const isAssignedTo = lead.assignedTo?._id?.toString() === req.user._id.toString();
+                
+                if (isCreatedBy || isAssignedTo) {
                     hasAccess = true;
-                    console.log('Access granted: Lead created by team lead');
+                    console.log('Access granted: Lead created by or assigned to team lead');
                 } else {
                     const team = await Team.findOne({ leadId: req.user._id });
                     if (team && lead.assignedTeam?._id?.toString() === team._id.toString()) {
                         hasAccess = true;
-                        console.log('Access granted: Lead assigned to team leads team');
+                        console.log('Access granted: Lead assigned to team lead\'s team');
                     }
                 }
             } else if (req.user.role === 'team_member') {
-                // Team members can see leads assigned to them OR created by them
-                const assignedMatch = lead.assignedTo?._id?.toString() === req.user._id.toString();
-                const createdMatch = lead.createdBy?._id?.toString() === req.user._id.toString();
-                hasAccess = assignedMatch || createdMatch;
+                // Team members can see leads assigned to them personally, their team, or created by them
+                const isAssignedTo = lead.assignedTo?._id?.toString() === req.user._id.toString();
+                const isCreatedBy = lead.createdBy?._id?.toString() === req.user._id.toString();
                 
-                console.log('Team member access check:', {
-                    assignedMatch,
-                    createdMatch,
-                    assignedToId: lead.assignedTo?._id?.toString(),
-                    createdById: lead.createdBy?._id?.toString(),
-                    currentUserId: req.user._id.toString()
-                });
+                if (isAssignedTo || isCreatedBy) {
+                    hasAccess = true;
+                    console.log('Access granted: Lead assigned to or created by member');
+                } else {
+                    const teams = await Team.find({ members: req.user._id });
+                    const teamIds = teams.map(t => t._id.toString());
+                    if (lead.assignedTeam && teamIds.includes(lead.assignedTeam._id.toString())) {
+                        hasAccess = true;
+                        console.log('Access granted: Lead assigned to member\'s team');
+                    }
+                }
             }
 
             if (!hasAccess) {
@@ -346,7 +359,7 @@ const addNote = async (req, res) => {
                 action: 'note_added',
                 userId: req.user._id,
                 leadId: lead._id,
-                details: noteContent.substring(0, 100) + (noteContent.length > 100 ? '...' : '')
+                details: noteContent.substring(0, 500)
             });
         } catch (logErr) {
             console.error('ActivityLog create failed for addNote:', logErr);
@@ -614,18 +627,31 @@ const getLeadStats = async (req, res) => {
         if (req.user.role === 'team_lead') {
             const team = await Team.findOne({ leadId: req.user._id });
             const teamFilter = team ? { assignedTeam: team._id } : {};
-            const createdFilter = { createdBy: req.user._id };
             query = {
                 $and: [
                     query,
-                    { $or: [teamFilter, createdFilter].filter(f => Object.keys(f).length > 0) }
+                    { 
+                        $or: [
+                            { assignedTo: req.user._id },
+                            teamFilter, 
+                            { createdBy: req.user._id }
+                        ].filter(f => Object.keys(f).length > 0) 
+                    }
                 ]
             };
         } else if (req.user.role === 'team_member') {
+            const teams = await Team.find({ members: req.user._id });
+            const teamIds = teams.map(t => t._id);
             query = {
                 $and: [
                     query,
-                    { $or: [{ assignedTo: req.user._id }, { createdBy: req.user._id }] }
+                    { 
+                        $or: [
+                            { assignedTo: req.user._id }, 
+                            { assignedTeam: { $in: teamIds } },
+                            { createdBy: req.user._id }
+                        ] 
+                    }
                 ]
             };
         }
@@ -1051,24 +1077,31 @@ const checkLeadPermission = async (lead, user) => {
     if (user.role === 'admin') return true;
 
     if (user.role === 'team_lead') {
-        // Check if lead is created by them
+        // Check if lead is created by them or assigned to them personally
         if (lead.createdBy?.toString() === user._id.toString()) return true;
+        if (lead.assignedTo?.toString() === user._id.toString()) return true;
 
-        // Check if assigned team is led by this user
+        // Check if lead is assigned to their team
         const team = await Team.findOne({ leadId: user._id });
         if (team) {
             // Check if assigned to the team
             if (lead.assignedTeam?.toString() === team._id.toString()) return true;
 
             // Check if assigned to a member of the team
-            if (lead.assignedTo && team.members.includes(lead.assignedTo)) return true;
+            if (lead.assignedTo && team.members.some(m => m.toString() === lead.assignedTo.toString())) return true;
         }
         return false;
     }
 
     if (user.role === 'team_member') {
-        return lead.assignedTo?.toString() === user._id.toString() || 
-               lead.createdBy?.toString() === user._id.toString();
+        const isAssignedTo = lead.assignedTo?.toString() === user._id.toString();
+        const isCreatedBy = lead.createdBy?.toString() === user._id.toString();
+        
+        if (isAssignedTo || isCreatedBy) return true;
+
+        // Check if lead is assigned to their team
+        const team = await Team.findOne({ members: user._id });
+        if (team && lead.assignedTeam?.toString() === team._id.toString()) return true;
     }
 
     return false;

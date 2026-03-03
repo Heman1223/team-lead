@@ -209,8 +209,10 @@ const AdminActivityLogs = () => {
 
                 {/* SEARCH & FILTER ROW (PILL-SHAPED - MATCHING PROJECT) */}
                 <div className="flex flex-wrap lg:flex-nowrap gap-3 items-center">
-                    <div className="relative w-full sm:w-80 lg:w-[450px] bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden group focus-within:ring-2 focus-within:ring-[#1D1110]/10 transition-all text-gray-400 focus-within:text-[#1D1110]">
-                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 transition-colors pointer-events-none" />
+                    <div className="relative w-full sm:w-80 lg:w-[450px] bg-white rounded-[1.5rem] shadow-sm border border-gray-100 group focus-within:ring-2 focus-within:ring-[#1D1110]/10 transition-all flex items-center">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Search size={18} className="text-gray-400 group-focus-within:text-[#1D1110] transition-colors" />
+                        </div>
                         <input
                             type="text"
                             placeholder="Search activities..."
