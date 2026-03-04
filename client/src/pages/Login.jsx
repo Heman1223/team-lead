@@ -68,43 +68,14 @@ const Login = () => {
         }}>
             <Navbar isPublicPage={true} onMenuToggle={() => {}} />
 
-            <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                padding: '40px 20px'
-            }}>
+            <div className="login-content-wrapper">
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className="auth-container"
-                    style={{ 
-                        width: '100%', 
-                        maxWidth: '1000px', 
-                        display: 'flex', 
-                        borderRadius: '0px', 
-                        overflow: 'visible', 
-                        boxShadow: '0 30px 80px rgba(62, 39, 35, 0.2)',
-                        backgroundColor: 'white',
-                        minHeight: '550px',
-                        position: 'relative'
-                    }}
                 >
                     {/* Left Side - Info Panel */}
-                        <div className="auth-info-panel" style={{ 
-                    flex: '1', 
-                    background: 'linear-gradient(135deg, #5D4037 0%, #3E2723 100%)', 
-                    color: 'white', 
-                    padding: '60px 45px', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    clipPath: 'polygon(0% 0%, 93% 0%, 100% 50%, 93% 100%, 0% 100%)',
-                    position: 'relative',
-                    zIndex: 1
-                }}>        <div style={{ textAlign: 'center', marginBottom: '35px', paddingRight: '15px' }}>
+                    <div className="auth-info-panel">        <div style={{ textAlign: 'center', marginBottom: '35px', paddingRight: '15px' }}>
                             <div style={{ 
                                 width: '90px', 
                                 height: '90px', 
@@ -154,54 +125,18 @@ const Login = () => {
                         </div>
                     </div>
 
-                    {/* Center Decoration Arrow - Moved outside clipped panel to prevent cutting */}
-                    <div style={{ 
-                        position: 'absolute', 
-                        left: '50%',
-                        top: '50%', 
-                        transform: 'translate(-50%, -50%)',
-                        width: '48px',
-                        height: '48px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 10,
-                        padding: '4px',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
-                    }}>
-                        <div style={{
-                            width: '100%',
-                            height: '100%',
-                            backgroundColor: '#3E2723',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white'
-                        }}>
+                    {/* Center Decoration Arrow */}
+                    <div className="auth-center-arrow">
+                        <div className="auth-arrow-inner">
                             <ChevronRight size={24} />
                         </div>
                     </div>
 
                     {/* Right Side - Form Panel */}
-                    <div className="auth-form-panel" style={{ 
-                        flex: '1', 
-                        backgroundColor: '#F5ECE5', // Reference screenshot uses a soft cream for form side
-                        padding: '60px 45px 60px 65px', // More left padding to accommodate zigzag
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        position: 'relative'
-                    }}>
-                        <div style={{ textAlign: 'center', marginBottom: '35px' }}>
-                            <h2 style={{ fontSize: '2.4rem', color: '#1A110B', marginBottom: '10px', fontFamily: 'var(--font-heading)', fontWeight: '900' }}>
-                                Welcome Back!
-                            </h2>
-                            <p style={{ color: '#5C4033', opacity: 0.6, fontSize: '0.95rem', fontWeight: '500' }}>
-                                Sign in to continue
-                            </p>
+                    <div className="auth-form-panel">
+                        <div className="auth-header">
+                            <h2 className="auth-title">Welcome Back!</h2>
+                            <p className="auth-subtitle">Sign in to continue</p>
                         </div>
 
                         {/* Role Selector Tabs - Reference style: pill-like */}
@@ -390,6 +325,89 @@ const Login = () => {
             <Footer />
 
             <style>{`
+                .login-content-wrapper {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 40px 20px;
+                }
+                .auth-container {
+                    width: 100%;
+                    max-width: 1000px;
+                    display: flex;
+                    border-radius: 0px;
+                    overflow: visible;
+                    box-shadow: 0 30px 80px rgba(62, 39, 35, 0.2);
+                    background-color: white;
+                    min-height: 550px;
+                    position: relative;
+                }
+                .auth-info-panel {
+                    flex: 1;
+                    background: linear-gradient(135deg, #5D4037 0%, #3E2723 100%);
+                    color: white;
+                    padding: 60px 45px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    clip-path: polygon(0% 0%, 93% 0%, 100% 50%, 93% 100%, 0% 100%);
+                    position: relative;
+                    z-index: 1;
+                }
+                .auth-form-panel {
+                    flex: 1;
+                    background-color: #F5ECE5;
+                    padding: 60px 45px 60px 65px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    position: relative;
+                }
+                .auth-center-arrow {
+                    position: absolute;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 48px;
+                    height: 48px;
+                    background-color: white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10;
+                    padding: 4px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                }
+                .auth-arrow-inner {
+                    width: 100%;
+                    height: 100%;
+                    background-color: #3E2723;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                }
+                .auth-header {
+                    text-align: center;
+                    margin-bottom: 35px;
+                }
+                .auth-title {
+                    font-size: 2.4rem;
+                    color: #1A110B;
+                    margin-bottom: 10px;
+                    font-family: var(--font-heading);
+                    font-weight: 900;
+                }
+                .auth-subtitle {
+                    color: #5C4033;
+                    opacity: 0.6;
+                    font-size: 0.95rem;
+                    font-weight: 500;
+                }
                 .input-focus:focus {
                     border-color: #5D4037 !important;
                     box-shadow: 0 0 0 4px rgba(93, 64, 55, 0.1);
@@ -400,12 +418,16 @@ const Login = () => {
                     box-shadow: 0 20px 45px rgba(62, 39, 35, 0.4) !important;
                 }
                 @media (max-width: 950px) {
-                    .auth-container { flex-direction: column; max-width: 550px !important; }
-                    .auth-info-panel { padding: 50px 40px !important; }
-                    .auth-info-panel div[style*="position: absolute"] { display: none !important; }
-                    .auth-form-panel { padding: 50px 40px !important; }
-                    h1 { font-size: 2.5rem !important; }
-                    h2 { font-size: 2.2rem !important; }
+                    .auth-container { flex-direction: column; max-width: 550px !important; border-radius: 20px !important; overflow: hidden !important; }
+                    .auth-info-panel { display: none !important; }
+                    .auth-center-arrow { display: none !important; }
+                    .auth-form-panel { padding: 50px 30px !important; }
+                    .auth-title { font-size: 2rem !important; }
+                }
+                @media (max-width: 480px) {
+                    .login-content-wrapper { padding: 20px 10px; }
+                    .auth-title { font-size: 1.8rem !important; }
+                    h1 { font-size: 1.8rem !important; }
                 }
             `}</style>
         </div>

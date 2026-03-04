@@ -9,7 +9,9 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { }, isPublicPage = 
     const navigate = useNavigate();
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
     const notificationRef = useRef(null);
+    const mobileMenuRef = useRef(null);
 
     useEffect(() => {
         if (user && !isPublicPage) {
@@ -20,6 +22,9 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { }, isPublicPage = 
         const handleClickOutside = (event) => {
             if (notificationRef.current && !notificationRef.current.contains(event.target)) {
                 setShowNotifications(false);
+            }
+            if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+                setShowMobileMenu(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -89,7 +94,7 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { }, isPublicPage = 
             </div>
 
             <div className="navbar-right">
-                {user && !isPublicPage ? (
+                {user ? (
                     <>
                         <div className="notification-wrapper" ref={notificationRef}>
                             <button
@@ -140,38 +145,43 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { }, isPublicPage = 
                             )}
                         </div>
 
-                        {!isPublicPage && (
-                            <>
-                                <div className="navbar-profile" onClick={() => navigate('/settings')}>
-                                    <div className="navbar-profile-avatar">
-                                        {user?.avatar ? (
-                                            <img src={user.avatar} alt="Avatar" style={{
-                                                width: '100%',
-                                                height: '100%',
-                                                borderRadius: '50%',
-                                                objectFit: 'cover'
-                                            }} />
-                                        ) : (
-                                            getInitials(userName)
-                                        )}
-                                    </div>
-                                    <div className="navbar-profile-info">
-                                        <span>{userName}</span>
-                                        <span>{userTitle}</span>
-                                    </div>
-                                    <ChevronDown size={16} />
-                                </div>
+                        <div className="navbar-profile" onClick={() => navigate('/settings')}>
+                            <div className="navbar-profile-avatar">
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt="Avatar" style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        borderRadius: '50%',
+                                        objectFit: 'cover'
+                                    }} />
+                                ) : (
+                                    getInitials(userName)
+                                )}
+                            </div>
+                            <div className="navbar-profile-info">
+                                <span>{userName}</span>
+                                <span>{userTitle}</span>
+                            </div>
+                            <ChevronDown size={16} />
+                        </div>
 
-                                <button className="navbar-icon-btn" onClick={handleLogout} title="Logout">
-                                    <LogOut size={20} />
-                                </button>
-                            </>
-                        )}
+                        <button className="navbar-icon-btn" onClick={handleLogout} title="Logout">
+                            <LogOut size={20} />
+                        </button>
                     </>
                 ) : (
-                    <div className="auth-buttons" style={{ display: 'flex', gap: '10px' }}>
-                        <button onClick={() => navigate('/login')} className="nav-login-btn">Login</button>
-                        <button onClick={() => navigate('/register')} className="nav-register-btn">Sign Up</button>
+                    <div className="public-nav-wrapper" ref={mobileMenuRef}>
+                        <div className={`auth-buttons ${showMobileMenu ? 'show' : ''}`}>
+                            <button onClick={() => { navigate('/login'); setShowMobileMenu(false); }} className="nav-login-btn">Login</button>
+                            <button onClick={() => { navigate('/register'); setShowMobileMenu(false); }} className="nav-register-btn">Sign Up</button>
+                        </div>
+                        <button 
+                            className="public-hamburger-btn" 
+                            onClick={() => setShowMobileMenu(!showMobileMenu)}
+                            aria-label="Toggle menu"
+                        >
+                            <Menu size={24} />
+                        </button>
                     </div>
                 )}
             </div>
@@ -271,12 +281,53 @@ const Navbar = ({ title = 'Dashboard', onMenuToggle = () => { }, isPublicPage = 
                     cursor: pointer;
                     color: var(--primary-100);
                 }
+                .auth-buttons {
+                    display: flex;
+                    gap: 12px;
+                }
+                
+                .public-hamburger-btn {
+                    display: none;
+                }
+
                 @media (max-width: 768px) {
                     .hamburger-btn {
                         display: block;
                     }
                     .navbar-profile-info {
                         display: none;
+                    }
+                    .navbar-logo-container span {
+                        font-size: 1rem !important;
+                    }
+                    .auth-buttons {
+                        display: none;
+                        position: absolute;
+                        top: 100%;
+                        right: 24px;
+                        background: var(--primary-brand);
+                        flex-direction: column;
+                        padding: 15px;
+                        border-radius: 12px;
+                        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+                        border: 1px solid rgba(255,255,255,0.1);
+                        gap: 12px !important;
+                        min-width: 150px;
+                        z-index: 1000;
+                    }
+                    .auth-buttons.show {
+                        display: flex;
+                    }
+                    .public-hamburger-btn {
+                        display: block;
+                        background: none;
+                        border: none;
+                        color: var(--primary-100);
+                        cursor: pointer;
+                        padding: 5px;
+                    }
+                    .navbar-left {
+                        gap: 8px;
                     }
                 }
                 

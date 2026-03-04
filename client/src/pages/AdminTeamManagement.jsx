@@ -375,10 +375,10 @@ const AdminTeamManagement = () => {
     <>
       <Layout title="Team Management">
         <div className="px-2 sm:px-4 lg:px-6 py-6 space-y-8 bg-[#FAF9F8]">
-          {/* KPI DASHLETS ROW */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* KPI: TOTAL TEAMS */}
-            <div className="bg-[#F3EFE7] rounded-[2.5rem] p-8 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
+            {/* KPI DASHLETS ROW */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {/* KPI: TOTAL TEAMS */}
+              <div className="bg-[#F3EFE7] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all group">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -478,8 +478,8 @@ const AdminTeamManagement = () => {
           </div>
 
           {/* SEARCH & FILTER ROW */}
-          <div className="flex flex-col md:flex-row gap-4 items-center">
-            <div className="flex-1 w-full md:max-w-3xl bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#1D1110]/10 transition-all relative">
+          <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
+            <div className="flex-1 bg-white rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center group focus-within:ring-2 focus-within:ring-[#1D1110]/10 transition-all relative">
               <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                 <Search size={20} className="text-gray-400 group-focus-within:text-[#1D1110] transition-colors" />
               </div>
@@ -491,12 +491,12 @@ const AdminTeamManagement = () => {
                 className="bg-transparent border-none focus:ring-0 text-sm font-bold text-[#1D1110] placeholder-gray-400 flex-1 !pl-14 pr-4 py-4"
               />
             </div>
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
+              <div className="relative flex-1 sm:flex-initial">
                 <select
                   value={filterDepartment}
                   onChange={(e) => setFilterDepartment(e.target.value)}
-                  className="appearance-none flex items-center justify-center gap-3 px-8 py-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all text-xs font-bold text-gray-500 uppercase tracking-[0.2em] outline-none pr-12 cursor-pointer"
+                  className="appearance-none w-full flex items-center justify-center gap-3 px-8 py-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-[0.2em] outline-none pr-12 cursor-pointer"
                 >
                   <option value="All">All Departments</option>
                   <option value="Engineering">Engineering</option>
@@ -511,7 +511,7 @@ const AdminTeamManagement = () => {
               </div>
               <button
                 onClick={handleCreateTeam}
-                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-[#3E2723] text-white rounded-xl hover:bg-[#5D4037] transition-all shadow-md hover:shadow-lg font-bold text-sm whitespace-nowrap"
+                className="flex items-center justify-center gap-2 px-6 py-4 bg-[#3E2723] text-white rounded-xl hover:bg-[#5D4037] transition-all shadow-md hover:shadow-lg font-bold text-sm whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
                 Create Team
@@ -525,9 +525,9 @@ const AdminTeamManagement = () => {
               <div
                 key={team._id}
                 onClick={() => handleViewDetails(team)}
-                className="group bg-white rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 cursor-pointer overflow-hidden transform hover:-translate-y-2"
+                className="group bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 cursor-pointer overflow-hidden transform hover:-translate-y-2"
               >
-                <div className="p-8 space-y-6">
+                <div className="p-6 sm:p-8 space-y-6">
                   {/* CARD HEADER */}
                   <div className="flex items-start justify-between relative">
                     <div className="space-y-1">

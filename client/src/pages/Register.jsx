@@ -429,10 +429,10 @@ const Register = () => {
                     box-shadow: 0 20px 45px rgba(62, 39, 35, 0.4) !important;
                 }
                 @media (max-width: 950px) {
-                    .auth-container { flex-direction: column; max-width: 550px !important; }
-                    .auth-info-panel { padding: 50px 40px !important; }
-                    .auth-info-panel div[style*="position: absolute"] { display: none !important; }
-                    .auth-form-panel { padding: 50px 40px !important; }
+                    .auth-container { flex-direction: column; max-width: 550px !important; border-radius: 20px !important; overflow: hidden !important; }
+                    .auth-info-panel { display: none !important; }
+                    .auth-info-panel + div { display: none !important; } /* Hides the center decoration arrow */
+                    .auth-form-panel { padding: 50px 30px !important; }
                     h1 { font-size: 2.5rem !important; }
                     h2 { font-size: 2.2rem !important; }
                 }

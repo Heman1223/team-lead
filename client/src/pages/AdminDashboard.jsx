@@ -225,7 +225,7 @@ const AdminDashboard = () => {
             <div className="space-y-5" style={{ background: '#FAF9F8' }}>
 
                 {/* KPI GRID */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4">
                     <KPICard
                         title="Total Employees"
                         value={overview.totalUsers || 0}
@@ -279,18 +279,18 @@ const AdminDashboard = () => {
                             <h3 className="text-lg font-black text-[#1D1110]">Performance Measurement</h3>
                             <p className="text-sm text-gray-400 font-medium mt-0.5">Completion vs Ongoing trends over time</p>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></div>
-                                <span className="text-xs font-bold text-gray-500">Completed</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-gray-500">Completed</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></div>
-                                <span className="text-xs font-bold text-gray-500">Ongoing</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-gray-500">Ongoing</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#3E2723]"></div>
-                                <span className="text-xs font-bold text-gray-500">New Tasks</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-gray-500">New Tasks</span>
                             </div>
                         </div>
                     </div>

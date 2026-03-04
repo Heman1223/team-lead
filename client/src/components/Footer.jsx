@@ -26,11 +26,10 @@ const Footer = () => {
               </div>
             </div>
             <div className="footer-social">
-              <a href="#"><Instagram size={20} /></a>
-              <a href="#"><Facebook size={20} /></a>
-              <a href="#"><Twitter size={20} /></a>
-              <a href="#"><Linkedin size={20} /></a>
-              <a href="#"><Mail size={20} /></a>
+              <a href="https://www.instagram.com/avanienterprises.branding/" target="_blank" rel="noopener noreferrer"><Instagram size={20} /></a>
+              <a href="https://www.facebook.com/share/1AXpRTxpoH/" target="_blank" rel="noopener noreferrer"><Facebook size={20} /></a>
+              <a href="https://www.linkedin.com/in/avani-enterprises-137448390?utm_source=share_via&utm_content=profile&utm_medium=member_android" target="_blank" rel="noopener noreferrer"><Linkedin size={20} /></a>
+              <a href="mailto:kp@avanienterprises.in"><Mail size={20} /></a>
             </div>
           </div>
 
@@ -61,18 +60,26 @@ const Footer = () => {
 
           <div className="footer-map">
             <h4>Visit Us</h4>
-            <div className="footer-hr-line"></div>
-            <div className="map-wrapper">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3509.013444983088!2d77.0543633150777!3d28.433946282496!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d195c898c6d3f%3A0xe37852c00d436c64!2sUnitech%20Cyber%20Park!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
-                width="100%"
-                height="150"
-                style={{ border: 0, borderRadius: '12px' }}
-                allowFullScreen=""
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              ></iframe>
-            </div>
+                    <a 
+                        href="https://maps.app.goo.gl/emzs3eRWNSyGsWRJ7?g_st=aw" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="footer-map-link"
+                        style={{ display: 'block' }}
+                    >
+                        <div className="footer-map-container" style={{ pointerEvents: 'none' }}>
+                            <iframe
+                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3506.223391312741!2d77.059433875549!3d28.502943275735392!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d196f7e4e6777%3A0xe53049b106240292!2sPalam%20Vihar%2C%20Gurugram%2C%20Haryana%20122017!5e0!3m2!1sen!2sin!4v1709456789012!5m2!1sen!2sin"
+                                width="100%"
+                                height="150"
+                                style={{ border: 0, borderRadius: '15px' }}
+                                allowFullScreen=""
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                                title="Office Location"
+                            />
+                        </div>
+                    </a>
           </div>
         </div>
 
@@ -246,21 +253,22 @@ const Footer = () => {
 
         @media (max-width: 768px) {
           .footer-main {
-            grid-template-columns: 1fr;
-            text-align: center;
-            gap: 30px;
+            grid-template-columns: 1fr !important;
+            gap: 30px !important;
+            padding: 40px 20px !important;
+            text-align: left;
           }
 
           .footer-brand .footer-logo, .contact-item {
-            justify-content: center;
+            justify-content: flex-start;
           }
 
           .footer-social {
-            justify-content: center;
+            justify-content: flex-start;
           }
 
           .footer-hr-line {
-            margin: 0 auto 20px;
+            margin: 0 0 20px 0;
           }
 
           .footer-tagline {

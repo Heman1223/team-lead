@@ -62,15 +62,8 @@ const LandingPage = () => {
     return (
         <div className="landing-page" style={{ backgroundColor: '#ffffff', color: 'var(--text-primary)', fontFamily: 'var(--font-primary)' }}>
             <Navbar isPublicPage={true} onMenuToggle={() => { }} />
-
-            <main style={{ maxWidth: '1400px', margin: '40px auto 120px', padding: '0 20px' }}>
-                <div className="unified-card animate-on-scroll" style={{ 
-                    background: 'var(--bg-soft)', 
-                    borderRadius: '12px', 
-                    padding: '60px 40px',
-                    boxShadow: 'var(--shadow-lg)',
-                    textAlign: 'center'
-                }}>
+            <main className="landing-main">
+                <div className="unified-card animate-on-scroll">
                     {/* Hero Section Container */}
                     <div className="hero-content" style={{ marginBottom: '80px' }}>
                         <div style={{ marginBottom: '40px', textAlign: 'center' }}>
@@ -159,7 +152,7 @@ const LandingPage = () => {
                             <p style={{ maxWidth: '750px', margin: '0 auto', fontSize: '1rem', color: 'var(--text-secondary)' }}>Stop guessing and start leading. Our analytics engine translates complex lead and project data into actionable growth strategies.</p>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '40px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
                             <div className="viz-card animate-on-scroll" style={{ background: 'var(--primary-50)', padding: '35px', borderRadius: '40px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column' }}>
                                 <h3 style={{ fontSize: '1.3rem', marginBottom: '10px', fontWeight: '800', fontFamily: 'var(--font-heading)' }}>Project Velocity</h3>
                                 <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: 'var(--text-secondary)', marginBottom: '30px', opacity: 0.8 }}>Real-time monitoring of task completions and milestone progression across all projects.</p>
@@ -253,7 +246,7 @@ const LandingPage = () => {
                             <p style={{ maxWidth: '750px', margin: '0 auto', fontSize: '1rem', color: 'var(--text-secondary)' }}>A comprehensive ecosystem designed to eliminate friction and maximize project and lead efficiency.</p>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '25px' }}>
                             {[
                                 { icon: <Clock />, title: "Real-time Status Updates", desc: "No more long emails. Daily project updates for every team member automatically compiled into simple reports." },
                                 { icon: <Zap />, title: "Intelligent Lead Assignment", desc: "Our algorithm routes leads to the most qualified and available team member instantly for rapid conversion." },
@@ -262,13 +255,7 @@ const LandingPage = () => {
                                 { icon: <Globe />, title: "Cross-Project Collaboration", desc: "Break silos with shared workspaces for leads, tasks, and project-specific communications." },
                                 { icon: <Trophy />, title: "Productivity & Rewards", desc: "Boost morale with integrated badges, leaderboards, and milestone-based incentive trackers." }
                             ].map((feature, i) => (
-                                <div key={i} className="feature-item animate-on-scroll" style={{ 
-                                    padding: '50px', 
-                                    borderRadius: '40px', 
-                                    backgroundColor: 'white',
-                                    transition: 'all 0.4s ease',
-                                    border: '1px solid transparent'
-                                }}>
+                                <div key={i} className="feature-item animate-on-scroll">
                                     <div style={{ 
                                         width: '60px', 
                                         height: '60px', 
@@ -291,32 +278,18 @@ const LandingPage = () => {
                     </div>
 
                     {/* Final CTA Container */}
-                    <div style={{ marginBottom: '60px', display: 'flex', justifyContent: 'center' }}>
-                        <div style={{ background: 'var(--primary-50)', padding: '60px 0', borderRadius: '60px', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-light)', overflow: 'hidden', maxWidth: '900px', width: '100%' }}>
-                            <div style={{ padding: '0 40px', textAlign: 'center' }}>
-                                <div className="animate-on-scroll">
-                                    <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '20px', color: 'var(--primary-brand)', fontFamily: 'var(--font-heading)' }}>Ready to Upgrade Your Workplace?</h2>
-                                    <p style={{ fontSize: '1.1rem', marginBottom: '35px', opacity: 0.9, maxWidth: '650px', margin: '0 auto 35px', color: 'var(--text-secondary)' }}>Join Avani Enterprises and experience the future of Project and Lead management today.</p>
-                                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                        <button 
-                                            onClick={() => navigate('/login')}
-                                            style={{ 
-                                                background: 'var(--primary-brand)', 
-                                                color: 'white', 
-                                                border: 'none', 
-                                                padding: '16px 45px', 
-                                                borderRadius: '100px', 
-                                                fontWeight: '700', 
-                                                fontSize: '1.05rem', 
-                                                cursor: 'pointer', 
-                                                transition: 'all 0.3s ease',
-                                                boxShadow: 'var(--shadow-md)'
-                                            }}
-                                            className="hover-lift"
-                                        >
-                                            Get Started Now
-                                        </button>
-                                    </div>
+                    <div className="cta-container">
+                        <div className="cta-inner">
+                            <div className="animate-on-scroll">
+                                <h2 className="cta-title">Ready to Upgrade Your Workplace?</h2>
+                                <p className="cta-desc">Join Avani Enterprises and experience the future of Project and Lead management today.</p>
+                                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                    <button 
+                                        onClick={() => navigate('/login')}
+                                        className="cta-btn hover-lift"
+                                    >
+                                        Get Started Now
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -361,9 +334,80 @@ const LandingPage = () => {
                     color: transparent;
                     display: inline-block;
                 }
+                .landing-main {
+                    max-width: 1400px;
+                    margin: 40px auto 120px;
+                    padding: 0 20px;
+                }
+                .unified-card {
+                    background: var(--bg-soft);
+                    border-radius: 12px;
+                    padding: 60px 40px;
+                    box-shadow: var(--shadow-lg);
+                    text-align: center;
+                }
+                .feature-item {
+                    padding: 50px;
+                    border-radius: 40px;
+                    background-color: white;
+                    transition: all 0.4s ease;
+                    border: 1px solid transparent;
+                }
+                .cta-container {
+                    margin-bottom: 60px;
+                    display: flex;
+                    justify-content: center;
+                }
+                .cta-inner {
+                    background: var(--primary-50);
+                    padding: 60px 0;
+                    border-radius: 60px;
+                    box-shadow: var(--shadow-lg);
+                    border: 1px solid var(--border-light);
+                    overflow: hidden;
+                    maxWidth: 900px;
+                    width: 100%;
+                    text-align: center;
+                }
+                .cta-title {
+                    font-size: 2rem;
+                    font-weight: 800;
+                    margin-bottom: 20px;
+                    color: var(--primary-brand);
+                    font-family: var(--font-heading);
+                }
+                .cta-desc {
+                    font-size: 1.1rem;
+                    margin-bottom: 35px;
+                    opacity: 0.9;
+                    max-width: 650px;
+                    margin: 0 auto 35px;
+                    color: var(--text-secondary);
+                }
+                .cta-btn {
+                    background: var(--primary-brand);
+                    color: white;
+                    border: none;
+                    padding: 16px 45px;
+                    border-radius: 100px;
+                    fontWeight: 700;
+                    fontSize: 1.05rem;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: var(--shadow-md);
+                }
                 @media (max-width: 768px) {
-                    .hero-title-gradient { font-size: 3rem !important; }
-                    .cta-gradient-card h2 { font-size: 2.5rem !important; }
+                    .hero-title-gradient { font-size: 2.5rem !important; }
+                    .landing-main { margin: 20px auto 60px; padding: 0 15px; }
+                    .unified-card { padding: 40px 20px; }
+                    .feature-item { padding: 30px 20px; border-radius: 24px; }
+                    .cta-inner { padding: 40px 20px; border-radius: 30px; }
+                    .cta-title { font-size: 1.8rem !important; }
+                    h2 { font-size: 2rem !important; }
+                    .hero-badge { padding: 8px 20px !important; font-size: 0.75rem !important; margin-bottom: 20px !important; }
+                    .hero-content p { font-size: 1rem !important; margin-bottom: 30px !important; }
+                    .hero-content div[style*="gap: 25px"] { flex-direction: row !important; gap: 12px !important; width: 100%; flex-wrap: wrap; justify-content: center; }
+                    .hero-content button, .hero-content a { flex: 1; min-width: 140px; justify-content: center; padding: 12px 10px !important; font-size: 0.9rem !important; }
                 }
             `}</style>
         </div>
