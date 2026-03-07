@@ -684,13 +684,14 @@ const getLeadStats = async (req, res) => {
         // Calculate stats
         const totalLeads = allLeadsForStats.length;
         const convertedLeads = allLeadsForStats.filter(l => l.status === 'converted').length;
-        const lostLeads = allLeadsForStats.filter(l => l.status === 'lost').length;
+        const lostLeads = allLeadsForStats.filter(l => l.status === 'not_interested').length;
         const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(2) : 0;
 
         // Alerts & Specific Logic
-        const now = new Date();
-        const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(now.setHours(23, 59, 59, 999));
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
         const followUpsToday = leads.filter(l =>

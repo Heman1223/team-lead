@@ -247,7 +247,7 @@ const AdminUserManagement = () => {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                            <div className="relative w-full sm:w-80 lg:w-[700px] group flex items-center">
+                            <div className="relative w-full sm:w-64 lg:w-80 group flex items-center">
                                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                                     <Search size={20} className="text-gray-400 group-focus-within:text-[#3E2723] transition-colors" />
                                 </div>

@@ -7,15 +7,35 @@ const ActivityLog = require('../models/ActivityLog');
 // @access  Private
 const getUsers = async (req, res) => {
     try {
-        const { teamId, status, role } = req.query;
+        const { teamId, status, role, roleFiltered } = req.query;
 
         let query = { deletedAt: null }; // exclude deleted users
 
-        // Only filter by team if explicitly specified in query
-        if (teamId) {
+        // Role-based filtering logic
+        if (roleFiltered === 'true' || roleFiltered === true) {
+            if (req.user.role === 'team_lead') {
+                // Return users in any team where current user is lead
+                const managedTeams = await Team.find({ leadId: req.user._id });
+                const managedTeamIds = managedTeams.map(t => t._id);
+                
+                // Also include the team they belong to
+                if (req.user.teamId && !managedTeamIds.some(id => id.toString() === req.user.teamId.toString())) {
+                    managedTeamIds.push(req.user.teamId);
+                }
+
+                if (managedTeamIds.length > 0) {
+                    query.teamId = { $in: managedTeamIds };
+                } else {
+                    // Fallback to only themselves if no team found
+                    query._id = req.user._id;
+                }
+            } else if (req.user.role === 'team_member') {
+                // Team members only see themselves for assignment
+                query._id = req.user._id;
+            }
+        } else if (teamId) {
             query.teamId = teamId;
         }
-        // Note: Removed automatic filtering by user's team to show all users across teams
 
         if (status) query.status = status;
         if (role) query.role = role;

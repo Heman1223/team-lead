@@ -68,6 +68,7 @@ app.get("/", (req, res) => {
       "/api/teams",
       "/api/tasks",
       "/api/leads",
+      "/api/meetings",
     ],
   });
 });
@@ -82,6 +83,10 @@ const startServer = async () => {
     // Initialize Notification Scheduler
     const initScheduler = require('./services/notificationScheduler');
     initScheduler();
+
+    // Initialize Meeting Status Scheduler
+    const initMeetingScheduler = require('./services/meetingScheduler');
+    initMeetingScheduler();
 
     console.log("--- Loading Routes ---");
 
@@ -143,6 +148,11 @@ const startServer = async () => {
         path: "/api/analytics",
         file: "./routes/analyticsRoutes",
         name: "Analytics",
+      },
+      {
+        path: "/api/meetings",
+        file: "./routes/meetingRoutes",
+        name: "Meeting",
       },
     ];
 

@@ -189,4 +189,13 @@ export const analyticsAPI = {
     getTeamPerformance: () => api.get('/analytics/performance/team')
 };
 
+// Meetings API
+export const meetingsAPI = {
+    getAll: (params) => api.get('/meetings', { params }),
+    getOne: (id) => api.get(`/meetings/${id}`),
+    create: (data) => api.post('/meetings', data),
+    update: (id, data) => api.put(`/meetings/${id}`, data),
+    delete: (id) => api.delete(`/meetings/${id}`)
+};
+
 export default api;

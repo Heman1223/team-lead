@@ -25,6 +25,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import LeadsPage from './pages/leads/LeadsPage';
 import EODDashboard from './pages/EODDashboard';
+import CalendarPage from './pages/Calendar';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import './index.css';
 
@@ -122,6 +123,16 @@ function App() {
             <Route path="/leads" element={
               <ProtectedRoute>
                 <LeadsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/calendar" element={
+              <ProtectedRoute>
+                <CalendarPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/calendar" element={
+              <ProtectedRoute requiredRole="admin">
+                <CalendarPage />
               </ProtectedRoute>
             } />
             <Route path="/settings" element={

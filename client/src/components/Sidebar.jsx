@@ -25,6 +25,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const adminMenuItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/calendar', label: 'Calendar', icon: ClipboardList },
     { path: '/admin/users', label: 'User Management', icon: UserCog },
     { path: '/admin/teams', label: 'Team Management', icon: Users },
     { path: '/admin/tasks', label: 'Task Assignment', icon: CheckSquare },
@@ -34,6 +35,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/calendar', label: 'Calendar', icon: ClipboardList },
     { path: '/leads', label: 'Leads', icon: Target },
     { path: '/team', label: 'Team', icon: Users },
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },

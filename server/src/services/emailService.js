@@ -1,204 +1,118 @@
 const sgMail = require('@sendgrid/mail');
+const ics = require('ics');
 
 // Initialize SendGrid
 if (process.env.SENDGRID_API_KEY) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
-// Send lead status change notification
-const sendLeadStatusChangeEmail = async (lead, oldStatus, newStatus, updatedBy) => {
+// ... existing functions ...
+
+// Send meeting invitation with .ics attachment
+const sendMeetingInvitation = async (meeting) => {
     try {
         if (!process.env.SENDGRID_API_KEY) {
             console.warn('⚠️ SendGrid API key not configured. Skipping email.');
             return { success: false, error: 'SendGrid not configured' };
         }
 
-        const subject = `Lead Status Update: ${lead.clientName}`;
-        const html = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #2563eb;">Lead Status Update</h2>
-                <p>Dear Team,</p>
-                <p>The status of the following lead has been updated:</p>
-                
-                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin-top: 0; color: #1f2937;">Lead Details</h3>
-                    <p><strong>Client Name:</strong> ${lead.clientName}</p>
-                    <p><strong>Email:</strong> ${lead.email || 'N/A'}</p>
-                    <p><strong>Phone:</strong> ${lead.phone || 'N/A'}</p>
-                    <p><strong>Company:</strong> ${lead.companyName || 'N/A'}</p>
-                </div>
-                
-                <div style="background-color: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0;">
-                    <p style="margin: 0;"><strong>Status Changed:</strong></p>
-                    <p style="margin: 5px 0 0 0; font-size: 16px;">
-                        <span style="color: #dc2626;">${oldStatus}</span> 
-                        → 
-                        <span style="color: #16a34a;">${newStatus}</span>
-                    </p>
-                </div>
-                
-                <p><strong>Updated By:</strong> ${updatedBy.name} (${updatedBy.email})</p>
-                <p><strong>Updated At:</strong> ${new Date().toLocaleString()}</p>
-                
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-                <p style="color: #6b7280; font-size: 12px;">
-                    This is an automated notification from your CRM system.
-                </p>
-            </div>
-        `;
-
-        // Plain text version (helps with spam filters)
-        const text = `
-Lead Status Update
-
-Dear Team,
-
-The status of the following lead has been updated:
-
-Lead Details:
-- Client Name: ${lead.clientName}
-- Email: ${lead.email || 'N/A'}
-- Phone: ${lead.phone || 'N/A'}
-- Company: ${lead.companyName || 'N/A'}
-
-Status Changed: ${oldStatus} → ${newStatus}
-
-Updated By: ${updatedBy.name} (${updatedBy.email})
-Updated At: ${new Date().toLocaleString()}
-
----
-This is an automated notification from your CRM system.
-        `;
-
-        const msg = {
-            to: process.env.NOTIFICATION_EMAIL,
-            from: {
-                email: process.env.SENDGRID_FROM_EMAIL,
-                name: 'CRM System'
-            },
-            subject: subject,
-            text: text,
-            html: html,
-            trackingSettings: {
-                clickTracking: { enable: false },
-                openTracking: { enable: false }
-            },
-            mailSettings: {
-                bypassListManagement: { enable: false }
-            }
-        };
-
-        await sgMail.send(msg);
-        console.log(`✅ Lead status change email sent for: ${lead.clientName}`);
-        return { success: true };
-    } catch (error) {
-        console.error('❌ Error sending lead status change email:', error);
-        return { success: false, error: error.message };
-    }
-};
-
-// Send follow-up creation notification
-const sendFollowUpCreatedEmail = async (followUp, lead, createdBy) => {
-    try {
-        if (!process.env.SENDGRID_API_KEY) {
-            console.warn('⚠️ SendGrid API key not configured. Skipping email.');
-            return { success: false, error: 'SendGrid not configured' };
+        const lead = meeting.leadId;
+        if (!lead || !lead.email) {
+            return { success: false, error: 'No lead email found' };
         }
 
-        const subject = `New Follow-up Scheduled: ${lead.clientName}`;
+        const organizer = meeting.organizerId;
+        const startTime = new Date(meeting.startTime);
+        const endTime = new Date(meeting.endTime);
+
+        // Create .ics file
+        const event = {
+            start: [
+                startTime.getFullYear(),
+                startTime.getMonth() + 1,
+                startTime.getDate(),
+                startTime.getHours(),
+                startTime.getMinutes()
+            ],
+            duration: { 
+                hours: Math.floor((endTime - startTime) / (1000 * 60 * 60)), 
+                minutes: Math.floor(((endTime - startTime) / (1000 * 60)) % 60) 
+            },
+            title: meeting.title,
+            description: meeting.description || meeting.agenda || 'Meeting scheduled via CRM',
+            location: meeting.location || (meeting.type === 'online' ? meeting.meetingLink : 'Offline'),
+            url: meeting.meetingLink,
+            status: 'CONFIRMED',
+            busyStatus: 'BUSY',
+            organizer: { name: organizer.name, email: organizer.email || process.env.SENDGRID_FROM_EMAIL },
+            attendees: [
+                { name: lead.clientName, email: lead.email, rsvp: true, partstat: 'NEEDS-ACTION', role: 'REQ-PARTICIPANT' }
+            ]
+        };
+
+        const { error, value } = ics.createEvent(event);
+        if (error) {
+            console.error('ICS creation error:', error);
+            throw error;
+        }
+
+        const subject = `Meeting Scheduled – ${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
         const html = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #2563eb;">New Follow-up Scheduled</h2>
-                <p>Dear Team,</p>
-                <p>A new follow-up has been scheduled for the following lead:</p>
-                
-                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin-top: 0; color: #1f2937;">Lead Details</h3>
-                    <p><strong>Client Name:</strong> ${lead.clientName}</p>
-                    <p><strong>Email:</strong> ${lead.email || 'N/A'}</p>
-                    <p><strong>Phone:</strong> ${lead.phone || 'N/A'}</p>
-                    <p><strong>Company:</strong> ${lead.companyName || 'N/A'}</p>
-                    <p><strong>Current Status:</strong> <span style="color: #2563eb; font-weight: bold;">${lead.status}</span></p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                <div style="background-color: #2563eb; color: white; padding: 20px; text-align: center;">
+                    <h2 style="margin: 0;">Meeting Invitation</h2>
                 </div>
-                
-                <div style="background-color: #dbeafe; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0;">
-                    <h3 style="margin-top: 0; color: #1f2937;">Follow-up Details</h3>
-                    <p><strong>Title:</strong> ${followUp.title}</p>
-                    <p><strong>Scheduled Date:</strong> ${new Date(followUp.scheduledDate).toLocaleDateString()}</p>
-                    ${followUp.scheduledTime ? `<p><strong>Scheduled Time:</strong> ${followUp.scheduledTime}</p>` : ''}
-                    <p><strong>Priority:</strong> <span style="text-transform: uppercase; color: ${followUp.priority === 'urgent' ? '#dc2626' : followUp.priority === 'high' ? '#f59e0b' : '#16a34a'};">${followUp.priority}</span></p>
-                    ${followUp.notes ? `<p><strong>Notes:</strong> ${followUp.notes}</p>` : ''}
+                <div style="padding: 30px;">
+                    <p>Hello ${lead.clientName},</p>
+                    <p>A meeting has been scheduled with our team.</p>
+                    
+                    <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 5px 0;"><strong>Topic:</strong> ${meeting.title}</p>
+                        <p style="margin: 5px 0;"><strong>Date:</strong> ${startTime.toLocaleDateString()}</p>
+                        <p style="margin: 5px 0;"><strong>Time:</strong> ${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()}</p>
+                        ${meeting.type === 'online' ? `<p style="margin: 5px 0;"><strong>Meeting Link:</strong> <a href="${meeting.meetingLink}" style="color: #2563eb;">Join Meeting</a></p>` : `<p style="margin: 5px 0;"><strong>Location:</strong> ${meeting.location}</p>`}
+                    </div>
+                    
+                    <p>Please join at the scheduled time. You can also find an invitation file attached to add this to your calendar.</p>
+                    
+                    <p style="margin-top: 30px;">Regards,<br><strong>${process.env.COMPANY_NAME || 'Avani Enterprises'}</strong></p>
                 </div>
-                
-                <p><strong>Assigned To:</strong> ${followUp.assignedTo?.name || 'N/A'}</p>
-                <p><strong>Created By:</strong> ${createdBy.name} (${createdBy.email})</p>
-                <p><strong>Created At:</strong> ${new Date().toLocaleString()}</p>
-                
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-                <p style="color: #6b7280; font-size: 12px;">
-                    This is an automated notification from your CRM system.
-                </p>
+                <div style="background-color: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280;">
+                    This is an automated message from ${process.env.COMPANY_NAME || 'Avani Enterprises'} CRM.
+                </div>
             </div>
         `;
 
-        // Plain text version (helps with spam filters)
-        const text = `
-New Follow-up Scheduled
-
-Dear Team,
-
-A new follow-up has been scheduled for the following lead:
-
-Lead Details:
-- Client Name: ${lead.clientName}
-- Email: ${lead.email || 'N/A'}
-- Phone: ${lead.phone || 'N/A'}
-- Company: ${lead.companyName || 'N/A'}
-- Current Status: ${lead.status}
-
-Follow-up Details:
-- Title: ${followUp.title}
-- Scheduled Date: ${new Date(followUp.scheduledDate).toLocaleDateString()}
-${followUp.scheduledTime ? `- Scheduled Time: ${followUp.scheduledTime}` : ''}
-- Priority: ${followUp.priority.toUpperCase()}
-${followUp.notes ? `- Notes: ${followUp.notes}` : ''}
-
-Assigned To: ${followUp.assignedTo?.name || 'N/A'}
-Created By: ${createdBy.name} (${createdBy.email})
-Created At: ${new Date().toLocaleString()}
-
----
-This is an automated notification from your CRM system.
-        `;
-
         const msg = {
-            to: process.env.NOTIFICATION_EMAIL,
+            to: lead.email,
             from: {
                 email: process.env.SENDGRID_FROM_EMAIL,
-                name: 'CRM System'
+                name: process.env.COMPANY_NAME || 'Avani Enterprises'
             },
             subject: subject,
-            text: text,
             html: html,
-            trackingSettings: {
-                clickTracking: { enable: false },
-                openTracking: { enable: false }
-            },
-            mailSettings: {
-                bypassListManagement: { enable: false }
-            }
+            attachments: [
+                {
+                    content: Buffer.from(value).toString('base64'),
+                    filename: 'invite.ics',
+                    type: 'text/calendar',
+                    disposition: 'attachment',
+                    contentId: 'invite'
+                }
+            ]
         };
 
         await sgMail.send(msg);
-        console.log(`✅ Follow-up creation email sent for: ${lead.clientName}`);
+        console.log(`✅ Meeting invitation sent to: ${lead.email}`);
         return { success: true };
     } catch (error) {
-        console.error('❌ Error sending follow-up creation email:', error);
+        console.error('❌ Error sending meeting invitation:', error);
         return { success: false, error: error.message };
     }
 };
 
 module.exports = {
-    sendLeadStatusChangeEmail,
-    sendFollowUpCreatedEmail
+    // sendLeadStatusChangeEmail,  // Commented out as they were placeholders
+    // sendFollowUpCreatedEmail,
+    sendMeetingInvitation
 };

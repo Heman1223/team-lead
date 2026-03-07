@@ -5,16 +5,19 @@ import {
     Calendar, Phone, Bell, Activity, Target, BarChart3, PieChart,
     ChevronRight, Plus, Filter, Trophy, Briefcase, FileCheck,
     ArrowUpRight, Mail, MapPin, Search, MoreVertical,
-    MessageSquare, ListTodo, Zap
+    MessageSquare, ListTodo, Zap, Folder
 } from 'lucide-react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useFilters } from '../context/FilterContext';
-import { tasksAPI, teamsAPI, usersAPI, leadsAPI, analyticsAPI, reportsAPI, followUpsAPI } from '../services/api';
+import { tasksAPI, teamsAPI, usersAPI, leadsAPI, analyticsAPI, reportsAPI, followUpsAPI, meetingsAPI } from '../services/api';
 import leadStore from '../utils/leadStore';
 import { 
     BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart as RePieChart, Pie, Cell, Legend
+    PieChart as RePieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
 
 const Dashboard = () => {
@@ -46,6 +49,8 @@ const Dashboard = () => {
     const [teamMembers, setTeamMembers] = useState([]);
     const [allLeads, setAllLeads] = useState([]);
     const [alerts, setAlerts] = useState([]);
+    const [todayMeetings, setTodayMeetings] = useState([]);
+    const [calendarEvents, setCalendarEvents] = useState([]);
     const [teamLeadStats, setTeamLeadStats] = useState({
         performance: 0,
         teamLeadsStats: []
@@ -74,33 +79,51 @@ const Dashboard = () => {
             
             if (isTeamLead) {
                 // Fetch team lead specific data
-                const [tasksRes, teamRes, leadsRes, followUpsRes] = await Promise.all([
+                const [tasksRes, teamRes, leadsRes, followUpsRes, meetingsRes] = await Promise.all([
                     tasksAPI.getMyTasks(),
                     teamsAPI.getMyTeam(),
                     leadsAPI.getStats(),
-                    followUpsAPI.getUpcoming()
+                    followUpsAPI.getUpcoming(),
+                    meetingsAPI.getAll()
                 ]);
 
                 const tasks = tasksRes.data.data || [];
+                const allMeetings = meetingsRes.data?.data || [];
                 
-                // Filter tasks by selected month
-                const filteredTasks = tasks.filter(t => {
-                    const taskDate = new Date(t.createdAt);
-                    return taskDate >= startDate && taskDate <= endDate;
+                // Filter today's meetings
+                const today = new Date();
+                const todayString = today.toISOString().split('T')[0];
+                const todayMeetingsData = allMeetings.filter(m => {
+                    const mDate = new Date(m.startTime).toISOString().split('T')[0];
+                    return mDate === todayString;
                 });
-                
-                setMyTasks(filteredTasks);
+                setTodayMeetings(todayMeetingsData);
 
-                // Calculate task statistics from filtered tasks
+                // Format events for calendar
+                const formattedEvents = allMeetings.map(meeting => ({
+                    id: meeting._id,
+                    title: meeting.title,
+                    start: meeting.startTime,
+                    end: meeting.endTime,
+                    backgroundColor: meeting.color || '#3E2723',
+                    borderColor: meeting.color || '#3E2723',
+                    className: ['rescheduled', 'cancelled'].includes(meeting.status) ? 'opacity-50 grayscale-[0.5]' : '',
+                    extendedProps: { ...meeting }
+                }));
+                setCalendarEvents(formattedEvents);
+
+                // Use ALL tasks for charts and stats (not date-filtered)
+                setMyTasks(tasks);
+
                 const stats = {
-                    total: filteredTasks.length,
-                    completed: filteredTasks.filter(t => t.status === 'completed').length,
-                    inProgress: filteredTasks.filter(t => t.status === 'in_progress').length,
-                    onHold: filteredTasks.filter(t => t.status === 'on_hold').length,
-                    overdue: filteredTasks.filter(t => t.status === 'overdue' || (t.status !== 'completed' && new Date(t.deadline || t.dueDate) < new Date())).length,
-                    notStarted: filteredTasks.filter(t => t.status === 'pending').length,
-                    subtasksPending: filteredTasks.reduce((acc, t) => acc + (t.subtasks?.filter(st => st.status !== 'completed').length || 0), 0),
-                    activeProjects: filteredTasks.filter(t => t.taskType === 'project_task' && t.status !== 'completed').length
+                    total: tasks.length,
+                    completed: tasks.filter(t => t.status === 'completed').length,
+                    inProgress: tasks.filter(t => t.status === 'in_progress').length,
+                    onHold: tasks.filter(t => t.status === 'on_hold').length,
+                    overdue: tasks.filter(t => t.status === 'overdue' || (t.status !== 'completed' && new Date(t.deadline || t.dueDate) < new Date())).length,
+                    notStarted: tasks.filter(t => t.status === 'pending').length,
+                    subtasksPending: tasks.reduce((acc, t) => acc + (t.subtasks?.filter(st => st.status !== 'completed').length || 0), 0),
+                    activeProjects: tasks.filter(t => t.taskType === 'project_task' && t.status !== 'completed').length
                 };
                 setTaskStats(stats);
 
@@ -111,25 +134,25 @@ const Dashboard = () => {
                         total: leadData.totalLeads || 0,
                         new: leadData.statusDist?.new || 0,
                         contacted: leadData.statusDist?.contacted || 0,
-                        qualified: leadData.statusDist?.qualified || 0,
-                        proposal: leadData.statusDist?.proposal || 0,
+                        interested: leadData.statusDist?.interested || 0,
+                        follow_up: leadData.statusDist?.follow_up || 0,
                         converted: leadData.convertedLeads || 0,
-                        lost: leadData.lostLeads || 0,
+                        not_interested: leadData.statusDist?.not_interested || 0,
                         followUpsToday: leadData.followUpsToday || 0,
                         highValueLeads: leadData.highValueLeads || 0,
                         inactiveLeads: leadData.inactiveLeads || 0,
                         conversionRate: leadData.conversionRate || 0
                     });
 
-                    // Prepare chart data with new statuses
+                    // Prepare chart data with correct model statuses
                     const statusDist = leadData.statusDist || {};
                     setLeadChartData([
                         { name: 'New', value: statusDist.new || 0, color: '#3b82f6' },
                         { name: 'Contacted', value: statusDist.contacted || 0, color: '#6366f1' },
-                        { name: 'Qualified', value: statusDist.qualified || 0, color: '#8b5cf6' },
-                        { name: 'Proposal', value: statusDist.proposal || 0, color: '#f59e0b' },
+                        { name: 'Interested', value: statusDist.interested || 0, color: '#8b5cf6' },
+                        { name: 'Follow Up', value: statusDist.follow_up || 0, color: '#f59e0b' },
                         { name: 'Converted', value: statusDist.converted || 0, color: '#10b981' },
-                        { name: 'Lost', value: statusDist.lost || 0, color: '#ef4444' }
+                        { name: 'Not Interested', value: statusDist.not_interested || 0, color: '#ef4444' }
                     ].filter(item => item.value > 0));
                 }
 
@@ -192,30 +215,35 @@ const Dashboard = () => {
                 }
             } else {
                 // Team member view
-                const [tasksRes, leadsRes, followUpsRes] = await Promise.all([
+                const [tasksRes, leadsRes, followUpsRes, meetingsRes] = await Promise.all([
                     tasksAPI.getMyTasks(),
                     leadsAPI.getStats(),
-                    followUpsAPI.getUpcoming()
+                    followUpsAPI.getUpcoming(),
+                    meetingsAPI.getAll()
                 ]);
                 
                 const tasks = tasksRes.data.data || [];
+                const allMeetings = meetingsRes.data?.data || [];
                 
-                // Filter tasks: include those created in selected month OR those currently active (not completed)
-                const filteredTasks = tasks.filter(t => {
-                    const taskDate = new Date(t.createdAt);
-                    const isInRange = taskDate >= startDate && taskDate <= endDate;
-                    const isActive = t.status !== 'completed';
-                    return isInRange || isActive;
+                // Filter today's meetings
+                const today = new Date();
+                const todayString = today.toISOString().split('T')[0];
+                const todayMeetingsData = allMeetings.filter(m => {
+                    const mDate = new Date(m.startTime).toISOString().split('T')[0];
+                    return mDate === todayString;
                 });
+                setTodayMeetings(todayMeetingsData);
                 
-                setMyTasks(filteredTasks);
+                // Use ALL tasks for charts and stats (not date-filtered)
+                setMyTasks(tasks);
 
                 const stats = {
-                    total: filteredTasks.length,
-                    completed: filteredTasks.filter(t => t.status === 'completed').length,
-                    inProgress: filteredTasks.filter(t => t.status === 'in_progress').length,
-                    overdue: filteredTasks.filter(t => t.status === 'overdue').length,
-                    notStarted: filteredTasks.filter(t => t.status === 'not_started').length
+                    total: tasks.length,
+                    completed: tasks.filter(t => t.status === 'completed').length,
+                    inProgress: tasks.filter(t => t.status === 'in_progress').length,
+                    overdue: tasks.filter(t => t.status === 'overdue' || (t.status !== 'completed' && new Date(t.deadline || t.dueDate) < new Date())).length,
+                    notStarted: tasks.filter(t => t.status === 'pending' || t.status === 'not_started').length,
+                    activeProjects: tasks.filter(t => t.taskType === 'project_task' && t.status !== 'completed').length
                 };
                 setTaskStats(stats);
 
@@ -227,7 +255,10 @@ const Dashboard = () => {
                         new: leadData.statusDist?.new || 0,
                         contacted: leadData.statusDist?.contacted || 0,
                         interested: leadData.statusDist?.interested || 0,
+                        follow_up: leadData.statusDist?.follow_up || 0,
                         converted: leadData.convertedLeads || 0,
+                        not_interested: leadData.statusDist?.not_interested || 0,
+                        followUpsToday: leadData.followUpsToday || 0,
                         conversionRate: leadData.conversionRate || 0
                     });
 
@@ -331,103 +362,236 @@ const Dashboard = () => {
     return (
         <Layout title="Dashboard">
             <div className="space-y-6">
-                {/* Welcome & Alerts Section */}
-                <div className="flex flex-col lg:flex-row gap-6">
-                    <div className="flex-1 bg-[#FDF8F3] rounded-3xl border border-[#EBD9C1] p-8 text-[#3E2723] relative overflow-hidden">
-                        <div className="relative z-10">
-                            <h2 className="text-3xl font-semibold mb-2">
-                                Welcome back, {user?.name?.split(' ')[0]}
-                            </h2>
-                            <p className="text-gray-600 text-lg">
-                                {isTeamLead 
-                                    ? "Your team's performance is at " + (teamLeadStats.performance || 0) + "% today." 
-                                    : "You have " + (taskStats.inProgress || 0) + " tasks in progress."}
-                            </p>
-                            <div className="mt-6 flex gap-3">
-                                <button onClick={() => navigate('/leads')} className="px-5 py-2.5 bg-[#3E2723] text-white rounded-xl font-bold text-sm hover:bg-[#5D4037] transition-all flex items-center gap-2">
-                                    <Plus className="w-4 h-4" /> New Lead
-                                </button>
-                                <button onClick={() => navigate('/tasks')} className="px-5 py-2.5 bg-white border border-[#EBD9C1] text-[#3E2723] rounded-xl font-bold text-sm hover:bg-gray-50 transition-all flex items-center gap-2">
-                                    <ListTodo className="w-4 h-4" /> My Tasks
-                                </button>
+                {/* Top Section -> Welcome & Calendar */}
+                <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+                    {/* Left -> Welcome & Stats Grid */}
+                    <div className="lg:w-2/3 flex flex-col gap-6">
+                        {/* Welcome Card */}
+                        <div className="bg-[#FDF8F3] rounded-3xl border border-[#EBD9C1] p-6 text-[#3E2723] relative overflow-hidden flex flex-col justify-center min-h-[160px]">
+                            <div className="relative z-10">
+                                <h2 className="text-2xl font-bold mb-1">
+                                    Welcome back, {user?.name?.split(' ')[0]}
+                                </h2>
+                                <p className="text-gray-600 text-sm font-medium">
+                                    {isTeamLead 
+                                        ? "Your team's performance is at " + (teamLeadStats.performance || 0) + "% today." 
+                                        : "You have " + (taskStats.inProgress || 0) + " tasks in progress."}
+                                </p>
+                                <div className="mt-4 flex gap-3">
+                                    <button onClick={() => navigate('/leads')} className="px-4 py-2 bg-[#3E2723] text-white rounded-xl font-bold text-xs hover:bg-[#5D4037] transition-all flex items-center gap-1.5">
+                                        <Plus className="w-3.5 h-3.5" /> New Lead
+                                    </button>
+                                    <button onClick={() => navigate('/tasks')} className="px-4 py-2 bg-white border border-[#EBD9C1] text-[#3E2723] rounded-xl font-bold text-xs hover:bg-gray-50 transition-all flex items-center gap-1.5">
+                                        <ListTodo className="w-3.5 h-3.5" /> My Tasks
+                                    </button>
+                                </div>
+                            </div>
+                            <Activity className="absolute right-[-20px] bottom-[-20px] w-48 h-48 text-[#3E2723] opacity-[0.03] rotate-12" />
+                        </div>
+
+                        {/* 3x2 Stats Grid Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[
+                                { label: 'Assigned Tasks', value: taskStats.total || 0, sub: 'My queue', icon: ListTodo, color: '#3b82f6' },
+                                { label: 'Active Projects', value: taskStats.activeProjects || 0, sub: 'In progress', icon: Folder, color: '#6366f1' },
+                                { label: 'Assigned Leads', value: leadStats.total || 0, sub: 'Pipeline', icon: Users, color: '#f59e0b' },
+                                { label: 'Leads Converted', value: leadStats.converted || 0, sub: 'Won leads', icon: Trophy, color: '#10b981' },
+                                { label: 'Overdue Tasks', value: taskStats.overdue || 0, sub: 'Needs action', icon: AlertCircle, color: '#ef4444' },
+                                { label: 'Team Performance', value: `${teamLeadStats.performance || 0}%`, sub: 'Average %', icon: TrendingUp, color: '#3E2723' }
+                            ].map((stat, i) => (
+                                <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all border-l-4" style={{ borderLeftColor: stat.color }}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400">
+                                            <stat.icon size={16} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">{stat.label}</p>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <h4 className="text-xl font-black text-gray-900 leading-none">{stat.value}</h4>
+                                            <span className="text-[9px] font-medium text-gray-400">{stat.sub}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Right -> Calendar Section */}
+                    <div className="lg:w-1/3">
+                        <div className="bg-white rounded-3xl border border-gray-200 p-6 h-full shadow-sm flex flex-col">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                                    <Calendar className="w-5 h-5 text-[#3E2723]" />
+                                    Schedule Overview
+                                </h3>
+                                <button onClick={() => navigate('/calendar')} className="text-[10px] font-bold text-[#3E2723] uppercase hover:underline">Full View</button>
+                            </div>
+                            
+                            <div className="flex-1 dashboard-calendar-container">
+                                <style>{`
+                                    .dashboard-calendar-container .fc {
+                                        font-family: inherit;
+                                        --fc-border-color: #f3f4f6;
+                                        --fc-daygrid-event-dot-width: 4px;
+                                        font-size: 0.65rem;
+                                        background: white;
+                                    }
+                                    .dashboard-calendar-container .fc-header-toolbar {
+                                        margin-bottom: 0.5rem !important;
+                                        padding: 0 0.5rem;
+                                    }
+                                    .dashboard-calendar-container .fc-toolbar-title {
+                                        font-size: 0.85rem !important;
+                                        font-weight: 800;
+                                        color: #3E2723;
+                                        text-transform: uppercase;
+                                        letter-spacing: 0.05em;
+                                    }
+                                    .dashboard-calendar-container .fc-button {
+                                        padding: 0.15rem 0.4rem !important;
+                                        font-size: 0.6rem !important;
+                                        border-radius: 6px !important;
+                                        background-color: #FDF8F3 !important;
+                                        border: 1px solid #EBD9C1 !important;
+                                        color: #3E2723 !important;
+                                        box-shadow: none !important;
+                                    }
+                                    .dashboard-calendar-container .fc-button:hover {
+                                        background-color: #EBD9C1 !important;
+                                    }
+                                    .dashboard-calendar-container .fc-button-active {
+                                        background-color: #3E2723 !important;
+                                        color: white !important;
+                                    }
+                                    .dashboard-calendar-container .fc-col-header-cell {
+                                        padding: 4px 0 !important;
+                                        background: #f9fafb;
+                                    }
+                                    .dashboard-calendar-container .fc-col-header-cell-cushion {
+                                        font-size: 0.6rem;
+                                        font-weight: 700;
+                                        color: #9ca3af;
+                                        text-transform: uppercase;
+                                    }
+                                    .dashboard-calendar-container .fc-daygrid-day-number {
+                                        padding: 2px 4px !important;
+                                        font-weight: 700;
+                                        color: #374151;
+                                        position: relative;
+                                        z-index: 2;
+                                    }
+                                    .dashboard-calendar-container .fc-daygrid-day {
+                                        height: 40px !important;
+                                        transition: all 0.2s;
+                                    }
+                                    .dashboard-calendar-container .fc-day-today {
+                                        background-color: transparent !important;
+                                    }
+                                    .dashboard-calendar-container .fc-day-today .fc-daygrid-day-number {
+                                        background: #3E2723;
+                                        color: white;
+                                        border-radius: 4px;
+                                        min-width: 1.2rem;
+                                        text-align: center;
+                                    }
+                                    /* Hide event list in mini view */
+                                    .dashboard-calendar-container .fc-daygrid-day-events {
+                                        display: none;
+                                    }
+                                    /* Colored backgrounds for days with events */
+                                    .has-event-upcoming { background-color: rgba(37, 99, 235, 0.15) !important; }
+                                    .has-event-ongoing { background-color: rgba(147, 51, 234, 0.15) !important; }
+                                    .has-event-completed { background-color: rgba(22, 163, 74, 0.15) !important; }
+                                    .has-event-missed { background-color: rgba(220, 38, 38, 0.15) !important; }
+                                    .has-event-rescheduled { background-color: rgba(156, 163, 175, 0.2) !important; }
+                                    .has-event-default { background-color: rgba(62, 39, 35, 0.1) !important; }
+                                    
+                                    .dashboard-calendar-container .fc-daygrid-day:hover {
+                                        filter: brightness(0.95);
+                                        cursor: pointer;
+                                    }
+                                `}</style>
+                                <FullCalendar
+                                    plugins={[dayGridPlugin, interactionPlugin]}
+                                    initialView="dayGridMonth"
+                                    headerToolbar={{
+                                        left: 'prev,next',
+                                        center: 'title',
+                                        right: 'today'
+                                    }}
+                                    events={calendarEvents}
+                                    height="auto"
+                                    eventClick={(arg) => navigate('/calendar')}
+                                    dayMaxEvents={0}
+                                    dayCellDidMount={(arg) => {
+                                        const dateStr = arg.date.toISOString().split('T')[0];
+                                        const dayEvents = calendarEvents.filter(e => e.start.split('T')[0] === dateStr);
+                                        if (dayEvents.length > 0) {
+                                            const status = dayEvents[0].extendedProps?.status || 'default';
+                                            arg.el.classList.add(`has-event-${status}`);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            
+                            {/* Quick Stats below calendar */}
+                            <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
+                                <div className="flex -space-x-2">
+                                    {teamMembers.slice(0, 3).map((m, i) => (
+                                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                                            {m.name?.charAt(0)}
+                                        </div>
+                                    ))}
+                                    {teamMembers.length > 3 && (
+                                        <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400">
+                                            +{teamMembers.length - 3}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Today's Load</p>
+                                    <p className="text-sm font-bold text-[#3E2723]">{todayMeetings.length} Meetings</p>
+                                </div>
                             </div>
                         </div>
-                        <Activity className="absolute right-[-20px] bottom-[-20px] w-64 h-64 text-[#3E2723] opacity-[0.03] rotate-12" />
                     </div>
-
-                    {/* Alerts Section */}
-                    <div className="lg:w-1/3 bg-white rounded-3xl border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                                <Bell className="w-5 h-5 text-amber-500" />
-                                Action Alerts
-                            </h3>
-                            <span className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-                                {alerts.length} New
-                            </span>
-                        </div>
-                        <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
-                            {alerts.length > 0 ? alerts.map((alert, idx) => (
-                                <div key={idx} className={`flex items-start gap-3 p-3 rounded-2xl border ${
-                                    alert.severity === 'urgent' ? 'bg-red-50 border-red-100 text-red-700' : 
-                                    alert.severity === 'high' ? 'bg-amber-50 border-amber-100 text-amber-700' : 
-                                    'bg-blue-50 border-blue-100 text-blue-700'
-                                }`}>
-                                    <div className="p-2 bg-white rounded-xl shadow-sm">
-                                        <alert.icon className="w-4 h-4" />
-                                    </div>
-                                    <p className="text-sm font-medium leading-tight pt-1">{alert.message}</p>
-                                </div>
-                            )) : (
-                                <div className="text-center py-6 text-gray-400 italic text-sm">
-                                    All clear for now
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 1️⃣ Top Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    {[
-                        { label: 'Assigned Tasks', value: taskStats.total, color: 'blue', sub: 'My queue' },
-                        { label: 'Active Projects', value: taskStats.activeProjects, color: 'indigo', sub: 'In progress' },
-                        { label: 'Assigned Leads', value: leadStats.total, color: 'purple', sub: 'Pipeline' },
-                        { label: 'Leads Converted', value: leadStats.converted, color: 'green', sub: 'Won leads' },
-                        { label: 'Overdue Tasks', value: taskStats.overdue, color: 'red', sub: 'Needs action' },
-                        { label: 'Team Performance', value: `${teamLeadStats.performance || 0}%`, color: 'amber', sub: 'Average %' }
-                    ].map((card, i) => (
-                        <div key={i} className="bg-[#FDF8F3] p-5 rounded-3xl border border-[#EBD9C1] hover:border-[#3E2723]/30 transition-all group cursor-pointer">
-                            <p className="text-[10px] font-medium text-gray-400 tracking-wider mb-1 uppercase">{card.label}</p>
-                            <h4 className="text-2xl font-bold text-[#3E2723] leading-none mb-1">{card.value}</h4>
-                            <p className="text-[10px] text-gray-400 font-medium">{card.sub}</p>
-                        </div>
-                    ))}
                 </div>
 
                 {/* Charts Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Project Progress Bar Chart */}
+                    {/* Project Progress Line Chart */}
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
                         <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                            <BarChart3 className="w-5 h-5 text-blue-500" />
+                            <TrendingUp className="w-5 h-5 text-blue-500" />
                             Project Progress
                         </h3>
                         <div className="h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <ReBarChart data={myTasks.filter(t => t.taskType === 'project_task').slice(0, 6)}>
+                                <AreaChart data={myTasks.filter(t => t.taskType === 'project_task').slice(0, 8)}>
+                                    <defs>
+                                        <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
+                                        </linearGradient>
+                                    </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                    <XAxis dataKey="title" fontSize={10} tick={{ fill: '#666' }} axisLine={false} tickLine={false} />
-                                    <YAxis fontSize={10} tick={{ fill: '#666' }} axisLine={false} tickLine={false} />
+                                    <XAxis dataKey="title" fontSize={10} tick={{ fill: '#999' }} axisLine={false} tickLine={false} />
+                                    <YAxis fontSize={10} tick={{ fill: '#999' }} axisLine={false} tickLine={false} domain={[0, 100]} />
                                     <Tooltip 
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgb(0 0 0 / 0.12)', fontSize: '12px' }}
+                                        formatter={(value) => [`${value}%`, 'Progress']}
                                     />
-                                    <Bar dataKey="progressPercentage" name="Progress %" radius={[4, 4, 0, 0]}>
-                                        {myTasks.filter(t => t.taskType === 'project_task').slice(0, 6).map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={['#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'][index % 6]} />
-                                        ))}
-                                    </Bar>
-                                </ReBarChart>
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="progressPercentage" 
+                                        stroke="#6366f1" 
+                                        strokeWidth={2.5} 
+                                        fill="url(#progressGradient)" 
+                                        dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }}
+                                        activeDot={{ r: 6, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }}
+                                    />
+                                </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
@@ -519,8 +683,8 @@ const Dashboard = () => {
                                     <p className="text-xl font-serif italic text-amber-500">{leadStats.followUpsToday}</p>
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-xs font-medium text-gray-400">Lost</p>
-                                    <p className="text-xl font-semibold text-red-500">{leadStats.lost}</p>
+                                    <p className="text-xs font-medium text-gray-400">Not Interested</p>
+                                    <p className="text-xl font-semibold text-red-500">{leadStats.not_interested || 0}</p>
                                 </div>
                                 <button onClick={() => navigate('/leads')} className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all">Full CRM</button>
                             </div>
@@ -528,7 +692,7 @@ const Dashboard = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {allLeads.filter(l => l.assignedTo?._id === user._id || !l.assignedTo).slice(0, 4).map(lead => (
-                                <div key={lead._id} className="p-4 rounded-3xl border border-gray-100 hover:shadow-xl transition-all bg-white group border-l-4" style={{ borderColor: lead.status === 'converted' ? '#10b981' : lead.status === 'lost' ? '#ef4444' : '#6366f1' }}>
+                                <div key={lead._id} className="p-4 rounded-3xl border border-gray-100 hover:shadow-xl transition-all bg-white group border-l-4" style={{ borderColor: lead.status === 'converted' ? '#10b981' : lead.status === 'not_interested' ? '#ef4444' : '#6366f1' }}>
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
                                             <h4 className="font-semibold text-gray-900 text-base leading-none mb-1 group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => navigate(`/leads/${lead._id}`)}>{lead.clientName}</h4>

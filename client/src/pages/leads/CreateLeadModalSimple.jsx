@@ -14,21 +14,23 @@ import {
 import { leadsAPI, usersAPI, teamsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
+const CreateLeadModalSimple = ({ onClose, onSuccess, editLead }) => {
     const { isAdmin, isTeamLead, user } = useAuth();
+    const isEditMode = !!editLead;
     const [formData, setFormData] = useState({
-        clientName: '',
-        email: '',
-        phone: '',
-        category: 'web_development',
-        description: '',
-        inquiryMessage: '',
-        source: 'manual',
-        priority: 'medium',
-        estimatedValue: 0,
-        expectedCloseDate: '',
-        assignedTo: '',
-        assignedTeam: ''
+        clientName: editLead?.clientName || '',
+        email: editLead?.email || '',
+        phone: editLead?.phone || '',
+        category: editLead?.category || 'web_development',
+        description: editLead?.description || '',
+        inquiryMessage: editLead?.inquiryMessage || '',
+        source: editLead?.source || 'manual',
+        priority: editLead?.priority || 'medium',
+        estimatedValue: editLead?.estimatedValue || 0,
+        expectedCloseDate: editLead?.expectedCloseDate ? new Date(editLead.expectedCloseDate).toISOString().split('T')[0] : '',
+        assignedTo: editLead?.assignedTo?._id || editLead?.assignedTo || '',
+        assignedTeam: editLead?.assignedTeam?._id || editLead?.assignedTeam || '',
+        status: editLead?.status || 'new'
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -78,12 +80,16 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
             if (!submitData.assignedTo) delete submitData.assignedTo;
             if (!submitData.assignedTeam) delete submitData.assignedTeam;
 
-            await leadsAPI.create(submitData);
+            if (isEditMode) {
+                await leadsAPI.update(editLead._id, submitData);
+            } else {
+                await leadsAPI.create(submitData);
+            }
             onSuccess();
             onClose();
         } catch (err) {
-            console.error('Error creating lead:', err);
-            let errorMessage = 'Failed to create lead';
+            console.error(`Error ${isEditMode ? 'updating' : 'creating'} lead:`, err);
+            let errorMessage = `Failed to ${isEditMode ? 'update' : 'create'} lead`;
             if (err.response?.data?.message) {
                 errorMessage = err.response.data.message;
             } else if (err.message) {
@@ -104,11 +110,11 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden pointer-events-auto flex flex-col">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] p-6 text-white">
+                    <div className="bg-gradient-to-r from-[#3E2723] to-[#3E2723] p-6">
                         <div className="flex items-start justify-between">
                             <div>
-                                <h2 className="text-2xl font-bold mb-1">Create New Lead</h2>
-                                <p className="text-[#EFEBE9] text-sm">Add a new lead to your pipeline</p>
+                                <h2 className="text-2xl font-bold mb-1 text-white">{isEditMode ? 'Edit Lead' : 'Create New Lead'}</h2>
+                                <p className="text-[#EFEBE9] text-sm">{isEditMode ? 'Update lead information' : 'Add a new lead to your pipeline'}</p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -153,34 +159,28 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Email <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="relative">
-                                        <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                        <input
-                                            required
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
-                                            placeholder="john@example.com"
-                                        />
-                                    </div>
+                                    <input
+                                        required
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
+                                        placeholder="john@example.com"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Phone <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="relative">
-                                        <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                        <input
-                                            required
-                                            name="phone"
-                                            value={formData.phone}
-                                            onChange={handleChange}
-                                            className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
-                                            placeholder="+1 (555) 000-0000"
-                                        />
-                                    </div>
+                                    <input
+                                        required
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
+                                        placeholder="+1 (555) 000-0000"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -216,32 +216,26 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Estimated Value ($)
                                     </label>
-                                    <div className="relative">
-                                        <DollarSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                        <input
-                                            type="number"
-                                            name="estimatedValue"
-                                            value={formData.estimatedValue}
-                                            onChange={handleChange}
-                                            className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
-                                            placeholder="5000"
-                                        />
-                                    </div>
+                                    <input
+                                        type="number"
+                                        name="estimatedValue"
+                                        value={formData.estimatedValue}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
+                                        placeholder="5000"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Expected Close Date
                                     </label>
-                                    <div className="relative">
-                                        <Calendar size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                        <input
-                                            type="date"
-                                            name="expectedCloseDate"
-                                            value={formData.expectedCloseDate}
-                                            onChange={handleChange}
-                                            className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
-                                        />
-                                    </div>
+                                    <input
+                                        type="date"
+                                        name="expectedCloseDate"
+                                        value={formData.expectedCloseDate}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -356,6 +350,29 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                             </div>
                         </div>
 
+                        {/* Status (Edit Mode only) */}
+                        {isEditMode && (
+                            <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <Tag size={20} className="text-[#3E2723]" />
+                                    Lead Status
+                                </h3>
+                                <select
+                                    name="status"
+                                    value={formData.status}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
+                                >
+                                    <option value="new">New</option>
+                                    <option value="contacted">Contacted</option>
+                                    <option value="interested">Interested</option>
+                                    <option value="follow_up">Follow Up</option>
+                                    <option value="converted">Converted</option>
+                                    <option value="not_interested">Not Interested</option>
+                                </select>
+                            </div>
+                        )}
+
                         {/* Footer Actions */}
                         <div className="flex gap-3 pt-4 border-t border-gray-200">
                             <button
@@ -368,17 +385,17 @@ const CreateLeadModalSimple = ({ onClose, onSuccess }) => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#3E2723] text-white rounded-lg hover:bg-[#3E2723] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#3E2723] text-white rounded-lg hover:bg-[#2E1B17] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? (
                                     <>
                                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Creating...
+                                        {isEditMode ? 'Saving...' : 'Creating...'}
                                     </>
                                 ) : (
                                     <>
                                         <Save size={20} />
-                                        Create Lead
+                                        {isEditMode ? 'Save Changes' : 'Create Lead'}
                                     </>
                                 )}
                             </button>

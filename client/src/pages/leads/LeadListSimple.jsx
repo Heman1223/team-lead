@@ -9,11 +9,14 @@ import {
     AlertCircle,
     User,
     LayoutGrid,
-    List
+    List,
+    Trash2,
+    Pencil
 } from 'lucide-react';
 import { leadsAPI } from '../../services/api';
 import leadStore from '../../utils/leadStore';
 import LeadKanbanBoard from './LeadKanbanBoard';
+import CreateLeadModalSimple from './CreateLeadModalSimple';
 
 const LeadList = ({ onSelectLead }) => {
     const [leads, setLeads] = useState([]);
@@ -21,8 +24,9 @@ const LeadList = ({ onSelectLead }) => {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
-    const [viewMode, setViewMode] = useState('list'); // 'list' or 'kanban'
-    const [forceUpdate, setForceUpdate] = useState(0); // Add force update trigger
+    const [viewMode, setViewMode] = useState('list');
+    const [forceUpdate, setForceUpdate] = useState(0);
+    const [editingLead, setEditingLead] = useState(null);
 
     useEffect(() => {
         fetchLeads();
@@ -75,6 +79,23 @@ const LeadList = ({ onSelectLead }) => {
 
     // Client-side filtering as fallback or for immediate visual feedback
     const filteredLeads = leads; // Backend already filtered based on our params
+
+    const handleDeleteLead = async (e, leadId, leadName) => {
+        e.stopPropagation(); // Prevent triggering the card click
+        if (!window.confirm(`Are you sure you want to delete "${leadName}"? This action cannot be undone.`)) return;
+        try {
+            await leadsAPI.delete(leadId);
+            fetchLeads(); // Refresh list
+        } catch (err) {
+            console.error('Delete lead error:', err);
+            alert('Failed to delete lead. ' + (err.response?.data?.message || ''));
+        }
+    };
+
+    const openEditModal = (e, lead) => {
+        e.stopPropagation();
+        setEditingLead(lead);
+    };
 
     const getStatusColor = (status) => {
         const colors = {
@@ -299,14 +320,38 @@ const LeadList = ({ onSelectLead }) => {
                                     </div>
                                 </div>
 
-                                {/* View Button */}
-                                <button className="ml-4 p-2 text-gray-400 hover:text-[#3E2723] hover:bg-[#3E2723]/5 rounded-lg transition-colors">
-                                    <Eye className="w-5 h-5" />
-                                </button>
+                                {/* Actions */}
+                                <div className="ml-4 flex flex-col gap-2">
+                                    <button className="p-2 text-gray-400 hover:text-[#3E2723] hover:bg-[#3E2723]/5 rounded-lg transition-colors" title="View Lead">
+                                        <Eye className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => openEditModal(e, lead)}
+                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                        title="Edit Lead"
+                                    >
+                                        <Pencil className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => handleDeleteLead(e, lead._id, lead.clientName)}
+                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Delete Lead"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
                 </div>
+            )}
+            {/* Edit Lead Modal — reuse CreateLeadModalSimple */}
+            {editingLead && (
+                <CreateLeadModalSimple
+                    editLead={editingLead}
+                    onClose={() => setEditingLead(null)}
+                    onSuccess={fetchLeads}
+                />
             )}
         </div>
     );

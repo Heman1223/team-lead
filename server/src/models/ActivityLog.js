@@ -48,7 +48,10 @@ const activityLogSchema = new mongoose.Schema({
             'lead_restored',
             'lead_escalated',
             'follow_up_scheduled',
-            'follow_up_completed'
+            'follow_up_completed',
+            'meeting_scheduled',
+            'meeting_updated',
+            'meeting_deleted'
         ]
     },
     userId: {
