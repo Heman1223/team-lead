@@ -104,7 +104,7 @@ const sendMeetingInvitation = async (meeting) => {
             throw error;
         }
 
-        const subject = `Meeting Scheduled – ${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
+        const subject = `Meeting Confirmation: ${meeting.title}`;
         const textContent = `Hello ${lead.clientName},\n\nYour meeting is scheduled on ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()} with ${organizer?.name || 'Your Team'} on the topic: ${meeting.title}.\n\nRegards,\n${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
 
         const html = `
@@ -183,7 +183,10 @@ const sendMeetingInvitation = async (meeting) => {
             headers: {
                 'X-Priority': '3',
                 'X-Mailer': 'Avani Enterprises CRM',
-                'Importance': 'normal'
+                'Importance': 'normal',
+                'List-Unsubscribe': '<mailto:noreply@avanienterprises.com?subject=unsubscribe>',
+                'X-MSMail-Priority': 'Normal',
+                'Precedence': 'bulk'
             }
         };
 
