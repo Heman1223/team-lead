@@ -1,25 +1,43 @@
-const sgMail = require('@sendgrid/mail');
+const nodemailer = require('nodemailer');
 const ics = require('ics');
 
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
+// Initialize Nodemailer Transporter for Hostinger
+const transporter = nodemailer.createTransport({
+    host: 'smtp.hostinger.com',
+    port: 465,
+    secure: true, // use TLS
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+});
+
+// Verify connection configuration
+transporter.verify(function (error, success) {
+    if (error) {
+        console.error('❌ SMTP Connection Error:', error);
+    } else {
+        console.log('✅ SMTP Server is ready to take our messages');
+    }
+});
 
 // ... existing functions ...
 
 // Send meeting invitation with .ics attachment
 const sendMeetingInvitation = async (meeting) => {
     try {
-        if (!process.env.SENDGRID_API_KEY) {
-            console.warn('⚠️ SendGrid API key not configured. Skipping email.');
-            return { success: false, error: 'SendGrid not configured' };
-        }
-
+        console.log('📧 Attempting to send meeting invitation for:', meeting._id);
+        
         const lead = meeting.leadId;
-        if (!lead || !lead.email) {
+        if (!lead) {
+            console.warn('⚠️ No lead object found in meeting.');
+            return { success: false, error: 'No lead found' };
+        }
+        if (!lead.email) {
+            console.warn('⚠️ No lead email found for lead:', lead._id || lead);
             return { success: false, error: 'No lead email found' };
         }
+        console.log('📧 Target Email:', lead.email);
 
         const organizer = meeting.organizerId;
         const startTime = new Date(meeting.startTime);
@@ -52,19 +70,21 @@ const sendMeetingInvitation = async (meeting) => {
 
         const { error, value } = ics.createEvent(event);
         if (error) {
-            console.error('ICS creation error:', error);
+            console.error('❌ ICS creation error:', error);
             throw error;
         }
 
         const subject = `Meeting Scheduled – ${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
+        const textContent = `Hello ${lead.clientName},\n\nYour meeting is scheduled on ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()} with ${organizer.name} on the topic: ${meeting.title}.\n\nRegards,\n${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
+        
         const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <div style="background-color: #2563eb; color: white; padding: 20px; text-align: center;">
-                    <h2 style="margin: 0;">Meeting Invitation</h2>
+                    <h2 style="margin: 0;">Meeting Scheduled</h2>
                 </div>
                 <div style="padding: 30px;">
                     <p>Hello ${lead.clientName},</p>
-                    <p>A meeting has been scheduled with our team.</p>
+                    <p>Your meeting is scheduled on this date <strong>${startTime.toLocaleDateString()}</strong> at <strong>${startTime.toLocaleTimeString()}</strong> with <strong>${organizer.name}</strong> on the topic <strong>${meeting.title}</strong>.</p>
                     
                     <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
                         <p style="margin: 5px 0;"><strong>Topic:</strong> ${meeting.title}</p>
@@ -85,28 +105,25 @@ const sendMeetingInvitation = async (meeting) => {
 
         const msg = {
             to: lead.email,
-            from: {
-                email: process.env.SENDGRID_FROM_EMAIL,
-                name: process.env.COMPANY_NAME || 'Avani Enterprises'
-            },
+            from: `"Avani Enterprises" <${process.env.EMAIL_USER}>`,
             subject: subject,
+            text: textContent,
             html: html,
             attachments: [
                 {
-                    content: Buffer.from(value).toString('base64'),
+                    content: value,
                     filename: 'invite.ics',
-                    type: 'text/calendar',
-                    disposition: 'attachment',
-                    contentId: 'invite'
+                    contentType: 'text/calendar'
                 }
             ]
         };
 
-        await sgMail.send(msg);
-        console.log(`✅ Meeting invitation sent to: ${lead.email}`);
+        console.log('📧 Sending email via Nodemailer...');
+        const info = await transporter.sendMail(msg);
+        console.log('✅ Email sent successfully:', info.messageId);
         return { success: true };
     } catch (error) {
-        console.error('❌ Error sending meeting invitation:', error);
+        console.error('❌ Error in sendMeetingInvitation:', error);
         return { success: false, error: error.message };
     }
 };
