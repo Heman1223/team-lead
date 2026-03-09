@@ -4,8 +4,8 @@ const ics = require('ics');
 // Initialize Nodemailer Transporter for Hostinger
 const transporter = nodemailer.createTransport({
     host: 'smtp.hostinger.com',
-    port: 465,
-    secure: true, // use TLS
+    port: 587,
+    secure: false, // true for 465, false for 587 (STARTTLS)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -14,8 +14,8 @@ const transporter = nodemailer.createTransport({
     family: 4,            // Force IPv4 to avoid ENETUNREACH in IPv6 environments like Render
     pool: true,           // Enable connection pooling
     maxConnections: 5,    // Limit the number of connections
-    connectionTimeout: 15000, // 15 seconds
-    greetingTimeout: 15000,   // 15 seconds
+    connectionTimeout: 20000, // 20 seconds
+    greetingTimeout: 20000,   // 20 seconds
     socketTimeout: 30000      // 30 seconds
 });
 
