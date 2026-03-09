@@ -122,10 +122,17 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
                 };
             }
 
-            await meetingsAPI.create(payload);
+            const response = await meetingsAPI.create(payload);
+            
+            // Log email status to browser console
+            console.log('✅ Meeting Created Successfully!');
+            console.log('📧 EMAIL STATUS:', response.data?.emailStatus);
+            console.log('Full Response:', response.data);
+            
             onSuccess();
         } catch (error) {
             console.error('Error creating meeting:', error);
+            console.error('Error Response:', error.response?.data);
             setError(error.response?.data?.message || 'Failed to schedule meeting. Please try again.');
         } finally {
             setLoading(false);

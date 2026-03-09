@@ -3,6 +3,8 @@ const Lead = require('../models/Lead');
 const ActivityLog = require('../models/ActivityLog');
 const { sendMeetingInvitation } = require('../services/emailService');
 
+console.log('✅ 📧 MEETING CONTROLLER LOADED WITH NEW EMAIL STATUS FEATURE - Emails will now be tracked and returned in API response!');
+
 // @desc    Get all meetings
 // @route   GET /api/meetings
 // @access  Private

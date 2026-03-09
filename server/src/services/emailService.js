@@ -50,7 +50,23 @@ transporter.verify(function (error, success) {
 
 // Send meeting invitation with .ics attachment
 const sendMeetingInvitation = async (meeting) => {
+    console.log('\n\n🔴🔴🔴 SEND MEETING INVITATION FUNCTION CALLED 🔴🔴🔴');
+    console.log('Meeting to send invite for:', meeting.title, '| ID:', meeting._id);
     try {
+        // CRITICAL: Verify the transporter connection is still alive before each send
+        console.log('🔍 Verifying SMTP connection before sending...');
+        await new Promise((resolve, reject) => {
+            transporter.verify((error, success) => {
+                if (error) {
+                    console.error('❌ SMTP Connection verification failed:', error.message);
+                    reject(new Error('SMTP connection failed: ' + error.message));
+                } else {
+                    console.log('✅ SMTP Connection verified - ready to send');
+                    resolve(success);
+                }
+            });
+        });
+
         console.log('\n========== 📧 EMAIL SENDING PROCESS STARTED ==========');
         console.log('📧 Meeting ID:', meeting._id);
         console.log('📧 Meeting Title:', meeting.title);
@@ -180,18 +196,29 @@ const sendMeetingInvitation = async (meeting) => {
         console.log('📧 From:', process.env.SENDGRID_FROM_EMAIL);
         console.log('📧 Subject:', subject);
         
-        const info = await transporter.sendMail(msg);
-        console.log('✅ Email sent successfully!');
-        console.log('✅ Message ID:', info.messageId);
-        console.log('========== 📧 EMAIL SENDING PROCESS COMPLETED ==========\n');
-        return { success: true };
+        let info;
+        try {
+            info = await transporter.sendMail(msg);
+            console.log('✅ Email sent successfully!');
+            console.log('✅ Message ID:', info.messageId);
+            console.log('✅ Full SendGrid Response:', JSON.stringify(info, null, 2));
+            console.log('========== 📧 EMAIL SENDING PROCESS COMPLETED ==========\n');
+            return { success: true, messageId: info.messageId, response: info };
+        } catch (sendError) {
+            console.error('\n❌ SENDMAIL ERROR (Critical):');
+            console.error('❌ Error message:', sendError.message);
+            console.error('❌ Error code:', sendError.code);
+            console.error('❌ Error response:', sendError.response);
+            console.error('❌ Full error object:', JSON.stringify(sendError, null, 2));
+            throw sendError; // Re-throw to outer catch block
+        }
     } catch (error) {
         console.error('\n❌ ERROR in sendMeetingInvitation:');
         console.error('❌ Error message:', error.message);
         console.error('❌ Error code:', error.code);
         console.error('❌ Full error:', error);
         console.error('========== 📧 EMAIL SENDING PROCESS FAILED ==========\n');
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, fullError: error };
     }
 };
 
