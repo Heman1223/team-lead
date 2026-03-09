@@ -51,22 +51,41 @@ transporter.verify(function (error, success) {
 // Send meeting invitation with .ics attachment
 const sendMeetingInvitation = async (meeting) => {
     try {
-        console.log('📧 Attempting to send meeting invitation for:', meeting._id);
+        console.log('\n========== 📧 EMAIL SENDING PROCESS STARTED ==========');
+        console.log('📧 Meeting ID:', meeting._id);
+        console.log('📧 Meeting Title:', meeting.title);
+        console.log('📧 Full meeting object keys:', Object.keys(meeting));
 
         const lead = meeting.leadId;
+        console.log('📧 Lead object:', lead);
+        console.log('📧 Lead type:', typeof lead);
+        console.log('📧 Lead is null?:', lead === null);
+        console.log('📧 Lead is undefined?:', lead === undefined);
+        
         if (!lead) {
             console.warn('⚠️ No lead object found in meeting.');
             return { success: false, error: 'No lead found' };
         }
+        
+        console.log('📧 Lead email:', lead.email);
+        console.log('📧 Lead clientName:', lead.clientName);
+        
         if (!lead.email) {
-            console.warn('⚠️ No lead email found for lead:', lead._id || lead);
+            console.warn('⚠️ No lead email found. Lead object:', lead);
             return { success: false, error: 'No lead email found' };
         }
-        console.log('📧 Target Email:', lead.email);
+        
+        console.log('✅ Lead validation passed. Email:', lead.email);
 
         const organizer = meeting.organizerId;
+        console.log('📧 Organizer:', organizer);
+        console.log('📧 Organizer name:', organizer?.name);
+        console.log('📧 Organizer email:', organizer?.email);
+        
         const startTime = new Date(meeting.startTime);
         const endTime = new Date(meeting.endTime);
+        console.log('📧 Start time:', startTime);
+        console.log('📧 End time:', endTime);
 
         // Create .ics file
         const event = {
@@ -150,12 +169,28 @@ const sendMeetingInvitation = async (meeting) => {
             ]
         };
 
-        console.log('📧 Sending email via Nodemailer...');
+        console.log('📧 Message object created:');
+        console.log('  - To:', msg.to);
+        console.log('  - From:', msg.from);
+        console.log('  - Subject:', msg.subject);
+        console.log('  - Has HTML:', !!msg.html);
+        console.log('  - Has attachment:', msg.attachments?.length > 0);
+
+        console.log('📧 Sending email via Nodemailer to:', lead.email);
+        console.log('📧 From:', process.env.SENDGRID_FROM_EMAIL);
+        console.log('📧 Subject:', subject);
+        
         const info = await transporter.sendMail(msg);
-        console.log('✅ Email sent successfully:', info.messageId);
+        console.log('✅ Email sent successfully!');
+        console.log('✅ Message ID:', info.messageId);
+        console.log('========== 📧 EMAIL SENDING PROCESS COMPLETED ==========\n');
         return { success: true };
     } catch (error) {
-        console.error('❌ Error in sendMeetingInvitation:', error);
+        console.error('\n❌ ERROR in sendMeetingInvitation:');
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error code:', error.code);
+        console.error('❌ Full error:', error);
+        console.error('========== 📧 EMAIL SENDING PROCESS FAILED ==========\n');
         return { success: false, error: error.message };
     }
 };

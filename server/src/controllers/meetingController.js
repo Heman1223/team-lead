@@ -171,12 +171,21 @@ const createMeeting = async (req, res) => {
         }
 
         // Send Email Invitation
+        console.log('📋 Meeting created. Checking if email should be sent...');
+        console.log('📋 populatedMeeting.leadId:', populatedMeeting.leadId?._id || 'NOT SET');
+        console.log('📋 populatedMeeting.leadId.email:', populatedMeeting.leadId?.email || 'NO EMAIL');
+        
         if (populatedMeeting.leadId && populatedMeeting.leadId.email) {
+            console.log('✅ Conditions met. Attempting to send email...');
             try {
-                await sendMeetingInvitation(populatedMeeting);
+                const result = await sendMeetingInvitation(populatedMeeting);
+                console.log('📧 Email function result:', result);
             } catch (emailErr) {
-                console.error('Failed to send meeting invitation email:', emailErr);
+                console.error('❌ Failed to send meeting invitation email:', emailErr.message);
+                console.error('Full error:', emailErr);
             }
+        } else {
+            console.warn('⚠️ Email NOT sent - Missing lead or lead email. leadId:', populatedMeeting.leadId?._id, 'email:', populatedMeeting.leadId?.email);
         }
 
         res.status(201).json({
