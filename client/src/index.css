@@ -674,6 +674,57 @@ tr:last-child td {
   }
 }
 
+/* FullCalendar Responsive Overrides */
+.fc .fc-toolbar {
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .fc .fc-toolbar {
+    flex-direction: row;
+    gap: 1rem;
+  }
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .fc .fc-toolbar-title {
+    font-size: 1.1rem !important;
+  }
+  
+  .fc .fc-button {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .fc .fc-header-toolbar {
+    margin-bottom: 1rem !important;
+  }
+}
+
+.fc .fc-view-harness {
+  background-color: white;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+/* Adjust list view for mobile */
+.fc-list-event-title a {
+  color: #3E2723 !important;
+  font-weight: 600 !important;
+}
+
+.fc-list-day-cushion {
+  background-color: #f8fafc !important;
+}
+
 /* ========================================
    TASK PAGE UI ENHANCEMENTS
    ======================================== */

@@ -18,6 +18,15 @@ const CalendarPage = () => {
     const [selectedMeeting, setSelectedMeeting] = useState(null);
     const [selectedDate, setSelectedDate] = useState(null);
     const [rescheduleData, setRescheduleData] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         fetchMeetings();
@@ -83,22 +92,22 @@ const CalendarPage = () => {
 
     return (
         <Layout>
-            <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
+            <div className="max-w-7xl mx-auto p-4 md:p-6 min-h-screen">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Meeting Calendar</h1>
-                        <p className="text-gray-500 text-sm">Schedule and manage meetings with leads and clients</p>
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Meeting Calendar</h1>
+                        <p className="text-gray-500 text-xs md:text-sm">Schedule and manage meetings with leads and clients</p>
                     </div>
                     <button
                         onClick={() => setIsScheduleModalOpen(true)}
-                        className="bg-[#3E2723] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-[#2D1C1B] transition-colors shadow-lg"
+                        className="w-full sm:w-auto max-w-xs sm:max-w-none bg-[#3E2723] text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#2D1C1B] transition-all shadow-lg text-sm md:text-base font-semibold"
                     >
-                        <Plus size={20} />
+                        <Plus size={18} />
                         Schedule Meeting
                     </button>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                <div className={`bg-white rounded-2xl shadow-xl border border-gray-100 ${isMobile ? 'p-3 mx-auto max-w-[360px]' : 'p-6'}`}>
                     {loading ? (
                         <div className="h-[600px] flex items-center justify-center">
                             <Loader2 className="w-8 h-8 animate-spin text-[#3E2723]" />
@@ -106,8 +115,12 @@ const CalendarPage = () => {
                     ) : (
                         <FullCalendar
                             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-                            initialView="dayGridMonth"
-                            headerToolbar={{
+                            initialView={isMobile ? "listWeek" : "dayGridMonth"}
+                            headerToolbar={isMobile ? {
+                                left: 'prev,next',
+                                center: 'title',
+                                right: 'listWeek,dayGridMonth'
+                            } : {
                                 left: 'prev,next today',
                                 center: 'title',
                                 right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
@@ -121,7 +134,7 @@ const CalendarPage = () => {
                             dateClick={handleDateClick}
                             eventClick={handleEventClick}
                             eventDrop={handleEventDrop}
-                            height="700px"
+                            height={isMobile ? "auto" : "700px"}
                             eventTimeFormat={{
                                 hour: 'numeric',
                                 minute: '2-digit',
@@ -131,7 +144,7 @@ const CalendarPage = () => {
                     )}
                 </div>
 
-                <div className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 max-w-[360px] sm:max-w-none mx-auto sm:mx-0">
                     {[
                         { label: 'Upcoming', color: 'bg-[#2563eb]' },
                         { label: 'Ongoing', color: 'bg-[#9333ea]' },
