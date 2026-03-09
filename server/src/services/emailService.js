@@ -10,6 +10,13 @@ const transporter = nodemailer.createTransport({
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
+    // Render/Infrastructure Fixes
+    family: 4,            // Force IPv4 to avoid ENETUNREACH in IPv6 environments like Render
+    pool: true,           // Enable connection pooling
+    maxConnections: 5,    // Limit the number of connections
+    connectionTimeout: 15000, // 15 seconds
+    greetingTimeout: 15000,   // 15 seconds
+    socketTimeout: 30000      // 30 seconds
 });
 
 // Verify connection configuration
