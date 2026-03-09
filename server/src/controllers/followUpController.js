@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const ActivityLog = require('../models/ActivityLog');
 const Notification = require('../models/Notification');
-const { sendFollowUpCreatedEmail } = require('../services/emailService');
+// Email notifications handled by emailService (only sendMeetingInvitation implemented)
 
 // @desc    Get all follow-ups (role-based filtering)
 // @route   GET /api/follow-ups
@@ -182,13 +182,8 @@ const createFollowUp = async (req, res) => {
             .populate('leadId', 'clientName email phone')
             .populate('assignedTo', 'name email');
 
-        // Send email notification for follow-up creation
-        try {
-            await sendFollowUpCreatedEmail(populatedFollowUp, lead, req.user);
-        } catch (emailError) {
-            console.error('Email notification failed:', emailError);
-            // Continue even if email fails
-        }
+        // Email notification for follow-up creation - not yet implemented
+        // TODO: Implement sendFollowUpCreatedEmail using SendGrid Web API
 
         console.log('=== FOLLOW-UP CREATED SUCCESSFULLY ===');
         res.status(201).json({

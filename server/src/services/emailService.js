@@ -1,50 +1,39 @@
-const nodemailer = require('nodemailer');
 const ics = require('ics');
-const dns = require('dns');
+const sgMail = require('@sendgrid/mail');
 
-// Force IPv4 globally to ensure reliable connections on Render
-dns.setDefaultResultOrder('ipv4first');
-
-// Initialize Nodemailer Transporter with SendGrid
-console.log('🔧 Initializing SendGrid SMTP Configuration...');
+// Use SendGrid Web API instead of SMTP (Render blocks port 587)
+console.log('🔧 Initializing SendGrid Web API Configuration...');
 
 if (!process.env.SENDGRID_API_KEY) {
     console.error('❌ SENDGRID_API_KEY is not set in environment variables!');
     console.error('❌ Email functionality will not work!');
 }
 
-const transporterConfig = {
-    host: 'smtp.sendgrid.net',
-    port: 587,
-    secure: false, // use TLS
-    auth: {
-        user: 'apikey', // SendGrid requires the literal string 'apikey'
-        pass: process.env.SENDGRID_API_KEY,
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'noreply@avanienterprises.com';
+
+// Initialize SendGrid API
+sgMail.setApiKey(SENDGRID_API_KEY);
+
+console.log('✅ SendGrid Web API is configured and ready');
+
+// Helper function to send email via SendGrid Web API
+const sendViaAPI = async (mailData) => {
+    try {
+        console.log('📧 Sending via SendGrid HTTP API (Port 443)...');
+        
+        const response = await sgMail.send(mailData);
+        
+        console.log('✅ SendGrid API Response Status:', response[0].statusCode);
+        return { success: true, messageId: response[0].headers['x-message-id'], response: response[0] };
+    } catch (error) {
+        console.error('❌ SendGrid API Error:', error.message);
+        if (error.response?.body) {
+            console.error('❌ SendGrid Error Details:', error.response.body);
+        }
+        throw error;
     }
 };
-
-const transporter = nodemailer.createTransport({
-    ...transporterConfig,
-    // Render/Infrastructure Fixes
-    family: 4,            // Force IPv4 locally
-    pool: true,           // Enable connection pooling
-    maxConnections: 5,    // Limit the number of connections
-    connectionTimeout: 20000, // 20 seconds
-    greetingTimeout: 20000,   // 20 seconds
-    socketTimeout: 30000,      // 30 seconds
-    tls: {
-        rejectUnauthorized: false
-    }
-});
-
-// Verify connection configuration
-transporter.verify(function (error, success) {
-    if (error) {
-        console.error('❌ SMTP Connection Error:', error);
-    } else {
-        console.log('✅ SMTP Server is ready to take our messages');
-    }
-});
 
 // ... existing functions ...
 
@@ -53,48 +42,22 @@ const sendMeetingInvitation = async (meeting) => {
     console.log('\n\n🔴🔴🔴 SEND MEETING INVITATION FUNCTION CALLED 🔴🔴🔴');
     console.log('Meeting to send invite for:', meeting.title, '| ID:', meeting._id);
     try {
-        // CRITICAL: Verify the transporter connection is still alive before each send
-        console.log('🔍 Verifying SMTP connection before sending...');
-        await new Promise((resolve, reject) => {
-            transporter.verify((error, success) => {
-                if (error) {
-                    console.error('❌ SMTP Connection verification failed:', error.message);
-                    reject(new Error('SMTP connection failed: ' + error.message));
-                } else {
-                    console.log('✅ SMTP Connection verified - ready to send');
-                    resolve(success);
-                }
-            });
-        });
-
         console.log('\n========== 📧 EMAIL SENDING PROCESS STARTED ==========');
         console.log('📧 Meeting ID:', meeting._id);
         console.log('📧 Meeting Title:', meeting.title);
-        console.log('📧 Full meeting object keys:', Object.keys(meeting));
 
         const lead = meeting.leadId;
-        console.log('📧 Lead object:', lead);
-        console.log('📧 Lead type:', typeof lead);
-        console.log('📧 Lead is null?:', lead === null);
-        console.log('📧 Lead is undefined?:', lead === undefined);
+        console.log('📧 Lead email:', lead?.email);
+        console.log('📧 Lead clientName:', lead?.clientName);
         
-        if (!lead) {
-            console.warn('⚠️ No lead object found in meeting.');
-            return { success: false, error: 'No lead found' };
-        }
-        
-        console.log('📧 Lead email:', lead.email);
-        console.log('📧 Lead clientName:', lead.clientName);
-        
-        if (!lead.email) {
-            console.warn('⚠️ No lead email found. Lead object:', lead);
+        if (!lead || !lead.email) {
+            console.warn('⚠️ No lead or lead email found.');
             return { success: false, error: 'No lead email found' };
         }
         
         console.log('✅ Lead validation passed. Email:', lead.email);
 
         const organizer = meeting.organizerId;
-        console.log('📧 Organizer:', organizer);
         console.log('📧 Organizer name:', organizer?.name);
         console.log('📧 Organizer email:', organizer?.email);
         
@@ -120,7 +83,7 @@ const sendMeetingInvitation = async (meeting) => {
             description: meeting.description || meeting.agenda || 'Meeting scheduled via CRM',
             status: 'CONFIRMED',
             busyStatus: 'BUSY',
-            organizer: { name: organizer?.name || 'Team', email: organizer?.email || process.env.SENDGRID_FROM_EMAIL || 'no-reply@avani.com' },
+            organizer: { name: organizer?.name || 'Team', email: organizer?.email || SENDGRID_FROM_EMAIL },
             attendees: [
                 { name: lead.clientName, email: lead.email, rsvp: true, partstat: 'NEEDS-ACTION', role: 'REQ-PARTICIPANT' }
             ]
@@ -170,52 +133,51 @@ const sendMeetingInvitation = async (meeting) => {
             </div>
         `;
 
-        const msg = {
+        // Convert ICS to Base64 for SendGrid API
+        const icsBase64 = Buffer.from(value).toString('base64');
+
+        // SendGrid API format for mail sending (@sendgrid/mail SDK)
+        const mailData = {
             to: lead.email,
-            from: `"${process.env.COMPANY_NAME || 'Avani Enterprises'}" <${process.env.SENDGRID_FROM_EMAIL}>`,
+            from: {
+                email: SENDGRID_FROM_EMAIL,
+                name: process.env.COMPANY_NAME || 'Avani Enterprises'
+            },
             subject: subject,
             text: textContent,
             html: html,
             attachments: [
                 {
-                    content: value,
+                    content: icsBase64,
                     filename: 'invite.ics',
-                    contentType: 'text/calendar'
+                    type: 'text/calendar'
                 }
             ]
         };
 
         console.log('📧 Message object created:');
-        console.log('  - To:', msg.to);
-        console.log('  - From:', msg.from);
-        console.log('  - Subject:', msg.subject);
-        console.log('  - Has HTML:', !!msg.html);
-        console.log('  - Has attachment:', msg.attachments?.length > 0);
+        console.log('  - To:', lead.email);
+        console.log('  - From:', SENDGRID_FROM_EMAIL);
+        console.log('  - Subject:', subject);
+        console.log('  - Has HTML:', !!mailData.content);
+        console.log('  - Has attachment:', mailData.attachments?.length > 0);
 
-        console.log('📧 Sending email via Nodemailer to:', lead.email);
-        console.log('📧 From:', process.env.SENDGRID_FROM_EMAIL);
-        console.log('📧 Subject:', subject);
+        console.log('📧 Sending email via SendGrid Web API to:', lead.email);
         
-        let info;
-        try {
-            info = await transporter.sendMail(msg);
-            console.log('✅ Email sent successfully!');
-            console.log('✅ Message ID:', info.messageId);
-            console.log('✅ Full SendGrid Response:', JSON.stringify(info, null, 2));
-            console.log('========== 📧 EMAIL SENDING PROCESS COMPLETED ==========\n');
-            return { success: true, messageId: info.messageId, response: info };
-        } catch (sendError) {
-            console.error('\n❌ SENDMAIL ERROR (Critical):');
-            console.error('❌ Error message:', sendError.message);
-            console.error('❌ Error code:', sendError.code);
-            console.error('❌ Error response:', sendError.response);
-            console.error('❌ Full error object:', JSON.stringify(sendError, null, 2));
-            throw sendError; // Re-throw to outer catch block
-        }
+        const result = await sendViaAPI(mailData);
+        console.log('✅ Email sent successfully!');
+        console.log('✅ Message ID:', result.messageId);
+        console.log('✅ Response Status:', result.response.status);
+        console.log('========== 📧 EMAIL SENDING PROCESS COMPLETED ==========\n');
+        return { success: true, messageId: result.messageId, response: result.response };
+        
     } catch (error) {
         console.error('\n❌ ERROR in sendMeetingInvitation:');
         console.error('❌ Error message:', error.message);
         console.error('❌ Error code:', error.code);
+        if (error.response?.data) {
+            console.error('❌ SendGrid API Error:', error.response.data);
+        }
         console.error('❌ Full error:', error);
         console.error('========== 📧 EMAIL SENDING PROCESS FAILED ==========\n');
         return { success: false, error: error.message, fullError: error };

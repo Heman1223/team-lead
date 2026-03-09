@@ -4,7 +4,7 @@ const Team = require('../models/Team');
 const Task = require('../models/Task');
 const ActivityLog = require('../models/ActivityLog');
 const FollowUp = require('../models/FollowUp');
-const { sendLeadStatusChangeEmail } = require('../services/emailService');
+// Email notifications handled by emailService (only sendMeetingInvitation implemented)
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
@@ -299,13 +299,8 @@ const updateLead = async (req, res) => {
                 await leadDoc.save();
             }
 
-            // Send email notification for status change
-            try {
-                await sendLeadStatusChangeEmail(lead, oldStatus, newStatus, req.user);
-            } catch (emailError) {
-                console.error('Email notification failed:', emailError);
-                // Continue even if email fails
-            }
+            // Email notification for status change - not yet implemented
+            // TODO: Implement sendLeadStatusChangeEmail using SendGrid Web API
         } else {
             // General update log
             await ActivityLog.create({
