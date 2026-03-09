@@ -175,22 +175,33 @@ const createMeeting = async (req, res) => {
         console.log('📋 populatedMeeting.leadId:', populatedMeeting.leadId?._id || 'NOT SET');
         console.log('📋 populatedMeeting.leadId.email:', populatedMeeting.leadId?.email || 'NO EMAIL');
         
+        let emailStatus = { sent: false, reason: 'No lead or email' };
+        
         if (populatedMeeting.leadId && populatedMeeting.leadId.email) {
             console.log('✅ Conditions met. Attempting to send email...');
             try {
-                const result = await sendMeetingInvitation(populatedMeeting);
-                console.log('📧 Email function result:', result);
+                const emailResult = await sendMeetingInvitation(populatedMeeting);
+                emailStatus = { sent: emailResult.success, result: emailResult };
+                console.log('📧 Email result:', emailResult);
             } catch (emailErr) {
                 console.error('❌ Failed to send meeting invitation email:', emailErr.message);
                 console.error('Full error:', emailErr);
+                emailStatus = { sent: false, error: emailErr.message };
             }
         } else {
             console.warn('⚠️ Email NOT sent - Missing lead or lead email. leadId:', populatedMeeting.leadId?._id, 'email:', populatedMeeting.leadId?.email);
+            emailStatus = { 
+                sent: false, 
+                reason: 'Missing lead or lead email',
+                leadId: populatedMeeting.leadId?._id,
+                email: populatedMeeting.leadId?.email
+            };
         }
 
         res.status(201).json({
             success: true,
-            data: populatedMeeting
+            data: populatedMeeting,
+            emailStatus: emailStatus
         });
     } catch (error) {
         console.error('Create meeting error:', error);
