@@ -1,5 +1,9 @@
 const nodemailer = require('nodemailer');
 const ics = require('ics');
+const dns = require('dns');
+
+// Force IPv4 globally for this service to fix Render ENETUNREACH (IPv6) issues with Hostinger
+dns.setDefaultResultOrder('ipv4first');
 
 // Initialize Nodemailer Transporter
 // Check whether to use SendGrid or Hostinger/Gmail based on environment variables
@@ -34,12 +38,15 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
 const transporter = nodemailer.createTransport({
     ...transporterConfig,
     // Render/Infrastructure Fixes
-    family: 4,            // Force IPv4 to avoid ENETUNREACH in IPv6 environments like Render
+    family: 4,            // Force IPv4 locally
     pool: true,           // Enable connection pooling
     maxConnections: 5,    // Limit the number of connections
     connectionTimeout: 20000, // 20 seconds
     greetingTimeout: 20000,   // 20 seconds
-    socketTimeout: 30000      // 30 seconds
+    socketTimeout: 30000,      // 30 seconds
+    tls: {
+        rejectUnauthorized: false
+    }
 });
 
 // Verify connection configuration
