@@ -159,7 +159,7 @@ const sendMeetingInvitation = async (meeting) => {
         console.log('  - To:', lead.email);
         console.log('  - From:', SENDGRID_FROM_EMAIL);
         console.log('  - Subject:', subject);
-        console.log('  - Has HTML:', !!mailData.content);
+        console.log('  - Has HTML:', !!mailData.html);
         console.log('  - Has attachment:', mailData.attachments?.length > 0);
 
         console.log('📧 Sending email via SendGrid Web API to:', lead.email);
