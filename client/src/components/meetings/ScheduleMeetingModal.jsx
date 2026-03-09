@@ -9,14 +9,14 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
     const [teamMembers, setTeamMembers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    
+
     // Lead Selection States
     const [searchLead, setSearchLead] = useState('');
     const [selectedLead, setSelectedLead] = useState(null);
     const [isNewLead, setIsNewLead] = useState(false);
     const [leadEmail, setLeadEmail] = useState('');
     const [showLeadDropdown, setShowLeadDropdown] = useState(false);
-    
+
     // Member Selection States
     const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
@@ -74,9 +74,12 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
     const fetchLeads = async () => {
         try {
             const response = await leadsAPI.getAll();
-            setLeads(response.data.data);
+            console.log('Meeting Modal fetched leads:', response.data);
+            const leadsData = response.data?.data || response.data || [];
+            setLeads(Array.isArray(leadsData) ? leadsData : []);
         } catch (error) {
-            console.error('Error fetching leads:', error);
+            console.error('Error fetching leads for meeting schedule:', error);
+            setError('Failed to load clients/leads for scheduling. Refresh and try again.');
         }
     };
 
@@ -109,7 +112,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
         try {
             setLoading(true);
             setError(null);
-            
+
             const payload = { ...formData };
             if (isNewLead) {
                 payload.leadId = null;
@@ -129,7 +132,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
         }
     };
 
-    const filteredLeads = leads.filter(lead => 
+    const filteredLeads = leads.filter(lead =>
         (lead.clientName || '').toLowerCase().includes(searchLead.toLowerCase())
     );
 
@@ -198,15 +201,15 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
                                     }}
                                 />
                                 {searchLead && (
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         onClick={() => { setSearchLead(''); setSelectedLead(null); setLeadEmail(''); setIsNewLead(false); }}
                                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
                                     >
                                         <X size={14} />
                                     </button>
                                 )}
-                                
+
                                 {showLeadDropdown && (
                                     <div className="absolute z-[70] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                         <div className="max-h-48 overflow-y-auto scrollbar-thin">
@@ -228,7 +231,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
                                                     <span className="text-xs text-gray-400">{lead.email || 'No email provided'}</span>
                                                 </button>
                                             ))}
-                                            
+
                                             {searchLead.length > 0 && !filteredLeads.some(l => (l.clientName || '').toLowerCase() === searchLead.toLowerCase()) && (
                                                 <button
                                                     type="button"
@@ -249,10 +252,16 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
                                                     </div>
                                                 </button>
                                             )}
-                                            
+
+                                            {filteredLeads.length === 0 && searchLead.length > 0 && !isNewLead && (
+                                                <div className="p-4 text-center text-gray-400 text-sm">
+                                                    No matches found for "{searchLead}". Create a new lead above.
+                                                </div>
+                                            )}
+
                                             {filteredLeads.length === 0 && searchLead.length === 0 && (
                                                 <div className="p-8 text-center text-gray-400 text-sm italic">
-                                                    Start typing to search leads...
+                                                    {leads.length === 0 ? "No leads available yet." : "Loading leads..."}
                                                 </div>
                                             )}
                                         </div>
@@ -269,11 +278,10 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
                                     type="email"
                                     placeholder="client@email.com"
                                     disabled={!isNewLead && selectedLead}
-                                    className={`w-full px-4 py-3 border rounded-xl outline-none transition-all ${
-                                        !isNewLead && selectedLead 
-                                        ? 'bg-gray-100 border-gray-100 text-gray-500 cursor-not-allowed' 
+                                    className={`w-full px-4 py-3 border rounded-xl outline-none transition-all ${!isNewLead && selectedLead
+                                        ? 'bg-gray-100 border-gray-100 text-gray-500 cursor-not-allowed'
                                         : 'bg-gray-50 border-gray-100 focus:ring-2 focus:ring-[#3E2723]/20 focus:border-[#3E2723] text-gray-700'
-                                    }`}
+                                        }`}
                                     value={leadEmail}
                                     onChange={(e) => setLeadEmail(e.target.value)}
                                 />
@@ -390,11 +398,10 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onSuccess, initialDate, initial
                                                     key={member._id}
                                                     type="button"
                                                     onClick={() => toggleParticipant(member._id)}
-                                                    className={`px-3 py-2 rounded-xl text-left text-xs font-bold transition-all ${
-                                                        formData.participants.includes(member._id)
-                                                            ? 'bg-[#3E2723] text-white shadow-md'
-                                                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                                                    }`}
+                                                    className={`px-3 py-2 rounded-xl text-left text-xs font-bold transition-all ${formData.participants.includes(member._id)
+                                                        ? 'bg-[#3E2723] text-white shadow-md'
+                                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                                        }`}
                                                 >
                                                     {member.name}
                                                     <div className={`text-[9px] uppercase tracking-wider ${formData.participants.includes(member._id) ? 'text-white/70' : 'text-gray-400'}`}>

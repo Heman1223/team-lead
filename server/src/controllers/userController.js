@@ -17,7 +17,7 @@ const getUsers = async (req, res) => {
                 // Return users in any team where current user is lead
                 const managedTeams = await Team.find({ leadId: req.user._id });
                 const managedTeamIds = managedTeams.map(t => t._id);
-                
+
                 // Also include the team they belong to
                 if (req.user.teamId && !managedTeamIds.some(id => id.toString() === req.user.teamId.toString())) {
                     managedTeamIds.push(req.user.teamId);
@@ -126,6 +126,14 @@ const createUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Create user error:', error);
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: messages.join(', ')
+            });
+        }
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };

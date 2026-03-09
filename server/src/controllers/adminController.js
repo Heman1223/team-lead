@@ -177,6 +177,16 @@ const createUser = async (req, res) => {
         console.error('=== CREATE USER ERROR ===');
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
+
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: messages.join(', ')
+            });
+        }
+
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };

@@ -47,6 +47,14 @@ const register = async (req, res) => {
         });
     } catch (error) {
         console.error('Register error:', error);
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: messages.join(', ')
+            });
+        }
         res.status(500).json({ success: false, message: 'Server error during registration', error: error.message });
     }
 };
@@ -95,8 +103,8 @@ const login = async (req, res) => {
         const isMatch = await user.matchPassword(password);
         if (!isMatch) {
             console.log('Password mismatch for user:', email);
-            return res.status(401).json({ 
-                success: false, 
+            return res.status(401).json({
+                success: false,
                 message: 'Invalid credentials',
                 debug: {
                     storedHash: user.password,
@@ -134,10 +142,10 @@ const login = async (req, res) => {
     } catch (error) {
         console.error('❌ Login error:', error.message);
         console.error('Stack trace:', error.stack);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Server error during login', 
-            error: error.message 
+        res.status(500).json({
+            success: false,
+            message: 'Server error during login',
+            error: error.message
         });
     }
 };

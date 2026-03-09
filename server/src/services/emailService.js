@@ -1,15 +1,38 @@
 const nodemailer = require('nodemailer');
 const ics = require('ics');
 
-// Initialize Nodemailer Transporter for Hostinger
+// Initialize Nodemailer Transporter
+// Check whether to use SendGrid or Hostinger/Gmail based on environment variables
+let transporterConfig;
+
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    // If explicit Email & Password are provided (e.g., Hostinger, Gmail)
+    console.log('Using SMTP Configuration from EMAIL_USER');
+    transporterConfig = {
+        host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+        port: process.env.SMTP_PORT || 587,
+        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        }
+    };
+} else {
+    // Fallback to SendGrid via its apikey if no explicit email configured
+    console.log('Using SendGrid Configuration');
+    transporterConfig = {
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        secure: false, // use TLS
+        auth: {
+            user: 'apikey', // SendGrid requires the literal string 'apikey'
+            pass: process.env.SENDGRID_API_KEY,
+        }
+    };
+}
+
 const transporter = nodemailer.createTransport({
-    host: 'smtp.hostinger.com',
-    port: 587,
-    secure: false, // true for 465, false for 587 (STARTTLS)
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
+    ...transporterConfig,
     // Render/Infrastructure Fixes
     family: 4,            // Force IPv4 to avoid ENETUNREACH in IPv6 environments like Render
     pool: true,           // Enable connection pooling
@@ -34,7 +57,7 @@ transporter.verify(function (error, success) {
 const sendMeetingInvitation = async (meeting) => {
     try {
         console.log('📧 Attempting to send meeting invitation for:', meeting._id);
-        
+
         const lead = meeting.leadId;
         if (!lead) {
             console.warn('⚠️ No lead object found in meeting.');
@@ -59,21 +82,28 @@ const sendMeetingInvitation = async (meeting) => {
                 startTime.getHours(),
                 startTime.getMinutes()
             ],
-            duration: { 
-                hours: Math.floor((endTime - startTime) / (1000 * 60 * 60)), 
-                minutes: Math.floor(((endTime - startTime) / (1000 * 60)) % 60) 
+            duration: {
+                hours: Math.floor((endTime - startTime) / (1000 * 60 * 60)),
+                minutes: Math.floor(((endTime - startTime) / (1000 * 60)) % 60)
             },
             title: meeting.title,
             description: meeting.description || meeting.agenda || 'Meeting scheduled via CRM',
-            location: meeting.location || (meeting.type === 'online' ? meeting.meetingLink : 'Offline'),
-            url: meeting.meetingLink,
             status: 'CONFIRMED',
             busyStatus: 'BUSY',
-            organizer: { name: organizer.name, email: organizer.email || process.env.SENDGRID_FROM_EMAIL },
+            organizer: { name: organizer.name, email: organizer.email || process.env.SENDGRID_FROM_EMAIL || 'no-reply@avani.com' },
             attendees: [
                 { name: lead.clientName, email: lead.email, rsvp: true, partstat: 'NEEDS-ACTION', role: 'REQ-PARTICIPANT' }
             ]
         };
+
+        if (meeting.meetingLink && meeting.meetingLink.trim() !== '') {
+            event.url = meeting.meetingLink;
+        }
+
+        const locationStr = meeting.location || (meeting.type === 'online' ? meeting.meetingLink : 'Offline');
+        if (locationStr && locationStr.trim() !== '') {
+            event.location = locationStr;
+        }
 
         const { error, value } = ics.createEvent(event);
         if (error) {
@@ -83,7 +113,7 @@ const sendMeetingInvitation = async (meeting) => {
 
         const subject = `Meeting Scheduled – ${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
         const textContent = `Hello ${lead.clientName},\n\nYour meeting is scheduled on ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()} with ${organizer.name} on the topic: ${meeting.title}.\n\nRegards,\n${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
-        
+
         const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <div style="background-color: #2563eb; color: white; padding: 20px; text-align: center;">
@@ -112,7 +142,9 @@ const sendMeetingInvitation = async (meeting) => {
 
         const msg = {
             to: lead.email,
-            from: `"Avani Enterprises" <${process.env.EMAIL_USER}>`,
+            from: process.env.EMAIL_USER
+                ? `"Avani Enterprises" <${process.env.EMAIL_USER}>`
+                : `"Avani Enterprises" <${process.env.SENDGRID_FROM_EMAIL || 'no-reply@avani.com'}>`,
             subject: subject,
             text: textContent,
             html: html,
