@@ -108,27 +108,50 @@ const sendMeetingInvitation = async (meeting) => {
         const textContent = `Hello ${lead.clientName},\n\nYour meeting is scheduled on ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()} with ${organizer?.name || 'Your Team'} on the topic: ${meeting.title}.\n\nRegards,\n${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
 
         const html = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-                <div style="background-color: #2563eb; color: white; padding: 20px; text-align: center;">
-                    <h2 style="margin: 0;">Meeting Scheduled</h2>
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+                <div style="background-color: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                    <h2 style="margin: 0; font-size: 24px;">Meeting Scheduled</h2>
                 </div>
-                <div style="padding: 30px;">
-                    <p>Hello ${lead.clientName},</p>
-                    <p>Your meeting is scheduled on this date <strong>${startTime.toLocaleDateString()}</strong> at <strong>${startTime.toLocaleTimeString()}</strong> with <strong>${organizer?.name || 'Your Team'}</strong> on the topic <strong>${meeting.title}</strong>.</p>
+                <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;">
+                    <p style="font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">Hello ${lead.clientName},</p>
                     
-                    <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 5px 0;"><strong>Topic:</strong> ${meeting.title}</p>
-                        <p style="margin: 5px 0;"><strong>Date:</strong> ${startTime.toLocaleDateString()}</p>
-                        <p style="margin: 5px 0;"><strong>Time:</strong> ${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()}</p>
-                        ${meeting.type === 'online' ? `<p style="margin: 5px 0;"><strong>Meeting Link:</strong> <a href="${meeting.meetingLink}" style="color: #2563eb;">Join Meeting</a></p>` : `<p style="margin: 5px 0;"><strong>Location:</strong> ${meeting.location}</p>`}
+                    <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">Your meeting has been scheduled with us. Here are the details:</p>
+                    
+                    <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #1f2937;">Topic:</td>
+                                <td style="padding: 8px 0; text-align: right;">${meeting.title}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #1f2937;">Date:</td>
+                                <td style="padding: 8px 0; text-align: right;">${startTime.toLocaleDateString()}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #1f2937;">Time:</td>
+                                <td style="padding: 8px 0; text-align: right;">${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #1f2937;">With:</td>
+                                <td style="padding: 8px 0; text-align: right;">${organizer?.name || 'Your Team'}</td>
+                            </tr>
+                            ${meeting.type === 'online' ? `<tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #1f2937;">Location:</td>
+                                <td style="padding: 8px 0; text-align: right;"><a href="${meeting.meetingLink}" style="color: #2563eb; text-decoration: none; font-weight: 600;">Join Video Call</a></td>
+                            </tr>` : `<tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #1f2937;">Location:</td>
+                                <td style="padding: 8px 0; text-align: right;">${meeting.location || 'In-Person'}</td>
+                            </tr>`}
+                        </table>
                     </div>
                     
-                    <p>Please join at the scheduled time. You can also find an invitation file attached to add this to your calendar.</p>
+                    <p style="font-size: 14px; line-height: 1.6; margin: 20px 0; color: #555;">Please find the meeting invitation attached (invite.ics file) which you can add to your calendar application.</p>
                     
-                    <p style="margin-top: 30px;">Regards,<br><strong>${process.env.COMPANY_NAME || 'Avani Enterprises'}</strong></p>
+                    <p style="font-size: 13px; line-height: 1.6; margin: 20px 0 0 0; color: #666;">Best regards,<br><strong>${process.env.COMPANY_NAME || 'Avani Enterprises'}</strong></p>
                 </div>
-                <div style="background-color: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280;">
-                    This is an automated message from ${process.env.COMPANY_NAME || 'Avani Enterprises'} CRM.
+                <div style="background-color: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0;">This is an automated message from ${process.env.COMPANY_NAME || 'Avani Enterprises'} CRM.</p>
+                    <p style="margin: 5px 0 0 0; font-size: 11px;">If you did not schedule this meeting, please ignore this email.</p>
                 </div>
             </div>
         `;
@@ -143,6 +166,10 @@ const sendMeetingInvitation = async (meeting) => {
                 email: SENDGRID_FROM_EMAIL,
                 name: process.env.COMPANY_NAME || 'Avani Enterprises'
             },
+            replyTo: {
+                email: organizer?.email || SENDGRID_FROM_EMAIL,
+                name: organizer?.name || 'Avani Enterprises'
+            },
             subject: subject,
             text: textContent,
             html: html,
@@ -152,7 +179,12 @@ const sendMeetingInvitation = async (meeting) => {
                     filename: 'invite.ics',
                     type: 'text/calendar'
                 }
-            ]
+            ],
+            headers: {
+                'X-Priority': '3',
+                'X-Mailer': 'Avani Enterprises CRM',
+                'Importance': 'normal'
+            }
         };
 
         console.log('📧 Message object created:');
