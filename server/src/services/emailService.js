@@ -2,38 +2,26 @@ const nodemailer = require('nodemailer');
 const ics = require('ics');
 const dns = require('dns');
 
-// Force IPv4 globally for this service to fix Render ENETUNREACH (IPv6) issues with Hostinger
+// Force IPv4 globally to ensure reliable connections on Render
 dns.setDefaultResultOrder('ipv4first');
 
-// Initialize Nodemailer Transporter
-// Check whether to use SendGrid or Hostinger/Gmail based on environment variables
-let transporterConfig;
+// Initialize Nodemailer Transporter with SendGrid
+console.log('🔧 Initializing SendGrid SMTP Configuration...');
 
-if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    // If explicit Email & Password are provided (e.g., Hostinger, Gmail)
-    console.log('Using SMTP Configuration from EMAIL_USER');
-    transporterConfig = {
-        host: process.env.SMTP_HOST || 'smtp.hostinger.com',
-        port: process.env.SMTP_PORT || 587,
-        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-        }
-    };
-} else {
-    // Fallback to SendGrid via its apikey if no explicit email configured
-    console.log('Using SendGrid Configuration');
-    transporterConfig = {
-        host: 'smtp.sendgrid.net',
-        port: 587,
-        secure: false, // use TLS
-        auth: {
-            user: 'apikey', // SendGrid requires the literal string 'apikey'
-            pass: process.env.SENDGRID_API_KEY,
-        }
-    };
+if (!process.env.SENDGRID_API_KEY) {
+    console.error('❌ SENDGRID_API_KEY is not set in environment variables!');
+    console.error('❌ Email functionality will not work!');
 }
+
+const transporterConfig = {
+    host: 'smtp.sendgrid.net',
+    port: 587,
+    secure: false, // use TLS
+    auth: {
+        user: 'apikey', // SendGrid requires the literal string 'apikey'
+        pass: process.env.SENDGRID_API_KEY,
+    }
+};
 
 const transporter = nodemailer.createTransport({
     ...transporterConfig,
@@ -149,9 +137,7 @@ const sendMeetingInvitation = async (meeting) => {
 
         const msg = {
             to: lead.email,
-            from: process.env.EMAIL_USER
-                ? `"Avani Enterprises" <${process.env.EMAIL_USER}>`
-                : `"Avani Enterprises" <${process.env.SENDGRID_FROM_EMAIL || 'no-reply@avani.com'}>`,
+            from: `"${process.env.COMPANY_NAME || 'Avani Enterprises'}" <${process.env.SENDGRID_FROM_EMAIL}>`,
             subject: subject,
             text: textContent,
             html: html,
