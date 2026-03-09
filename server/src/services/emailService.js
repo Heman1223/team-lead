@@ -104,7 +104,7 @@ const sendMeetingInvitation = async (meeting) => {
             description: meeting.description || meeting.agenda || 'Meeting scheduled via CRM',
             status: 'CONFIRMED',
             busyStatus: 'BUSY',
-            organizer: { name: organizer.name, email: organizer.email || process.env.SENDGRID_FROM_EMAIL || 'no-reply@avani.com' },
+            organizer: { name: organizer?.name || 'Team', email: organizer?.email || process.env.SENDGRID_FROM_EMAIL || 'no-reply@avani.com' },
             attendees: [
                 { name: lead.clientName, email: lead.email, rsvp: true, partstat: 'NEEDS-ACTION', role: 'REQ-PARTICIPANT' }
             ]
@@ -126,7 +126,7 @@ const sendMeetingInvitation = async (meeting) => {
         }
 
         const subject = `Meeting Scheduled – ${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
-        const textContent = `Hello ${lead.clientName},\n\nYour meeting is scheduled on ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()} with ${organizer.name} on the topic: ${meeting.title}.\n\nRegards,\n${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
+        const textContent = `Hello ${lead.clientName},\n\nYour meeting is scheduled on ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()} with ${organizer?.name || 'Your Team'} on the topic: ${meeting.title}.\n\nRegards,\n${process.env.COMPANY_NAME || 'Avani Enterprises'}`;
 
         const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
@@ -135,7 +135,7 @@ const sendMeetingInvitation = async (meeting) => {
                 </div>
                 <div style="padding: 30px;">
                     <p>Hello ${lead.clientName},</p>
-                    <p>Your meeting is scheduled on this date <strong>${startTime.toLocaleDateString()}</strong> at <strong>${startTime.toLocaleTimeString()}</strong> with <strong>${organizer.name}</strong> on the topic <strong>${meeting.title}</strong>.</p>
+                    <p>Your meeting is scheduled on this date <strong>${startTime.toLocaleDateString()}</strong> at <strong>${startTime.toLocaleTimeString()}</strong> with <strong>${organizer?.name || 'Your Team'}</strong> on the topic <strong>${meeting.title}</strong>.</p>
                     
                     <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
                         <p style="margin: 5px 0;"><strong>Topic:</strong> ${meeting.title}</p>
