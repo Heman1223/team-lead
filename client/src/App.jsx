@@ -27,6 +27,7 @@ import LeadsPage from './pages/leads/LeadsPage';
 import EODDashboard from './pages/EODDashboard';
 import CalendarPage from './pages/Calendar';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import FileManagement from './pages/FileManagement';
 import './index.css';
 
 function App() {
@@ -138,6 +139,12 @@ function App() {
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/files" element={
+              <ProtectedRoute>
+                <FileManagement />
               </ProtectedRoute>
             } />
 

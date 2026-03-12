@@ -5,9 +5,11 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { Plus, Filter, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { meetingsAPI, leadsAPI } from '../services/api';
+import { meetingsAPI, leadsAPI, usersAPI } from '../services/api';
 import ScheduleMeetingModal from '../components/meetings/ScheduleMeetingModal';
 import MeetingDetailsModal from '../components/meetings/MeetingDetailsModal';
+import MeetingFilter from '../components/meetings/MeetingFilter';
+import MeetingSummary from '../components/meetings/MeetingSummary';
 import Layout from '../components/Layout';
 
 const CalendarPage = () => {
@@ -19,6 +21,12 @@ const CalendarPage = () => {
     const [selectedDate, setSelectedDate] = useState(null);
     const [rescheduleData, setRescheduleData] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    
+    // Filter state variables
+    const [filterMonth, setFilterMonth] = useState(null);
+    const [filterLeadId, setFilterLeadId] = useState(null);
+    const [filterLeadName, setFilterLeadName] = useState(null);
+    const [isFiltered, setIsFiltered] = useState(false);
 
     useEffect(() => {
         const handleResize = () => {
@@ -32,11 +40,27 @@ const CalendarPage = () => {
         fetchMeetings();
     }, []);
 
-    const fetchMeetings = async () => {
+    const fetchMeetings = async (month = null, leadId = null) => {
         try {
             setLoading(true);
-            const response = await meetingsAPI.getAll();
+            
+            // Build query parameters for filtering
+            const params = {};
+            if (month) {
+                params.month = parseInt(month); // Ensure month is sent as number
+            }
+            if (leadId) {
+                params.leadId = leadId;
+            }
+
+            // Debug logging
+            console.log('📊 Fetching meetings with filters:', { month, leadId, params });
+
+            // Fetch meetings with optional filters
+            const response = await meetingsAPI.getAll(params);
+            console.log('📊 API Response:', { count: response.data.count, totalMeetings: response.data.data.length });
             const rawMeetings = response.data.data;
+            
             const formattedEvents = rawMeetings.map(meeting => ({
                 id: meeting._id,
                 title: meeting.title,
@@ -83,11 +107,59 @@ const CalendarPage = () => {
                 endTime: end
             });
             // Refresh meetings to get updated colors/info if needed
-            fetchMeetings();
+            fetchMeetings(filterMonth, filterLeadId);
         } catch (error) {
             console.error('Error updating meeting time:', error);
             arg.revert();
         }
+    };
+
+    /**
+     * Handle filter application from MeetingFilter component
+     * Stores filter values and refetches meetings with new filters
+     */
+    const handleApplyFilter = async (filterData) => {
+        const { month, leadId } = filterData;
+        
+        // Store filter values
+        setFilterMonth(month);
+        setFilterLeadId(leadId);
+        setIsFiltered(true);
+
+        // Get lead name for display if leadId is provided
+        if (leadId) {
+            try {
+                // Try to fetch the lead/user info for display
+                const allLeads = await leadsAPI.getAll();
+                const allUsers = await usersAPI.getAll();
+                
+                const allItems = [...(allLeads.data.data || []), ...(allUsers.data.data || [])];
+                const foundItem = allItems.find(item => item._id === leadId);
+                
+                if (foundItem) {
+                    setFilterLeadName(foundItem.clientName || foundItem.name);
+                }
+            } catch (error) {
+                console.error('Error fetching lead name:', error);
+            }
+        }
+
+        // Fetch meetings with the new filters
+        fetchMeetings(month, leadId);
+    };
+
+    /**
+     * Handle filter clear action from MeetingFilter component
+     * Resets all filter values and fetches all meetings
+     */
+    const handleClearFilter = () => {
+        setFilterMonth(null);
+        setFilterLeadId(null);
+        setFilterLeadName(null);
+        setIsFiltered(false);
+        
+        // Fetch all meetings without filters
+        fetchMeetings();
     };
 
     return (
@@ -106,6 +178,22 @@ const CalendarPage = () => {
                         Schedule Meeting
                     </button>
                 </div>
+
+                {/* Meeting Filter Component */}
+                <MeetingFilter 
+                    onFilter={handleApplyFilter}
+                    onClear={handleClearFilter}
+                />
+
+                {/* Meeting Summary Statistics */}
+                <MeetingSummary 
+                    totalCount={meetings.length}
+                    isFiltered={isFiltered}
+                    filterInfo={{
+                        month: filterMonth,
+                        leadName: filterLeadName
+                    }}
+                />
 
                 <div className={`bg-white rounded-2xl shadow-xl border border-gray-100 ${isMobile ? 'p-3 mx-auto max-w-[360px]' : 'p-6'}`}>
                     {loading ? (
@@ -172,7 +260,7 @@ const CalendarPage = () => {
                     onSuccess={() => {
                         setIsScheduleModalOpen(false);
                         setRescheduleData(null);
-                        fetchMeetings();
+                        fetchMeetings(filterMonth, filterLeadId);
                     }}
                     initialDate={selectedDate}
                     initialData={rescheduleData}
@@ -188,7 +276,7 @@ const CalendarPage = () => {
                         setSelectedMeeting(null);
                     }}
                     onUpdate={() => {
-                        fetchMeetings();
+                        fetchMeetings(filterMonth, filterLeadId);
                     }}
                     onReschedule={(meeting) => {
                         setIsDetailsModalOpen(false);

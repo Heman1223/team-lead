@@ -2,6 +2,14 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 console.log("=== SERVER STARTING ===");
 console.log("Environment variables loaded");
 console.log(
@@ -153,6 +161,16 @@ const startServer = async () => {
         path: "/api/meetings",
         file: "./routes/meetingRoutes",
         name: "Meeting",
+      },
+      {
+        path: "/api/files",
+        file: "./routes/fileRoutes",
+        name: "File",
+      },
+      {
+        path: "/api/categories",
+        file: "./routes/categoryRoutes",
+        name: "Category",
       },
     ];
 

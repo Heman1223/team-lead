@@ -34,21 +34,21 @@ const teamSchema = new mongoose.Schema({
         type: String,
         maxlength: [1000, 'Objective cannot be more than 1000 characters']
     },
-    
+
     // Team Lead Assignment
     leadId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: [true, 'Team must have a lead']
     },
-    
+
     // Team Members
     members: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
     memberDetails: [teamMemberSchema],
-    
+
     // Team Configuration
     status: {
         type: String,
@@ -65,7 +65,7 @@ const teamSchema = new mongoose.Schema({
         enum: ['project_based', 'ongoing'],
         default: 'project_based'
     },
-    
+
     // Team Health & Performance
     healthStatus: {
         type: String,
@@ -102,7 +102,7 @@ const teamSchema = new mongoose.Schema({
         min: 0,
         max: 100
     },
-    
+
     // Legacy fields (keep for backward compatibility)
     department: {
         type: String,
@@ -127,7 +127,7 @@ const teamSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
-    
+
     // Audit Fields
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -149,41 +149,41 @@ const teamSchema = new mongoose.Schema({
 });
 
 // Calculate team health status based on performance
-teamSchema.methods.calculateHealthStatus = function(score) {
+teamSchema.methods.calculateHealthStatus = function (score) {
     const healthScore = score !== undefined ? score : this.healthScore;
-    
+
     if (healthScore >= 80) this.healthStatus = 'Excellent';
     else if (healthScore >= 60) this.healthStatus = 'Good';
     else if (healthScore >= 40) this.healthStatus = 'Needs Attention';
     else this.healthStatus = 'Critical';
-    
+
     return this.healthStatus;
 };
 
 // Update team statistics
-teamSchema.methods.updateStatistics = async function() {
+teamSchema.methods.updateStatistics = async function () {
     const Task = mongoose.model('Task');
     const User = mongoose.model('User');
     const Lead = mongoose.model('Lead');
-    
+
     // Get all tasks for this team
     const tasks = await Task.find({ teamId: this._id });
-    
+
     // Get all leads for this team
     const leads = await Lead.find({ assignedTeam: this._id });
-    
+
     // 1. Calculate Task Statistics
     const totalTasks = tasks.length;
-    this.activeTasksCount = tasks.filter(t => 
+    this.activeTasksCount = tasks.filter(t =>
         t.status !== 'completed' && t.status !== 'cancelled'
     ).length;
-    
-    this.overdueTasksCount = tasks.filter(t => 
+
+    this.overdueTasksCount = tasks.filter(t =>
         t.isOverdue && t.status !== 'completed'
     ).length;
-    
+
     // Calculate Task Progress Average
-    const taskProgressAvg = totalTasks > 0 
+    const taskProgressAvg = totalTasks > 0
         ? Math.round(tasks.reduce((sum, t) => sum + (t.progressPercentage || 0), 0) / totalTasks)
         : null;
 
@@ -228,26 +228,25 @@ teamSchema.methods.updateStatistics = async function() {
         isActive: true
     });
     const activeMembersRatio = totalMembers > 0 ? (activeMembersCount / totalMembers) * 100 : 0;
-    
+
     // Non-overdue tasks ratio
     const nonOverdueRatio = totalTasks > 0 ? ((totalTasks - this.overdueTasksCount) / totalTasks) * 100 : 100;
 
     // Calculate team health score (0-100)
     // 40% Performance Rate, 30% Active Members, 30% Non-overdue tasks
     this.healthScore = Math.round(
-        (this.completionRate * 0.4) + 
-        (activeMembersRatio * 0.3) + 
+        (this.completionRate * 0.4) +
+        (activeMembersRatio * 0.3) +
         (nonOverdueRatio * 0.3)
     );
-    
+
     // Calculate health status
     this.calculateHealthStatus();
-    
+
     return this;
 };
 
 // Index for better query performance
-teamSchema.index({ name: 1 });
 teamSchema.index({ leadId: 1 });
 teamSchema.index({ status: 1 });
 teamSchema.index({ healthStatus: 1 });

@@ -119,37 +119,6 @@ const LeadList = ({ onSelectLead }) => {
         return colors[priority] || colors.medium;
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <div className="text-center space-y-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3E2723] mx-auto"></div>
-                    <p className="text-gray-600 font-medium">Loading leads...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <div className="text-center space-y-4 max-w-md">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                        <AlertCircle className="w-8 h-8 text-red-500" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900">Error Loading Leads</h3>
-                    <p className="text-gray-600">{error}</p>
-                    <button
-                        onClick={fetchLeads}
-                        className="px-6 py-3 bg-[#3E2723] text-white rounded-xl hover:bg-[#2E1B17] transition-all font-semibold"
-                    >
-                        Try Again
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div key={forceUpdate} className="space-y-4 sm:space-y-6">
             {/* Search & Filter Bar */}
@@ -232,7 +201,30 @@ const LeadList = ({ onSelectLead }) => {
             </div>
 
             {/* Leads List / Kanban */}
-            {filteredLeads.length === 0 ? (
+            {loading ? (
+                <div className="flex items-center justify-center p-12">
+                    <div className="text-center space-y-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3E2723] mx-auto"></div>
+                        <p className="text-gray-600 font-medium">Loading leads...</p>
+                    </div>
+                </div>
+            ) : error ? (
+                <div className="flex items-center justify-center p-12">
+                    <div className="text-center space-y-4 max-w-md">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                            <AlertCircle className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900">Error Loading Leads</h3>
+                        <p className="text-gray-600">{error}</p>
+                        <button
+                            onClick={fetchLeads}
+                            className="px-6 py-3 bg-[#3E2723] text-white rounded-xl hover:bg-[#2E1B17] transition-all font-semibold"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            ) : filteredLeads.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                     <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No leads found</h3>

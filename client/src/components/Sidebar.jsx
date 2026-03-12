@@ -15,7 +15,8 @@ import {
   Settings,
   X,
   Target,
-  History
+  History,
+  File as FileIcon
 } from 'lucide-react';
 import logo from '../assets/img.jpeg';
 
@@ -30,7 +31,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/admin/teams', label: 'Team Management', icon: Users },
     { path: '/admin/tasks', label: 'Task Assignment', icon: CheckSquare },
     { path: '/leads', label: 'Lead Management', icon: Target },
-    { path: '/admin/activities', label: 'Activity Log', icon: History }
+    { path: '/admin/activities', label: 'Activity Log', icon: History },
+    { path: '/files', label: 'File Manager', icon: FileIcon }
   ];
 
   const menuItems = [
@@ -40,7 +42,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/team', label: 'Team', icon: Users },
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },
     { path: '/communication', label: 'Communication', icon: MessageSquare },
-    { path: '/reports', label: 'Reports', icon: BarChart3, teamLeadOnly: true }
+    { path: '/reports', label: 'Reports', icon: BarChart3, teamLeadOnly: true },
+    { path: '/files', label: 'File Manager', icon: FileIcon }
   ];
 
   const displayMenuItems = isAdmin
@@ -73,12 +76,12 @@ const Sidebar = ({ isOpen, onClose }) => {
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `} style={{ width: '256px' }}>
-        
+
         {/* Logo Section */}
         <div className="h-24 flex items-center px-6 py-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 overflow-hidden">
-                <img src={logo} alt="Logo" className="w-full h-full object-cover" />
+              <img src={logo} alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-extrabold text-white leading-tight tracking-tight">Project and Lead Management</span>
@@ -114,35 +117,35 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* User Info & Footer Actions */}
         <div className="mt-auto p-4 space-y-4">
-            <div className="bg-white/5 rounded-3xl p-4 border border-white/5">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/10 bg-gray-100 flex items-center justify-center">
-                        {user?.avatar ? (
-                            <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                            <span className="text-sm font-bold text-[#1D1110]">
-                                {user?.name?.charAt(0).toUpperCase() || 'U'}
-                            </span>
-                        )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white truncate tracking-tight">{user?.name || 'Administrator'}</p>
-                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                            {user?.role?.replace('_', ' ') || 'Admin'}
-                        </p>
-                    </div>
-                </div>
-                
-                <div className="space-y-1">
-                    <button
-                        onClick={logout}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all text-xs font-bold"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span>Logout</span>
-                    </button>
-                </div>
+          <div className="bg-white/5 rounded-3xl p-4 border border-white/5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/10 bg-gray-100 flex items-center justify-center">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-[#1D1110]">
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white truncate tracking-tight">{user?.name || 'Administrator'}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                  {user?.role?.replace('_', ' ') || 'Admin'}
+                </p>
+              </div>
             </div>
+
+            <div className="space-y-1">
+              <button
+                onClick={logout}
+                className="w-full flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all text-xs font-bold"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
         </div>
       </aside>
     </>

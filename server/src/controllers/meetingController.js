@@ -5,14 +5,20 @@ const { sendMeetingInvitation } = require('../services/emailService');
 
 console.log('✅ 📧 MEETING CONTROLLER LOADED WITH NEW EMAIL STATUS FEATURE - Emails will now be tracked and returned in API response!');
 
-// @desc    Get all meetings
-// @route   GET /api/meetings
+// @desc    Get all meetings with optional filtering by month and team member
+// @route   GET /api/meetings?month=1&leadId=xxx
 // @access  Private
+// Note: 'leadId' parameter filters by team member who organized or participates in the meeting
+//       (despite the parameter name, it filters by organizerId OR participants)
 const getMeetings = async (req, res) => {
     try {
         let query = {};
+        const { month, leadId } = req.query;
 
-        // Role-based filtering
+        // Build role-based filtering conditions
+        let roleBasedQuery = {};
+        let hasRoleBasedFilter = false;
+
         if (req.user.role === 'team_lead') {
             const Team = require('../models/Team');
             const User = require('../models/User');
@@ -27,23 +33,70 @@ const getMeetings = async (req, res) => {
             memberIds.push(req.user._id); // include the lead themselves
 
             // Team leads see meetings they/their team organized OR are involved in
-            query = {
+            roleBasedQuery = {
                 $or: [
                     { organizerId: { $in: memberIds } },
                     { participants: { $in: memberIds } }
                 ]
             };
+            hasRoleBasedFilter = true;
         } else if (req.user.role === 'team_member') {
             // Team members ONLY see meetings they organized or are participants in
             const userId = req.user._id;
-            query = {
+            roleBasedQuery = {
                 $or: [
                     { organizerId: userId },
                     { participants: userId }
                 ]
             };
+            hasRoleBasedFilter = true;
         }
-        // Admins see all meetings
+        // Admins see all meetings (no role-based filter)
+
+        // Build additional filter conditions (month, memberId)
+        let additionalFilters = [];
+
+        // Apply month filter if provided (1-12)
+        if (month && !isNaN(month) && month >= 1 && month <= 12) {
+            const monthNum = parseInt(month);
+            additionalFilters.push({
+                $expr: {
+                    $eq: [{ $month: "$startTime" }, monthNum]
+                }
+            });
+        }
+
+        // Apply member/organizer filter if provided
+        // Filter by memberId as either organizer OR participant (not leadId)
+        if (leadId && leadId !== 'null' && leadId !== '') {
+            additionalFilters.push({
+                $or: [
+                    { organizerId: leadId },
+                    { participants: leadId }
+                ]
+            });
+        }
+
+        // Combine role-based filtering with additional filters properly
+        if (hasRoleBasedFilter && additionalFilters.length > 0) {
+            // Use $and to combine $or (from role-based) with additional filters
+            query = {
+                $and: [roleBasedQuery, ...additionalFilters]
+            };
+        } else if (hasRoleBasedFilter) {
+            // Only role-based filter
+            query = roleBasedQuery;
+        } else if (additionalFilters.length > 0) {
+            // Only additional filters (admin user)
+            if (additionalFilters.length === 1) {
+                query = additionalFilters[0];
+            } else {
+                query = {
+                    $and: additionalFilters
+                };
+            }
+        }
+        // If no filters at all (admin with no month/lead params), query stays empty {}
 
         const meetings = await Meeting.find(query)
             .populate('leadId', 'clientName email')

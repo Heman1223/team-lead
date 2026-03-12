@@ -198,4 +198,29 @@ export const meetingsAPI = {
     delete: (id) => api.delete(`/meetings/${id}`)
 };
 
+// Files API
+export const filesAPI = {
+    getAll: (params) => api.get('/files', { params }),
+    upload: (formData) => api.post('/files/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    search: (params) => api.get('/files/search', { params }),
+    update: (id, data) => api.put(`/files/${id}`, data),
+    replace: (id, formData) => api.post(`/files/${id}/replace`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    download: (id) => api.get(`/files/${id}/download`, { responseType: 'blob' }),
+    delete: (id) => api.delete(`/files/${id}`),
+    grantAccess: (id, data) => api.post(`/files/${id}/grant-access`, data),
+    revokeAccess: (id, userId) => api.delete(`/files/${id}/revoke-access/${userId}`)
+};
+
+// Categories API
+export const categoriesAPI = {
+    getAll: () => api.get('/categories'),
+    create: (data) => api.post('/categories', data),
+    update: (id, data) => api.put(`/categories/${id}`, data),
+    delete: (id) => api.delete(`/categories/${id}`)
+};
+
 export default api;
