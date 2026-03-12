@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const os = require('os');
 const {
     uploadFile,
     getFiles,
@@ -18,7 +19,7 @@ const { protect } = require('../middleware/auth');
 // Configure multer for file upload
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        cb(null, os.tmpdir());
     },
     filename: (req, file, cb) => {
         cb(null, `${Date.now()}_${file.originalname}`);
