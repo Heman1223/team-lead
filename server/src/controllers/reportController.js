@@ -10,51 +10,111 @@ const mongoose = require('mongoose');
 // @access  Private
 const getSummary = async (req, res) => {
     try {
-        const teamId = req.user.teamId;
+        const { period = 'week' } = req.query;
 
-        // Task statistics
-        const taskStats = await Task.aggregate([
-            { $match: { teamId: teamId } },
+        // ── Resolve Team IDs and Member IDs ─────────────────
+        let targetTeamIds = [];
+        let memberIds = new Set();
+
+        if (req.user.role === 'admin') {
+            const allTeams = await Team.find({});
+            allTeams.forEach(t => {
+                t.members.forEach(m => memberIds.add(m.toString()));
+                if (t.leadId) memberIds.add(t.leadId.toString());
+                targetTeamIds.push(t._id);
+            });
+        } else if (req.user.role === 'team_lead') {
+            const managedTeams = await Team.find({ leadId: req.user._id });
+            managedTeams.forEach(t => {
+                t.members.forEach(m => memberIds.add(m.toString()));
+                if (t.leadId) memberIds.add(t.leadId.toString());
+                targetTeamIds.push(t._id);
+            });
+            if (req.user.teamId && !targetTeamIds.some(id => id.toString() === req.user.teamId.toString())) {
+                targetTeamIds.push(req.user.teamId);
+                const t = await Team.findById(req.user.teamId);
+                if (t) {
+                    t.members.forEach(m => memberIds.add(m.toString()));
+                    if (t.leadId) memberIds.add(t.leadId.toString());
+                }
+            }
+        } else {
+            if (req.user.teamId) {
+                targetTeamIds.push(req.user.teamId);
+                const t = await Team.findById(req.user.teamId);
+                if (t) {
+                    t.members.forEach(m => memberIds.add(m.toString()));
+                    if (t.leadId) memberIds.add(t.leadId.toString());
+                }
+            } else {
+                memberIds.add(req.user._id.toString());
+            }
+        }
+
+        const uniqueMemberIds = Array.from(memberIds).map(id => new mongoose.Types.ObjectId(id));
+
+        // ── Base Match Query ───────────────────────────────
+        let baseMatch = {};
+        if (req.user.role !== 'admin') {
+            if (targetTeamIds.length > 0) {
+                baseMatch.teamId = { $in: targetTeamIds.map(id => new mongoose.Types.ObjectId(id)) };
+            } else {
+                baseMatch.$or = [{ assignedTo: req.user._id }, { assignedBy: req.user._id }];
+            }
+        }
+
+        // ── Task Stats (Global Totals) ────────────────────
+        const globalStatsResults = await Task.aggregate([
+            { $match: baseMatch },
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
-        const taskSummary = {
-            assigned: 0,
-            in_progress: 0,
-            blocked: 0,
-            overdue: 0,
-            completed: 0,
-            total: 0
-        };
-
-        taskStats.forEach(item => {
-            taskSummary[item._id] = item.count;
-            taskSummary.total += item.count;
+        const stats = { assigned: 0, in_progress: 0, blocked: 0, overdue: 0, completed: 0, total: 0 };
+        globalStatsResults.forEach(item => {
+            if (stats.hasOwnProperty(item._id)) stats[item._id] = item.count;
+            stats.total += item.count;
         });
 
-        // Team statistics
+        // ── Period-specific Distribution (for Trends) ──────
+        let dateFilter = new Date();
+        if (period === 'day') dateFilter.setHours(0, 0, 0, 0);
+        else if (period === 'week') dateFilter.setDate(dateFilter.getDate() - 7);
+        else if (period === 'month') dateFilter.setMonth(dateFilter.getMonth() - 1);
+        else if (period === 'year') dateFilter.setFullYear(dateFilter.getFullYear() - 1);
+
+        const periodStatsResults = await Task.aggregate([
+            { $match: { ...baseMatch, createdAt: { $gte: dateFilter } } },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+
+        const periodStats = { assigned: 0, in_progress: 0, blocked: 0, overdue: 0, completed: 0, total: 0 };
+        periodStatsResults.forEach(item => {
+            if (periodStats.hasOwnProperty(item._id)) periodStats[item._id] = item.count;
+            periodStats.total += item.count;
+        });
+
+        // Use periodStats for the breakdown if any exist, otherwise fallback to global to not show "zero"
+        const effectiveStats = periodStats.total > 0 ? periodStats : stats;
+
+        // ── Team status (All-Time) ──────────────────────────
         const teamStats = await User.aggregate([
-            { $match: { teamId: teamId } },
+            { $match: { _id: { $in: uniqueMemberIds }, deletedAt: null } },
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
-        const teamSummary = { online: 0, offline: 0, busy: 0, total: 0 };
+        const team = { online: 0, offline: 0, busy: 0, total: uniqueMemberIds.length };
         teamStats.forEach(item => {
-            teamSummary[item._id] = item.count;
-            teamSummary.total += item.count;
+            const s = (item._id || 'offline').toLowerCase();
+            if (team.hasOwnProperty(s)) team[s] = item.count;
         });
-
-        // Completion rate
-        const completionRate = taskSummary.total > 0
-            ? Math.round((taskSummary.completed / taskSummary.total) * 100)
-            : 0;
 
         res.json({
             success: true,
             data: {
-                tasks: taskSummary,
-                team: teamSummary,
-                completionRate
+                tasks: effectiveStats, // This makes the bars/distribution dynamic
+                summary: stats,         // Optional: provide both
+                team,
+                completionRate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
             }
         });
     } catch (error) {
@@ -68,8 +128,22 @@ const getSummary = async (req, res) => {
 // @access  Private (Team Lead only)
 const getCompletionReport = async (req, res) => {
     try {
-        const teamId = req.user.teamId;
         const { period = 'week' } = req.query;
+
+        // Resolve all relevant Team IDs
+        let targetTeamIds = [];
+        if (req.user.role === 'admin') {
+            const allTeams = await Team.find({});
+            targetTeamIds = allTeams.map(t => t._id);
+        } else {
+            const managedTeams = await Team.find({ leadId: req.user._id });
+            targetTeamIds = managedTeams.map(t => t._id);
+            if (req.user.teamId && !targetTeamIds.some(id => id.toString() === req.user.teamId.toString())) {
+                targetTeamIds.push(req.user.teamId);
+            }
+        }
+
+        const teamObjectIds = targetTeamIds.map(id => new mongoose.Types.ObjectId(id));
 
         let dateFilter = new Date();
         if (period === 'week') {
@@ -84,7 +158,7 @@ const getCompletionReport = async (req, res) => {
         const completedTasks = await Task.aggregate([
             {
                 $match: {
-                    teamId: teamId,
+                    teamId: { $in: teamObjectIds },
                     status: 'completed',
                     completedAt: { $gte: dateFilter }
                 }
@@ -102,7 +176,7 @@ const getCompletionReport = async (req, res) => {
 
         // Tasks by priority
         const tasksByPriority = await Task.aggregate([
-            { $match: { teamId: teamId } },
+            { $match: { teamId: { $in: teamObjectIds } } },
             { $group: { _id: '$priority', count: { $sum: 1 } } }
         ]);
 
@@ -190,20 +264,35 @@ const getPerformanceReport = async (req, res) => {
 // @access  Private (Team Lead only)
 const getTeamPerformance = async (req, res) => {
     try {
-        const teamId = req.user.teamId;
+        const { period = 'week' } = req.query;
 
-        // Only leads in this team, ignore deleted leads
-        const performance = await Lead.aggregate([
-            { $match: { assignedTeam: mongoose.Types.ObjectId(teamId), assignedTo: { $ne: null } } },
+        // Resolve all relevant Team IDs
+        let targetTeamIds = [];
+        if (req.user.role === 'admin') {
+            const allTeams = await Team.find({});
+            targetTeamIds = allTeams.map(t => t._id);
+        } else if (req.user.role === 'team_lead') {
+            const managedTeams = await Team.find({ leadId: req.user._id });
+            targetTeamIds = managedTeams.map(t => t._id);
+            if (req.user.teamId && !targetTeamIds.some(id => id.toString() === req.user.teamId.toString())) {
+                targetTeamIds.push(req.user.teamId);
+            }
+        } else {
+            if (req.user.teamId) targetTeamIds.push(req.user.teamId);
+        }
+
+        const teamObjectIds = targetTeamIds.map(id => new mongoose.Types.ObjectId(id));
+
+        // Task-based performance calculation
+        const performance = await Task.aggregate([
+            { $match: { teamId: { $in: teamObjectIds }, assignedTo: { $ne: null } } },
             {
                 $group: {
                     _id: '$assignedTo',
-                    totalLeads: { $sum: 1 },
-                    convertedLeads: {
-                        $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] }
-                    },
-                    totalPipelineValue: { $sum: '$estimatedValue' },
-                    totalDials: { $sum: '$dialCount' }
+                    totalTasks: { $sum: 1 },
+                    tasksCompleted: {
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                    }
                 }
             },
             {
@@ -211,28 +300,32 @@ const getTeamPerformance = async (req, res) => {
                     from: 'users',
                     localField: '_id',
                     foreignField: '_id',
-                    as: 'user'
+                    as: 'member'
                 }
             },
-            { $unwind: '$user' },
+            { $unwind: '$member' },
             {
                 $project: {
                     _id: 1,
-                    name: '$user.name',
-                    totalLeads: 1,
-                    convertedLeads: 1,
-                    totalPipelineValue: 1,
-                    totalDials: 1,
-                    conversionRate: {
+                    member: {
+                        _id: '$member._id',
+                        name: '$member.name',
+                        avatar: '$member.avatar',
+                        designation: '$member.designation',
+                        role: '$member.role'
+                    },
+                    totalTasks: 1,
+                    tasksCompleted: 1,
+                    completionRate: {
                         $cond: [
-                            { $gt: ['$totalLeads', 0] },
-                            { $multiply: [{ $divide: ['$convertedLeads', '$totalLeads'] }, 100] },
+                            { $gt: ['$totalTasks', 0] },
+                            { $multiply: [{ $divide: ['$tasksCompleted', '$totalTasks'] }, 100] },
                             0
                         ]
                     }
                 }
             },
-            { $sort: { conversionRate: -1 } }
+            { $sort: { completionRate: -1, totalTasks: -1 } }
         ]);
 
         res.json({
@@ -250,19 +343,29 @@ const getTeamPerformance = async (req, res) => {
 // @access  Private (Team Lead only)
 const getOverdueTrends = async (req, res) => {
     try {
-        const teamId = req.user.teamId;
+        let targetTeamIds = [];
+        if (req.user.role === 'admin') {
+            const allTeams = await Team.find({});
+            targetTeamIds = allTeams.map(t => t._id);
+        } else {
+            const managedTeams = await Team.find({ leadId: req.user._id });
+            targetTeamIds = managedTeams.map(t => t._id);
+            if (req.user.teamId && !targetTeamIds.some(id => id.toString() === req.user.teamId.toString())) {
+                targetTeamIds.push(req.user.teamId);
+            }
+        }
 
-        // Current overdue tasks
+        const teamObjectIds = targetTeamIds.map(id => new mongoose.Types.ObjectId(id));
+
         const overdueTasks = await Task.find({
-            teamId,
+            teamId: { $in: teamObjectIds },
             status: 'overdue'
         })
             .populate('assignedTo', 'name avatar')
             .sort({ deadline: 1 });
 
-        // Overdue by member
         const overdueByMember = await Task.aggregate([
-            { $match: { teamId: teamId, status: 'overdue' } },
+            { $match: { teamId: { $in: teamObjectIds }, status: 'overdue' } },
             { $group: { _id: '$assignedTo', count: { $sum: 1 } } }
         ]);
 
@@ -285,21 +388,34 @@ const getOverdueTrends = async (req, res) => {
 // @access  Private (Team Lead only)
 const exportReport = async (req, res) => {
     try {
-        const teamId = req.user.teamId;
         const { type = 'tasks' } = req.query;
+
+        let targetTeamIds = [];
+        if (req.user.role === 'admin') {
+            const allTeams = await Team.find({});
+            targetTeamIds = allTeams.map(t => t._id);
+        } else {
+            const managedTeams = await Team.find({ leadId: req.user._id });
+            targetTeamIds = managedTeams.map(t => t._id);
+            if (req.user.teamId && !targetTeamIds.some(id => id.toString() === req.user.teamId.toString())) {
+                targetTeamIds.push(req.user.teamId);
+            }
+        }
+
+        const teamObjectIds = targetTeamIds.map(id => new mongoose.Types.ObjectId(id));
 
         let data;
         if (type === 'tasks') {
-            data = await Task.find({ teamId })
+            data = await Task.find({ teamId: { $in: teamObjectIds } })
                 .populate('assignedTo', 'name email')
                 .populate('createdBy', 'name email')
                 .lean();
         } else if (type === 'members') {
-            data = await User.find({ teamId, deletedAt: null })
+            data = await User.find({ teamId: { $in: teamObjectIds }, deletedAt: null })
                 .select('-password')
                 .lean();
         } else {
-            data = await ActivityLog.find({ teamId })
+            data = await ActivityLog.find({ teamId: { $in: teamObjectIds } })
                 .populate('userId', 'name')
                 .lean();
         }
@@ -343,12 +459,38 @@ const getLeadGenerationStats = async (req, res) => {
 
         let matchQuery = {};
         
-        // Filter by team if not admin
-        if (req.user.role !== 'admin' && teamId) {
-            const team = await Team.findById(teamId);
-            if (team) {
-                const memberIds = [...team.members.map(m => mongoose.Types.ObjectId(m)), mongoose.Types.ObjectId(team.leadId)];
-                matchQuery.createdBy = { $in: memberIds };
+        // Resolve Team IDs and Member IDs for scoping
+        let targetTeamIds = [];
+        let memberIds = new Set();
+
+        if (req.user.role === 'admin') {
+            const allUsers = await User.find({ deletedAt: null });
+            const uniqueMemberObjectIds = allUsers.map(u => u._id);
+            matchQuery.createdBy = { $in: uniqueMemberObjectIds };
+        } else {
+            if (req.user.role === 'team_lead') {
+                const managedTeams = await Team.find({ leadId: req.user._id });
+                managedTeams.forEach(t => {
+                    t.members.forEach(m => memberIds.add(m.toString()));
+                    memberIds.add(t.leadId.toString());
+                });
+            } else if (req.user.role === 'team_member') {
+                const myTeam = await Team.findOne({ 
+                    $or: [{ members: req.user._id }, { leadId: req.user._id }]
+                });
+                if (myTeam) {
+                    myTeam.members.forEach(m => memberIds.add(m.toString()));
+                    memberIds.add(myTeam.leadId.toString());
+                } else {
+                    memberIds.add(req.user._id.toString());
+                }
+            }
+
+            if (memberIds.size > 0) {
+                const uniqueMemberObjectIds = Array.from(memberIds).map(id => new mongoose.Types.ObjectId(id));
+                matchQuery.createdBy = { $in: uniqueMemberObjectIds };
+            } else {
+                matchQuery.createdBy = req.user._id;
             }
         }
 
@@ -413,51 +555,31 @@ const getLeadGenerationStats = async (req, res) => {
 // @access  Private (Team Lead only)
 const getLeadStatusStats = async (req, res) => {
     try {
-        const teamId = req.user.teamId;
         const { period = 'week' } = req.query;
 
-        let dateFilter = new Date();
-        if (period === 'day') {
-            dateFilter.setHours(0, 0, 0, 0);
-        } else if (period === 'week') {
-            dateFilter.setDate(dateFilter.getDate() - 7);
-        } else if (period === 'month') {
-            dateFilter.setMonth(dateFilter.getMonth() - 1);
-        } else if (period === 'year') {
-            dateFilter.setFullYear(dateFilter.getFullYear() - 1);
+        // Resolve Team IDs
+        let targetTeamIds = [];
+        if (req.user.role === 'admin') {
+            const allTeams = await Team.find({});
+            targetTeamIds = allTeams.map(t => t._id);
+        } else if (req.user.role === 'team_lead') {
+            const managedTeams = await Team.find({ leadId: req.user._id });
+            targetTeamIds = managedTeams.map(t => t._id);
+        } else if (req.user.role === 'team_member') {
+            if (req.user.teamId) targetTeamIds.push(req.user.teamId);
         }
 
-        let matchQuery = { createdAt: { $gte: dateFilter } };
+        const teamObjectIds = targetTeamIds.map(id => new mongoose.Types.ObjectId(id));
+
+        let matchQuery = {};
         
-        // Role-based filtering (similar to getLeadStats)
-        if (req.user.role === 'team_lead') {
-            const team = await Team.findOne({ leadId: req.user._id });
-            const teamFilter = team ? { assignedTeam: team._id } : {};
+        // Scope optimization
+        if (req.user.role !== 'admin') {
             matchQuery = {
-                $and: [
-                    matchQuery,
-                    { 
-                        $or: [
-                            { assignedTo: req.user._id },
-                            teamFilter, 
-                            { createdBy: req.user._id }
-                        ].filter(f => Object.keys(f).length > 0) 
-                    }
-                ]
-            };
-        } else if (req.user.role === 'team_member') {
-            const teams = await Team.find({ members: req.user._id });
-            const teamIds = teams.map(t => t._id);
-            matchQuery = {
-                $and: [
-                    matchQuery,
-                    { 
-                        $or: [
-                            { assignedTo: req.user._id }, 
-                            { assignedTeam: { $in: teamIds } },
-                            { createdBy: req.user._id }
-                        ] 
-                    }
+                $or: [
+                    { assignedTo: req.user._id },
+                    { assignedTeam: { $in: teamObjectIds } }, 
+                    { createdBy: req.user._id }
                 ]
             };
         }

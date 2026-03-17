@@ -10,6 +10,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+if (!process.env.CLOUDINARY_CLOUD_NAME) {
+  console.warn('⚠ WARNING: CLOUDINARY_CLOUD_NAME is not defined in environment variables');
+}
+
 console.log("=== SERVER STARTING ===");
 console.log("Environment variables loaded");
 console.log(

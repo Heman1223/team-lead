@@ -27,7 +27,7 @@ const Reports = () => {
         try {
             setLoading(true);
             const promises = [
-                reportsAPI.getSummary(),
+                reportsAPI.getSummary(period),
                 reportsAPI.getTeamPerformance(),
                 reportsAPI.getLeadGeneration(),
                 reportsAPI.getLeadStatusStats(period)

@@ -408,10 +408,17 @@ const AdminTeamManagement = () => {
                   </p>
                   <div className="flex items-baseline gap-2 mt-2">
                     <h3 className="text-4xl font-black text-[#1D1110] tracking-tighter">
-                      {teams.reduce(
-                        (sum, team) => sum + (team.members?.length || 0),
-                        0,
-                      )}
+                      {(() => {
+                        const uniqueMembers = new Set();
+                        teams.forEach((team) => {
+                          team.members?.forEach((m) =>
+                            uniqueMembers.add(m._id || m),
+                          );
+                          if (team.leadId)
+                            uniqueMembers.add(team.leadId._id || team.leadId);
+                        });
+                        return uniqueMembers.size;
+                      })()}
                     </h3>
                     <span className="text-xs font-bold text-green-500 tracking-tighter">
                       +5%

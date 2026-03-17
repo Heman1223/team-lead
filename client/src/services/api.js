@@ -125,7 +125,7 @@ export const messagesAPI = {
 
 // Reports API
 export const reportsAPI = {
-    getSummary: () => api.get('/reports/summary'),
+    getSummary: (period) => api.get('/reports/summary', { params: { period } }),
     getCompletion: (period) => api.get('/reports/completion', { params: { period } }),
     getPerformance: (userId) => api.get(`/reports/performance/${userId}`),
     getTeamPerformance: () => api.get('/reports/team-performance'),

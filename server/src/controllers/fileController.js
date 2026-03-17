@@ -6,6 +6,7 @@ const cloudinary = require('cloudinary').v2;
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const Team = require('../models/Team');
 
 /**
  * File Controller
@@ -102,7 +103,6 @@ const uploadFile = async (req, res) => {
         // Grant access to Team Leads of user's team
         const userTeam = req.user.teamId;
         if (userTeam) {
-            const Team = require('../models/Team');
             const team = await Team.findById(userTeam);
             if (team && team.leadId) {
                 await FilePermission.create({
@@ -137,7 +137,7 @@ const uploadFile = async (req, res) => {
                         await FilePermission.create({
                             file_id: newFile._id,
                             user_id: memberId,
-                            permission_type: 'view',
+                            permission_type: 'edit', // Grant edit permission by default for access members
                             granted_by: currentUserId
                         });
                     }
@@ -168,7 +168,9 @@ const uploadFile = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error uploading file',
-            error: error.message
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+            code: error.code || 'UNKNOWN_ERROR'
         });
     }
 };
@@ -386,16 +388,15 @@ const updateFile = async (req, res) => {
             return res.status(404).json({ success: false, message: 'File not found' });
         }
 
-        // Check authorization - only admin and uploader with edit permission can update
-        const hasPermission = await FilePermission.findOne({
+        // Check authorization - only admin, uploader, or users with permission can update
+        const permission = await FilePermission.findOne({
             file_id: id,
-            user_id: currentUserId,
-            permission_type: 'edit'
+            user_id: currentUserId
         });
 
         const canUpdate = currentUserRole === 'admin' ||
             file.uploaded_by.toString() === currentUserId ||
-            hasPermission;
+            (permission && (permission.permission_type === 'edit' || permission.permission_type === 'view'));
 
         if (!canUpdate) {
             return res.status(403).json({
@@ -693,7 +694,7 @@ const grantAccess = async (req, res) => {
         const permission = await FilePermission.create({
             file_id: id,
             user_id: user_id,
-            permission_type: 'view',
+            permission_type: 'edit', // Changed from 'view' to 'edit' to allow metadata updates
             granted_by: currentUserId
         });
 

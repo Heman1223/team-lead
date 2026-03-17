@@ -279,12 +279,11 @@ const Login = () => {
                                 disabled={loading}
                                 style={{ 
                                     width: '100%', 
-                                    padding: '14px', 
+                                    padding: '16px',
                                     backgroundColor: '#3E2723',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '8px',
-                                    padding: '16px',
                                     fontSize: '1.1rem',
                                     fontWeight: '700',
                                     cursor: loading ? 'not-allowed' : 'pointer',
