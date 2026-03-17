@@ -39,6 +39,8 @@ app.use(
       "https://gurukripaprojectmanagement.avanienterprises.in",
       // "https://www.gurukripaprojectmanagement.avanienterprises.in",
       "https://gaonseghartaprojectmanagement.avanienterprises.in",
+      "https://dakshprojectmanagement.avanienterprises.in",
+      "https://www.dakshprojectmanagement.avanienterprises.in",
       // "https://www.gaonseghartaprojectmanagement.avanienterprises.in",
     ],
     credentials: true,
