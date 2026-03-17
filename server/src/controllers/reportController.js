@@ -1,6 +1,8 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
+const Lead = require('../models/Lead');
+const Team = require('../models/Team');
 const mongoose = require('mongoose');
 
 // @desc    Get dashboard summary
@@ -319,11 +321,177 @@ const exportReport = async (req, res) => {
     }
 };
 
+// @desc    Get lead generation stats (manual vs imported) per person
+// @route   GET /api/reports/lead-generation
+// @access  Private (Team Lead only)
+const getLeadGenerationStats = async (req, res) => {
+    try {
+        const teamId = req.user.teamId;
+        
+        // Define timeframes (Today, Week, Month)
+        const now = new Date();
+        
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        let matchQuery = {};
+        
+        // Filter by team if not admin
+        if (req.user.role !== 'admin' && teamId) {
+            const team = await Team.findById(teamId);
+            if (team) {
+                const memberIds = [...team.members.map(m => mongoose.Types.ObjectId(m)), mongoose.Types.ObjectId(team.leadId)];
+                matchQuery.createdBy = { $in: memberIds };
+            }
+        }
+
+        const stats = await Lead.aggregate([
+            { $match: matchQuery },
+            {
+                $group: {
+                    _id: '$createdBy',
+                    todayManual: {
+                        $sum: { $cond: [{ $and: [{ $gte: ['$createdAt', startOfDay] }, { $eq: ['$source', 'manual'] }] }, 1, 0] }
+                    },
+                    todayImported: {
+                        $sum: { $cond: [{ $and: [{ $gte: ['$createdAt', startOfDay] }, { $eq: ['$source', 'imported'] }] }, 1, 0] }
+                    },
+                    weekManual: {
+                        $sum: { $cond: [{ $and: [{ $gte: ['$createdAt', startOfWeek] }, { $eq: ['$source', 'manual'] }] }, 1, 0] }
+                    },
+                    weekImported: {
+                        $sum: { $cond: [{ $and: [{ $gte: ['$createdAt', startOfWeek] }, { $eq: ['$source', 'imported'] }] }, 1, 0] }
+                    },
+                    monthManual: {
+                        $sum: { $cond: [{ $and: [{ $gte: ['$createdAt', startOfMonth] }, { $eq: ['$source', 'manual'] }] }, 1, 0] }
+                    },
+                    monthImported: {
+                        $sum: { $cond: [{ $and: [{ $gte: ['$createdAt', startOfMonth] }, { $eq: ['$source', 'imported'] }] }, 1, 0] }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 1,
+                    name: { $ifNull: ['$user.name', 'Unknown User'] },
+                    today: { manual: '$todayManual', imported: '$todayImported' },
+                    week: { manual: '$weekManual', imported: '$weekImported' },
+                    month: { manual: '$monthManual', imported: '$monthImported' }
+                }
+            },
+            { $sort: { name: 1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        console.error('Get lead generation stats error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// @desc    Get lead status distribution stats
+// @route   GET /api/reports/lead-status
+// @access  Private (Team Lead only)
+const getLeadStatusStats = async (req, res) => {
+    try {
+        const teamId = req.user.teamId;
+        const { period = 'week' } = req.query;
+
+        let dateFilter = new Date();
+        if (period === 'day') {
+            dateFilter.setHours(0, 0, 0, 0);
+        } else if (period === 'week') {
+            dateFilter.setDate(dateFilter.getDate() - 7);
+        } else if (period === 'month') {
+            dateFilter.setMonth(dateFilter.getMonth() - 1);
+        } else if (period === 'year') {
+            dateFilter.setFullYear(dateFilter.getFullYear() - 1);
+        }
+
+        let matchQuery = { createdAt: { $gte: dateFilter } };
+        
+        // Role-based filtering (similar to getLeadStats)
+        if (req.user.role === 'team_lead') {
+            const team = await Team.findOne({ leadId: req.user._id });
+            const teamFilter = team ? { assignedTeam: team._id } : {};
+            matchQuery = {
+                $and: [
+                    matchQuery,
+                    { 
+                        $or: [
+                            { assignedTo: req.user._id },
+                            teamFilter, 
+                            { createdBy: req.user._id }
+                        ].filter(f => Object.keys(f).length > 0) 
+                    }
+                ]
+            };
+        } else if (req.user.role === 'team_member') {
+            const teams = await Team.find({ members: req.user._id });
+            const teamIds = teams.map(t => t._id);
+            matchQuery = {
+                $and: [
+                    matchQuery,
+                    { 
+                        $or: [
+                            { assignedTo: req.user._id }, 
+                            { assignedTeam: { $in: teamIds } },
+                            { createdBy: req.user._id }
+                        ] 
+                    }
+                ]
+            };
+        }
+
+        const stats = await Lead.aggregate([
+            { $match: matchQuery },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+
+        // Format for frontend (ensure all statuses have at least 0)
+        const allStatuses = ['new', 'contacted', 'interested', 'follow_up', 'converted', 'not_interested', 'dialed'];
+        const result = allStatuses.reduce((acc, status) => {
+            const found = stats.find(s => s._id === status);
+            acc[status] = found ? found.count : 0;
+            return acc;
+        }, {});
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('Get lead status stats error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
 module.exports = {
     getSummary,
     getCompletionReport,
     getPerformanceReport,
     getTeamPerformance,
     getOverdueTrends,
-    exportReport
+    exportReport,
+    getLeadGenerationStats,
+    getLeadStatusStats
 };

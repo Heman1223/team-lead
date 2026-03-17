@@ -32,6 +32,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/admin/tasks', label: 'Task Assignment', icon: CheckSquare },
     { path: '/leads', label: 'Lead Management', icon: Target },
     { path: '/admin/activities', label: 'Activity Log', icon: History },
+    { path: '/reports', label: 'Reports & Analysis', icon: BarChart3 },
     { path: '/files', label: 'File Manager', icon: FileIcon }
   ];
 
@@ -42,7 +43,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/team', label: 'Team', icon: Users },
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },
     { path: '/communication', label: 'Communication', icon: MessageSquare },
-    { path: '/reports', label: 'Reports', icon: BarChart3, teamLeadOnly: true },
+    { path: '/reports', label: 'Reports & Analysis', icon: BarChart3, teamLeadOnly: true },
     { path: '/files', label: 'File Manager', icon: FileIcon }
   ];
 

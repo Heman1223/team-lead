@@ -220,7 +220,8 @@ const createLead = async (req, res) => {
 
         const leadData = {
             ...req.body,
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            source: req.body.source || 'manual'
         };
 
         const lead = await Lead.create(leadData);
@@ -588,7 +589,8 @@ const importLeads = async (req, res) => {
         const validLeads = leads.map(l => ({
             ...l,
             createdBy: req.user._id,
-            status: 'new'
+            status: 'new',
+            source: 'imported'
         }));
 
         const imported = await Lead.insertMany(validLeads);

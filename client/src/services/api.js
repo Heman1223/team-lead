@@ -130,6 +130,8 @@ export const reportsAPI = {
     getPerformance: (userId) => api.get(`/reports/performance/${userId}`),
     getTeamPerformance: () => api.get('/reports/team-performance'),
     getOverdueTrends: () => api.get('/reports/overdue-trends'),
+    getLeadGeneration: () => api.get('/reports/lead-generation'),
+    getLeadStatusStats: (period) => api.get('/reports/lead-status', { params: { period } }),
     export: (type) => api.get('/reports/export', { params: { type } })
 };
 

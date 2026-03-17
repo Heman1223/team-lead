@@ -13,6 +13,8 @@ const Reports = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [summary, setSummary] = useState(null);
     const [teamPerformance, setTeamPerformance] = useState([]);
+    const [leadGenStats, setLeadGenStats] = useState([]);
+    const [leadStatusStats, setLeadStatusStats] = useState(null);
     const [callHistory, setCallHistory] = useState([]);
     const [period, setPeriod] = useState('week');
     const [exporting, setExporting] = useState(false);
@@ -26,7 +28,9 @@ const Reports = () => {
             setLoading(true);
             const promises = [
                 reportsAPI.getSummary(),
-                reportsAPI.getTeamPerformance()
+                reportsAPI.getTeamPerformance(),
+                reportsAPI.getLeadGeneration(),
+                reportsAPI.getLeadStatusStats(period)
             ];
 
             if (isTeamLead) {
@@ -36,9 +40,11 @@ const Reports = () => {
             const results = await Promise.all(promises);
             setSummary(results[0].data.data);
             setTeamPerformance(results[1].data.data || []);
+            setLeadGenStats(results[2].data.data || []);
+            setLeadStatusStats(results[3].data.data || null);
             
-            if (isTeamLead && results[2]) {
-                setCallHistory(results[2].data.data || []);
+            if (isTeamLead && results[4]) {
+                setCallHistory(results[4].data.data || []);
             }
         } catch (err) {
             console.error('Failed to fetch reports:', err);
@@ -134,7 +140,7 @@ const Reports = () => {
                         <p className="text-gray-600 mt-1">Comprehensive analytics and performance insights</p>
                     </div>
                     <div className="flex gap-2">
-                        {['week', 'month', 'year'].map(p => (
+                        {['day', 'week', 'month', 'year'].map(p => (
                             <button
                                 key={p}
                                 onClick={() => setPeriod(p)}
@@ -205,7 +211,7 @@ const Reports = () => {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
                     <div className="border-b border-gray-200 px-6">
                         <div className="flex gap-4">
-                            {['overview', 'team', 'calls'].map(tab => (
+                            {['overview', 'team', 'leads', 'calls'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -215,7 +221,7 @@ const Reports = () => {
                                             : 'border-transparent text-gray-600 hover:text-gray-900'
                                     }`}
                                 >
-                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                    {tab === 'leads' ? 'Lead Generation' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                                 </button>
                             ))}
                         </div>
@@ -258,6 +264,42 @@ const Reports = () => {
                                                     </div>
                                                 );
                                             })}
+                                    </div>
+                                </div>
+
+                                {/* Lead Status Distribution */}
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Lead Status Distribution ({period.toUpperCase()})</h3>
+                                    <div className="space-y-3">
+                                        {leadStatusStats && Object.entries(leadStatusStats).map(([status, count]) => {
+                                            const total = Object.values(leadStatusStats).reduce((a, b) => a + b, 0);
+                                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                                            const colors = {
+                                                new: 'bg-blue-500',
+                                                contacted: 'bg-indigo-500',
+                                                interested: 'bg-purple-500',
+                                                follow_up: 'bg-yellow-500',
+                                                converted: 'bg-green-500',
+                                                not_interested: 'bg-red-500',
+                                                dialed: 'bg-amber-500'
+                                            };
+                                            return (
+                                                <div key={status} className="space-y-2">
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="font-semibold text-gray-700 capitalize">
+                                                            {status.replace('_', ' ')}
+                                                        </span>
+                                                        <span className="text-gray-600">{count} ({percentage}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                        <div
+                                                            className={`h-2 rounded-full ${colors[status] || 'bg-gray-400'}`}
+                                                            style={{ width: `${percentage}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -354,6 +396,59 @@ const Reports = () => {
                                 )}
                             </div>
                         )}
+
+                        {/* Lead Generation Tab */}
+                        {activeTab === 'leads' && (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-bold text-gray-900">Lead Generation Stats</h3>
+                                    <span className="text-sm text-gray-600">{leadGenStats.length} members</span>
+                                </div>
+
+                                {leadGenStats.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <Target className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                                        <p className="text-gray-600">No lead generation data available</p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-gray-200">
+                                                    <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Member</th>
+                                                    <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center" colSpan="2">Today</th>
+                                                    <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center border-l" colSpan="2">This Week</th>
+                                                    <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center border-l" colSpan="2">This Month</th>
+                                                </tr>
+                                                <tr className="border-b border-gray-100">
+                                                    <th className="py-2 px-4"></th>
+                                                    <th className="py-2 px-2 text-[10px] font-bold text-gray-400 text-center">Manual</th>
+                                                    <th className="py-2 px-2 text-[10px] font-bold text-gray-400 text-center">Import</th>
+                                                    <th className="py-2 px-2 text-[10px] font-bold text-gray-400 text-center border-l">Manual</th>
+                                                    <th className="py-2 px-2 text-[10px] font-bold text-gray-400 text-center">Import</th>
+                                                    <th className="py-2 px-2 text-[10px] font-bold text-gray-400 text-center border-l">Manual</th>
+                                                    <th className="py-2 px-2 text-[10px] font-bold text-gray-400 text-center">Import</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {leadGenStats.map((stat) => (
+                                                    <tr key={stat._id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                                        <td className="py-3 px-4 font-semibold text-gray-900">{stat.name}</td>
+                                                        <td className="py-3 px-2 text-center text-blue-600 font-bold">{stat.today.manual}</td>
+                                                        <td className="py-3 px-2 text-center text-purple-600 font-bold">{stat.today.imported}</td>
+                                                        <td className="py-3 px-2 text-center text-blue-600 font-bold border-l">{stat.week.manual}</td>
+                                                        <td className="py-3 px-2 text-center text-purple-600 font-bold">{stat.week.imported}</td>
+                                                        <td className="py-3 px-2 text-center text-blue-600 font-bold border-l">{stat.month.manual}</td>
+                                                        <td className="py-3 px-2 text-center text-purple-600 font-bold">{stat.month.imported}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
 
                         {/* Call Logs Tab */}
                         {activeTab === 'calls' && (
