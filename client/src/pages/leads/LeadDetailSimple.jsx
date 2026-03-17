@@ -84,7 +84,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     };
 
     const handleUpdateStatus = async (newStatus) => {
-        if (newStatus === data.lead.status) return;
+        if (newStatus === data.lead.status && newStatus !== 'dialed') return;
         if (newStatus === 'lost' && !lostReason) {
             setShowLostReason(true);
             return;
@@ -211,7 +211,8 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
             interested: 'bg-purple-100 text-purple-700 border-purple-200',
             follow_up: 'bg-yellow-100 text-yellow-700 border-yellow-200',
             converted: 'bg-green-100 text-green-700 border-green-200',
-            not_interested: 'bg-red-100 text-red-700 border-red-200'
+            not_interested: 'bg-red-100 text-red-700 border-red-200',
+            dialed: 'bg-amber-100 text-amber-700 border-amber-200'
         };
         return colors[status] || colors.new;
     };
@@ -285,8 +286,27 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                         <option value="follow_up">Follow Up</option>
                                         <option value="converted">Converted</option>
                                         <option value="not_interested">Not Interested</option>
+                                        <option value="dialed">Dialed</option>
                                     </select>
+                                    {selectedStatus === 'dialed' && (
+                                        <button
+                                            onClick={() => handleUpdateStatus('dialed')}
+                                            disabled={updating}
+                                            className="mt-2 w-full py-2 bg-amber-600 text-white rounded-xl font-bold text-xs hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Phone size={14} /> Dial Again
+                                        </button>
+                                    )}
                                 </div>
+                                {lead.dialCount > 0 && (
+                                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex justify-between items-center text-amber-800">
+                                        <div className="flex items-center gap-2">
+                                            <Phone size={16} />
+                                            <span className="text-xs font-bold">Total Dials</span>
+                                        </div>
+                                        <span className="text-sm font-black">{lead.dialCount}</span>
+                                    </div>
+                                )}
                                 {/* assignment control */}
                                 {(isAdmin || isTeamLead) ? (
                                     <select

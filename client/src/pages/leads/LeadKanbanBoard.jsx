@@ -18,6 +18,7 @@ const LeadKanbanBoard = ({ leads, onLeadUpdate, onSelectLead }) => {
     const columns = [
         { id: 'new', title: 'New', color: 'bg-blue-50 border-blue-200 text-blue-700' },
         { id: 'contacted', title: 'Contacted', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+        { id: 'dialed', title: 'Dialed', color: 'bg-amber-50 border-amber-200 text-amber-700' },
         { id: 'qualified', title: 'Qualified', color: 'bg-purple-50 border-purple-200 text-purple-700' },
         { id: 'proposal', title: 'Proposal', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
         { id: 'converted', title: 'Converted', color: 'bg-green-50 border-green-200 text-green-700' },

@@ -31,7 +31,8 @@ const statusColors = {
     interested: 'bg-purple-600 text-white',
     follow_up_required: 'bg-yellow-500 text-slate-900',
     converted: 'bg-emerald-600 text-white',
-    lost: 'bg-rose-600 text-white'
+    lost: 'bg-rose-600 text-white',
+    dialed: 'bg-amber-600 text-white'
 };
 
 const LeadDetail = ({ leadId, onClose, onUpdate }) => {
@@ -89,6 +90,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
     };
 
     const handleUpdateStatus = async (newStatus) => {
+        if (newStatus === data.lead.status && newStatus !== 'dialed') return;
         if (newStatus === 'lost' && !lostReason) {
             setShowLostReason(true);
             return;
@@ -297,6 +299,18 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                             ))}
                         </select>
 
+                        {/* Dial Again Button */}
+                        {lead.status === 'dialed' && (
+                            <button
+                                onClick={() => handleUpdateStatus('dialed')}
+                                className="flex items-center gap-2 px-6 py-4 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-amber-600 transition-all shadow-xl disabled:opacity-50"
+                                disabled={updating}
+                            >
+                                <Phone size={16} />
+                                Dial Again
+                            </button>
+                        )}
+
                         {/* Schedule Follow-up */}
                         <button
                             onClick={() => setShowFollowUpModal(true)}
@@ -481,6 +495,15 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                     <span className="text-gray-400">Estimated Value</span>
                                     <span className="text-white font-bold text-lg">${lead.estimatedValue?.toLocaleString()}</span>
                                 </div>
+                                {lead.dialCount > 0 && (
+                                    <div className="flex justify-between items-center text-sm border-b border-gray-700/30 pb-3">
+                                        <span className="text-gray-400">Total Dials</span>
+                                        <div className="flex items-center gap-2">
+                                            <Phone size={14} className="text-amber-500" />
+                                            <span className="text-white font-black">{lead.dialCount}</span>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-center text-sm border-b border-gray-700/30 pb-3">
                                     <span className="text-gray-400">Priority</span>
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${lead.priority === 'urgent' ? 'bg-rose-500/20 text-rose-400' :

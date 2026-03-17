@@ -200,7 +200,8 @@ const getTeamPerformance = async (req, res) => {
                     convertedLeads: {
                         $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] }
                     },
-                    totalPipelineValue: { $sum: '$estimatedValue' }
+                    totalPipelineValue: { $sum: '$estimatedValue' },
+                    totalDials: { $sum: '$dialCount' }
                 }
             },
             {
@@ -219,6 +220,7 @@ const getTeamPerformance = async (req, res) => {
                     totalLeads: 1,
                     convertedLeads: 1,
                     totalPipelineValue: 1,
+                    totalDials: 1,
                     conversionRate: {
                         $cond: [
                             { $gt: ['$totalLeads', 0] },

@@ -273,34 +273,44 @@ const updateLead = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Not Interested leads require a reason' });
         }
 
+        // Logic for dial tracking
+        let updateData = { ...req.body, lastUpdatedBy: req.user._id };
+        if (newStatus === 'dialed') {
+            updateData.$inc = { dialCount: 1 };
+            updateData.lastDialedAt = new Date();
+        }
+
         lead = await Lead.findByIdAndUpdate(
             req.params.id,
-            { ...req.body, lastUpdatedBy: req.user._id },
+            updateData,
             { new: true, runValidators: true }
         );
 
         // Log status change activity
-        if (newStatus && newStatus !== oldStatus) {
-            const statusChangeDetails = `Status changed from ${oldStatus} to ${newStatus}${newStatus === 'not_interested' ? ' Reason: ' + req.body.notInterestedReason : ''}${statusNote ? ' Note: ' + statusNote : ''}`;
+        // For 'dialed' status, we allow logging even if the status hasn't changed (Dial Again)
+        if (newStatus && (newStatus !== oldStatus || newStatus === 'dialed')) {
+            const statusChangeDetails = newStatus === 'dialed' 
+                ? `Lead dialed (Total: ${lead.dialCount})${statusNote ? ' Note: ' + statusNote : ''}`
+                : `Status changed from ${oldStatus} to ${newStatus}${newStatus === 'not_interested' ? ' Reason: ' + req.body.notInterestedReason : ''}${statusNote ? ' Note: ' + statusNote : ''}`;
 
             await ActivityLog.create({
                 action: 'lead_status_changed',
                 userId: req.user._id,
                 leadId: lead._id,
                 details: statusChangeDetails,
-                metadata: { oldStatus, newStatus }
+                metadata: { 
+                    oldStatus, 
+                    newStatus,
+                    dialCount: lead.dialCount
+                }
             });
 
             // Add note to lead if provided
             if (statusNote && statusNote.trim()) {
-                // Refetch the lead to get a proper Mongoose document with methods
                 const leadDoc = await Lead.findById(lead._id);
-                leadDoc.addNote(statusNote, req.user._id, 'status_changed');
+                leadDoc.addNote(statusNote, req.user._id, newStatus === 'dialed' ? 'call_done' : 'status_changed');
                 await leadDoc.save();
             }
-
-            // Email notification for status change - not yet implemented
-            // TODO: Implement sendLeadStatusChangeEmail using SendGrid Web API
         } else {
             // General update log
             await ActivityLog.create({

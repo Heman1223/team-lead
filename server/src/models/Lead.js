@@ -36,7 +36,7 @@ const leadSchema = new mongoose.Schema({
     // Lead Status & Priority (Strictly following workflow)
     status: {
         type: String,
-        enum: ['new', 'contacted', 'interested', 'follow_up', 'converted', 'not_interested'],
+        enum: ['new', 'contacted', 'interested', 'follow_up', 'converted', 'not_interested', 'dialed'],
         default: 'new',
         required: true
     },
@@ -295,6 +295,15 @@ const leadSchema = new mongoose.Schema({
     },
     conversionDuration: {
         type: Number, // in days
+        default: null
+    },
+    // Dial tracking
+    dialCount: {
+        type: Number,
+        default: 0
+    },
+    lastDialedAt: {
+        type: Date,
         default: null
     }
 }, {
