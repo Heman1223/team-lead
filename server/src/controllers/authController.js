@@ -21,6 +21,10 @@ const register = async (req, res) => {
             return res.status(400).json({ success: false, message: 'User already exists with this email' });
         }
 
+        // Prevent admin registration
+        if (role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Admin registration is not allowed' });
+        }
         // Create user
         const user = await User.create({
             name,
@@ -95,7 +99,14 @@ const login = async (req, res) => {
             }
         }
 
-        // user.isActive check removed to eliminate "block" feature
+        // Check if user is active
+        if (user.isActive === false) {
+            console.log('Inactive user login attempt:', email);
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Your account is inactive. Please contact your administrator for assistance.' 
+            });
+        }
 
         console.log('User found, checking password...');
 

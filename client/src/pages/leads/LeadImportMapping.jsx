@@ -7,7 +7,7 @@ const SYSTEM_FIELDS = [
     { key: 'phone', label: 'Phone Number', required: false },
     { key: 'category', label: 'Category', required: false },
     { key: 'source', label: 'Source', required: false },
-    { key: 'estimatedValue', label: 'Estimated Value', required: false },
+    { key: 'estimatedValue', label: 'Estimated Value (₹)', required: false },
     { key: 'description', label: 'Description', required: false }
 ];
 

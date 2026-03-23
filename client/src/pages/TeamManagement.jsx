@@ -4,7 +4,7 @@ import {
     Users, User, Phone, Mail, MapPin, Calendar, TrendingUp,
     CheckCircle, Clock, AlertCircle, X, Search, Filter,
     PhoneCall, PhoneOff, PhoneMissed, Target, Activity, AlertTriangle,
-    ChevronDown, ChevronRight, Briefcase, ClipboardList
+    ChevronDown, ChevronRight, Briefcase, ClipboardList, Power
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -217,6 +217,34 @@ const TeamManagement = () => {
             setCallDuration(0);
             setCallTimer(null);
         }, 2000);
+    };
+
+    const handleToggleStatus = async (memberUserId) => {
+        const member = members.find(m => m._id === memberUserId);
+        if (!member) return;
+
+        const newStatus = !member.isActive;
+        const confirmMessage = newStatus 
+            ? `Are you sure you want to activate user: ${member.name}?`
+            : `Are you sure you want to deactivate user: ${member.name}? This will block their access to the system.`;
+
+        if (window.confirm(confirmMessage)) {
+            try {
+                await usersAPI.update(memberUserId, { isActive: newStatus });
+                alert(`✅ User ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+                
+                // Refresh data locally
+                setMembers(prevMembers => 
+                    prevMembers.map(m => m._id === memberUserId ? { ...m, isActive: newStatus } : m)
+                );
+                if (selectedMember && selectedMember._id === memberUserId) {
+                    setSelectedMember({ ...selectedMember, isActive: newStatus });
+                }
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                alert('❌ ' + (error.response?.data?.message || 'Update failed'));
+            }
+        }
     };
 
     const formatDuration = (seconds) => {
@@ -749,8 +777,44 @@ const TeamManagement = () => {
                                         {getStatusLabel(selectedMember.status)}
                                     </span>
                                 </div>
+                                {selectedMember.isActive === false && (
+                                    <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-red-50 rounded-full">
+                                        <X className="w-2 h-2 text-red-600" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-red-600">
+                                            Account Inactive
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
+
+                        {/* Account Controls (Team Lead Only) */}
+                        {isTeamLead && selectedMember.role !== 'admin' && (
+                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${selectedMember.isActive !== false ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                        <Power className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900">Account Access</p>
+                                        <p className="text-xs text-gray-500">Toggle ability to login to the system</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleToggleStatus(selectedMember._id)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E2723] focus:ring-offset-2 ${
+                                        selectedMember.isActive !== false ? 'bg-[#3E2723]' : 'bg-gray-300'
+                                    }`}
+                                >
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                            selectedMember.isActive !== false ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+                        )}
 
                         {/* Contact Details */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

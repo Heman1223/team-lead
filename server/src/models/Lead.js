@@ -261,23 +261,6 @@ const leadSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
-    isDeleted: {
-        type: Boolean,
-        default: false
-    },
-    deletedAt: {
-        type: Date,
-        default: null
-    },
-    deletedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null
-    },
-    importBatch: {
-        type: String,
-        default: null
-    },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -377,23 +360,6 @@ leadSchema.methods.updateStatus = function (newStatus, updatedBy, notes = '') {
     return this;
 };
 
-// Soft delete with 60-day recovery period
-leadSchema.methods.softDelete = function (deletedBy) {
-    this.isDeleted = true;
-    this.isActive = false;
-    this.deletedAt = new Date();
-    this.deletedBy = deletedBy;
-    return this;
-};
-
-// Restore deleted lead
-leadSchema.methods.restore = function () {
-    this.isDeleted = false;
-    this.isActive = true;
-    this.deletedAt = null;
-    this.deletedBy = null;
-    return this;
-};
 
 // Add attachment
 leadSchema.methods.addAttachment = function (fileName, fileUrl, fileSize, fileType, uploadedBy) {

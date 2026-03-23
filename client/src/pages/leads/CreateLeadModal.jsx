@@ -187,7 +187,7 @@ const CreateLeadModal = ({ onClose, onSuccess }) => {
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-[#3E2723]">Estimated Value ($)</label>
+                            <label className="text-xs font-semibold text-[#3E2723]">Estimated Value (₹)</label>
                             <input
                                 type="number"
                                 name="estimatedValue"

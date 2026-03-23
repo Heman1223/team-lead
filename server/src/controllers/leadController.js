@@ -825,7 +825,7 @@ const getLeadStats = async (req, res) => {
     }
 };
 
-// @desc    Soft delete lead (60-day recovery)
+// @desc    Hard delete lead
 // @route   DELETE /api/leads/:id
 // @access  Private (Admin only)
 deleteLead = async (req, res) => {
@@ -861,51 +861,9 @@ deleteLead = async (req, res) => {
     }
 }
 
-// @desc    Restore deleted lead
-// @route   PUT /api/leads/:id/restore
-// @access  Private (Admin only)
+// restoreLead removed (hard delete implemented)
 const restoreLead = async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Only admins can restore leads' });
-        }
-
-        const lead = await Lead.findById(req.params.id);
-        if (!lead) {
-            return res.status(404).json({ success: false, message: 'Lead not found' });
-        }
-
-        if (!lead.isDeleted) {
-            return res.status(400).json({ success: false, message: 'Lead is not deleted' });
-        }
-
-        // Check if within 60-day recovery period
-        const daysSinceDeleted = Math.ceil((new Date() - new Date(lead.deletedAt)) / (1000 * 60 * 60 * 24));
-        if (daysSinceDeleted > 60) {
-            return res.status(400).json({ success: false, message: 'Recovery period (60 days) has expired' });
-        }
-
-        // Restore using model method
-        lead.restore();
-        await lead.save();
-
-        // Log activity
-        await ActivityLog.create({
-            action: 'lead_restored',
-            userId: req.user._id,
-            leadId: lead._id,
-            details: `Lead restored: ${lead.clientName}`
-        });
-
-        res.json({
-            success: true,
-            message: 'Lead restored successfully',
-            data: lead
-        });
-    } catch (error) {
-        console.error('Restore lead error:', error);
-        res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
+    res.status(410).json({ success: false, message: 'Restore is no longer supported as leads are permanently deleted.' });
 };
 
 // @desc    Escalate lead to Admin
@@ -955,7 +913,7 @@ const escalateLead = async (req, res) => {
         });
 
         // Create notification for all active admins
-        const admins = await User.find({ role: 'admin', deletedAt: null });
+        const admins = await User.find({ role: 'admin' });
         const Notification = require('../models/Notification');
         const notificationPromises = admins.map(admin =>
             Notification.create({

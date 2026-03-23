@@ -246,24 +246,7 @@ const Register = () => {
                             >
                                 Lead
                             </button>
-                            <button 
-                                type="button"
-                                onClick={() => setFormData({...formData, role: 'admin'})}
-                                style={{ 
-                                    flex: 1, 
-                                    padding: '10px', 
-                                    borderRadius: '6px', 
-                                    border: 'none', 
-                                    cursor: 'pointer',
-                                    fontWeight: '700',
-                                    fontSize: '0.85rem',
-                                    transition: 'all 0.3s ease',
-                                    backgroundColor: formData.role === 'admin' ? '#3E2723' : 'transparent',
-                                    color: formData.role === 'admin' ? 'white' : '#8D6E63'
-                                }}
-                            >
-                                Admin
-                            </button>
+
                         </div>
 
                         {error && (

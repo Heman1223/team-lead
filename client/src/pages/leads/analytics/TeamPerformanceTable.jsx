@@ -76,7 +76,7 @@ const TeamPerformanceTable = () => {
                                         />
                                     </div>
                                     <div className="text-[10px] font-bold text-emerald-400">
-                                        ${(member.totalPipelineValue || 0).toLocaleString()}
+                                        ₹{(member.totalPipelineValue || 0).toLocaleString()}
                                     </div>
                                 </div>
                             </div>

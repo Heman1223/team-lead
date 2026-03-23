@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Team = require('../models/Team');
 const Task = require('../models/Task');
@@ -10,7 +11,7 @@ const bcrypt = require('bcryptjs');
 // @access  Private/Admin
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find({ deletedAt: null }).populate('teamId').select('-password');
+        const users = await User.find().populate('teamId').select('-password');
         res.json({
             success: true,
             count: users.length,
@@ -197,11 +198,18 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
     try {
         const { name, email, role, phone, designation, department, coreField, teamId } = req.body;
-
+        
+        // DEBUG LOG
         let user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
+
+        // DEBUG LOG
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.resolve(__dirname, '../../update_debug.log');
+        fs.appendFileSync(logFile, `[${new Date().toISOString()}] Updating ${req.params.id}, body: ${JSON.stringify(req.body)}, user.role: ${user.role}\n`);
 
         // Prevent admin from changing their own role
         if (user._id.toString() === req.user._id.toString() && role && role !== 'admin') {
@@ -234,6 +242,30 @@ const updateUser = async (req, res) => {
         // Handle teamId - convert empty string to null
         if (teamId !== undefined) {
             user.teamId = teamId === '' || teamId === null ? null : teamId;
+        }
+
+        // Handle isActive status
+        if (req.body.isActive !== undefined) {
+            // Prevent admin accounts from being marked inactive
+            if (user.role === 'admin' && req.body.isActive === false) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Administrator accounts cannot be marked as inactive'
+                });
+            }
+            
+            const oldStatus = user.isActive;
+            user.isActive = req.body.isActive;
+            
+            // Log status change if it actually changed
+            if (oldStatus !== user.isActive) {
+                await ActivityLog.create({
+                    action: 'user_updated',
+                    userId: req.user._id,
+                    targetUserId: user._id,
+                    details: `Admin changed user status for ${user.name} to ${user.isActive ? 'Active' : 'Inactive'}`
+                });
+            }
         }
 
         await user.save();
@@ -281,8 +313,6 @@ const updateUser = async (req, res) => {
 // @access  Private/Admin
 const deleteUser = async (req, res) => {
     try {
-        const { permanent } = req.query; // ?permanent=true for hard delete
-
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
@@ -296,68 +326,62 @@ const deleteUser = async (req, res) => {
             });
         }
 
-        if (permanent === 'true') {
-            // HARD DELETE - Permanent removal
-            // Remove user from teams
-            await Team.updateMany(
-                { members: user._id },
-                { $pull: { members: user._id } }
-            );
+        // HARD DELETE - Permanent removal
+        // Remove user from teams
+        await Team.updateMany(
+            { members: user._id },
+            { $pull: { members: user._id } }
+        );
 
-            // If user is a team lead, handle teams
-            const teamsLed = await Team.find({ leadId: user._id });
-            for (const team of teamsLed) {
-                // Reassign tasks from this team to admin or delete team
-                await Task.updateMany(
-                    { teamId: team._id },
-                    { teamId: null, assignedTo: req.user._id }
-                );
-                await team.deleteOne();
-            }
+        // Also remove from memberDetails if it exists in those teams
+        await Team.updateMany(
+            { 'memberDetails.userId': user._id },
+            { $pull: { memberDetails: { userId: user._id } } }
+        );
 
-            // Reassign user's tasks to admin
+        // If user is a team lead, handle teams
+        const teamsLed = await Team.find({ leadId: user._id });
+        for (const team of teamsLed) {
+            // Reassign tasks from this team to admin or delete team
             await Task.updateMany(
-                { assignedTo: user._id },
-                { assignedTo: req.user._id }
+                { teamId: team._id },
+                { teamId: null, assignedTo: req.user._id }
             );
-
-            await user.deleteOne();
-
-            // Log activity
-            await ActivityLog.create({
-                action: 'user_deleted',
-                userId: req.user._id,
-                details: `Admin permanently deleted user: ${user.name} (${user.email})`
-            });
-
-            res.json({
-                success: true,
-                message: 'User permanently deleted successfully'
-            });
-        } else {
-            // SOFT DELETE - Mark as deleted (recoverable)
-            // Remove user from teams
-            await Team.updateMany(
-                { members: user._id },
-                { $pull: { members: user._id } }
-            );
-
-            // Soft delete - mark as deleted with timestamp
-            user.deletedAt = new Date();
-            await user.save();
-
-            // Log activity
-            await ActivityLog.create({
-                action: 'user_deleted',
-                userId: req.user._id,
-                details: `Admin deleted user: ${user.name} (${user.email})`
-            });
-
-            res.json({
-                success: true,
-                message: 'User deleted successfully'
-            });
+            await team.deleteOne();
         }
+
+        // Reassign user's tasks to admin
+        await Task.updateMany(
+            { assignedTo: user._id },
+            { assignedTo: req.user._id }
+        );
+
+        // Clear subtasks assignments
+        await Task.updateMany(
+            { 'subtasks.assignedTo': user._id },
+            { $set: { 'subtasks.$.assignedTo': null } }
+        );
+
+        // Reassign leads
+        const Lead = mongoose.model('Lead');
+        await Lead.updateMany(
+            { assignedTo: user._id },
+            { assignedTo: null }
+        );
+
+        await user.deleteOne();
+
+        // Log activity
+        await ActivityLog.create({
+            action: 'user_deleted',
+            userId: req.user._id,
+            details: `Admin permanently deleted user: ${user.name} (${user.email})`
+        });
+
+        res.json({
+            success: true,
+            message: 'User permanently deleted successfully'
+        });
     } catch (error) {
         console.error('Delete user error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -649,7 +673,7 @@ const assignMembersToTeam = async (req, res) => {
 // @access  Private/Admin
 const getAllTasks = async (req, res) => {
     try {
-        const tasks = await Task.find({ isDeleted: { $ne: true } })
+        const tasks = await Task.find()
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
             .populate('teamId', 'name')
@@ -873,7 +897,7 @@ const assignTaskToTeamLead = async (req, res) => {
 // @access  Private/Admin
 const getAllTeamLeads = async (req, res) => {
     try {
-        const teamLeads = await User.find({ role: 'team_lead', deletedAt: null })
+        const teamLeads = await User.find({ role: 'team_lead' })
             .populate('teamId', 'name')
             .select('-password');
 
@@ -1472,10 +1496,8 @@ const deleteTask = async (req, res) => {
 
         const taskTitle = task.title;
 
-        // Soft delete
-        task.isDeleted = true;
-        task.deletedAt = new Date();
-        await task.save();
+        // Hard delete
+        await Task.findByIdAndDelete(req.params.id);
 
         // Log activity
         await ActivityLog.create({

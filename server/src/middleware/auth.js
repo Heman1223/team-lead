@@ -17,6 +17,14 @@ const protect = async (req, res, next) => {
                 return res.status(401).json({ success: false, message: 'User not found' });
             }
 
+            if (req.user.isActive === false) {
+                console.log(`[AUTH] Inactive user access denied: ${req.user.email}`);
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Your account is inactive. Please contact your administrator for assistance.' 
+                });
+            }
+
             console.log(`[AUTH] Protected route accessed by: ${req.user.email} (${req.user.role})`);
             next();
         } catch (error) {

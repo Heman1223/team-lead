@@ -493,7 +493,7 @@ const LeadDetail = ({ leadId, onClose, onUpdate }) => {
                                 </div>
                                 <div className="flex justify-between items-center text-sm border-b border-gray-700/30 pb-3">
                                     <span className="text-gray-400">Estimated Value</span>
-                                    <span className="text-white font-bold text-lg">${lead.estimatedValue?.toLocaleString()}</span>
+                                    <span className="text-white font-bold text-lg">₹{lead.estimatedValue?.toLocaleString()}</span>
                                 </div>
                                 {lead.dialCount > 0 && (
                                     <div className="flex justify-between items-center text-sm border-b border-gray-700/30 pb-3">

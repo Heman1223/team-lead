@@ -72,9 +72,9 @@ const LeadDashboard = ({ refreshTrigger }) => {
         );
     }
 
-    const formattedPipelineValue = new Intl.NumberFormat('en-US', {
+    const formattedPipelineValue = new Intl.NumberFormat('en-IN', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'INR',
         maximumFractionDigits: 0
     }).format(stats?.totalPipelineValue || 0);
 
@@ -206,7 +206,7 @@ const LeadDashboard = ({ refreshTrigger }) => {
                                                 </span>
                                             </td>
                                             <td className="text-right py-3 px-4 text-gray-900 font-semibold">
-                                                ${(emp.totalPipelineValue || 0).toLocaleString()}
+                                                ₹{(emp.totalPipelineValue || 0).toLocaleString()}
                                             </td>
                                         </tr>
                                     ))}

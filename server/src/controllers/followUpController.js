@@ -401,7 +401,7 @@ const getOverdueFollowUps = async (req, res) => {
         }
 
         const overdueFollowUps = await FollowUp.find(query)
-            .populate('leadId', 'clientName email phone status isDeleted isActive')
+            .populate('leadId', 'clientName email phone status isActive')
             .populate('assignedTo', 'name email isActive')
             .sort({ scheduledDate: 1 });
 

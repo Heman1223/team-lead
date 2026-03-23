@@ -301,7 +301,7 @@ const LeadList = ({ onSelectLead }) => {
                                         {/* Value */}
                                         {lead.estimatedValue > 0 && (
                                             <span className="text-xs font-semibold text-green-600">
-                                                ${lead.estimatedValue.toLocaleString()}
+                                                ₹{lead.estimatedValue.toLocaleString()}
                                             </span>
                                         )}
 

@@ -27,7 +27,8 @@ const AdminUserManagement = () => {
         designation: '',
         department: '',
         coreField: '',
-        teamId: ''
+        teamId: '',
+        isActive: true
     });
 
     useEffect(() => {
@@ -98,7 +99,8 @@ const AdminUserManagement = () => {
             designation: user.designation || '',
             department: user.department || '',
             coreField: user.coreField || '',
-            teamId: user.teamId?._id || ''
+            teamId: user.teamId?._id || '',
+            isActive: user.isActive !== undefined ? user.isActive : true
         });
         setShowModal(true);
     };
@@ -184,6 +186,24 @@ const AdminUserManagement = () => {
         }
     };
 
+    const handleToggleStatus = async (user) => {
+        const newStatus = !user.isActive;
+        const confirmMessage = newStatus 
+            ? `Are you sure you want to activate user: ${user.name}?`
+            : `Are you sure you want to deactivate user: ${user.name}? This will block their access to the system.`;
+
+        if (window.confirm(confirmMessage)) {
+            try {
+                await adminUsersAPI.update(user._id, { isActive: newStatus });
+                alert(`✅ User ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+                fetchUsers();
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                alert('❌ ' + (error.response?.data?.message || 'Update failed'));
+            }
+        }
+    };
+
     const filteredUsers = users.filter(user => {
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch = !searchTerm || 
@@ -203,6 +223,8 @@ const AdminUserManagement = () => {
             } else if (filterRole === 'web_dev') {
                 matchesFilter = user.department?.toLowerCase().includes('web') || 
                                user.coreField?.toLowerCase().includes('web');
+            } else if (filterRole === 'inactive') {
+                matchesFilter = user.isActive === false;
             }
         }
 
@@ -270,6 +292,7 @@ const AdminUserManagement = () => {
                                 <option value="team_member">Team Members</option>
                                 <option value="intern">Interns</option>
                                 <option value="web_dev">Web Developers</option>
+                                <option value="inactive">Inactive Accounts</option>
                             </select>
                         </div>
                         <button
@@ -326,13 +349,13 @@ const AdminUserManagement = () => {
                         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 hover:shadow-lg transition-all">
                             <div className="flex items-center justify-between">
                                 <div>
-                                     <p className="text-sm font-semibold text-gray-600">Total Users</p>
-                                    <p className="text-3xl font-bold text-[#3E2723] mt-2">
-                                        {users.filter(u => u.isActive).length}
+                                    <p className="text-sm font-semibold text-gray-600">Inactive Users</p>
+                                    <p className="text-3xl font-bold text-orange-600 mt-2">
+                                        {users.filter(u => u.isActive === false).length}
                                     </p>
                                 </div>
-                                <div className="p-4 bg-[#D7CCC8]/30 rounded-xl">
-                                    <Power className="w-8 h-8 text-[#3E2723]" />
+                                <div className="p-4 bg-orange-50 rounded-xl">
+                                    <Power className="w-8 h-8 text-orange-600" />
                                 </div>
                             </div>
                         </div>
@@ -404,7 +427,7 @@ const AdminUserManagement = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="flex items-center justify-end">
+                                                <div className="flex items-center justify-end relative">
                                                     <button
                                                         onClick={() => setOpenMenuId(openMenuId === user._id ? null : user._id)}
                                                         className="p-1.5 text-gray-400 hover:text-[#3E2723] hover:bg-gray-100 rounded-lg transition-colors"
@@ -452,6 +475,21 @@ const AdminUserManagement = () => {
                                                                 <Lock className="w-4 h-4 text-gray-600" />
                                                                 <span className="font-medium">Reset Password</span>
                                                             </button>
+
+                                                            {user.role !== 'admin' && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        handleToggleStatus(user);
+                                                                        setOpenMenuId(null);
+                                                                    }}
+                                                                    className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                                                                        user.isActive ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'
+                                                                    }`}
+                                                                >
+                                                                    <Power className="w-4 h-4" />
+                                                                    <span className="font-medium">{user.isActive ? 'Mark Inactive' : 'Mark Active'}</span>
+                                                                </button>
+                                                            )}
 
                                                             <div className="border-t border-gray-200 my-1"></div>
 
@@ -618,6 +656,38 @@ const AdminUserManagement = () => {
                                             </select>
                                         </div>
                                     </div>
+
+                                    {modalMode === 'edit' && (
+                                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2 rounded-lg ${formData.isActive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                                    <Power className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Account Access</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {formData.role === 'admin' 
+                                                            ? 'Administrator accounts cannot be deactivated' 
+                                                            : "Toggle user's ability to login"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                disabled={formData.role === 'admin'}
+                                                onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E2723] focus:ring-offset-2 ${
+                                                    formData.isActive ? 'bg-[#3E2723]' : 'bg-gray-300'
+                                                } ${formData.role === 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            >
+                                                <span
+                                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                        formData.isActive ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
+                                    )}
                                 </>
                             )}
 

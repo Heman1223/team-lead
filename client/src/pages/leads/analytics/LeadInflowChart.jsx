@@ -80,7 +80,7 @@ const LeadInflowChart = () => {
                                     <div className="text-gray-400 text-[10px] mb-0.5">{new Date(item._id).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-[#3E2723]">{item.count} Leads</span>
-                                        {item.value > 0 && <span className="text-emerald-400">${item.value.toLocaleString()}</span>}
+                                        {item.value > 0 && <span className="text-emerald-400">₹{item.value.toLocaleString()}</span>}
                                     </div>
                                 </div>
                             </div>

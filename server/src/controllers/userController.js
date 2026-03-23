@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Team = require('../models/Team');
+const Task = require('../models/Task');
 const ActivityLog = require('../models/ActivityLog');
 
 // @desc    Get all users (team members)
@@ -9,36 +11,9 @@ const getUsers = async (req, res) => {
     try {
         const { teamId, status, role, roleFiltered } = req.query;
 
-        let query = { deletedAt: null }; // exclude deleted users
-
-        // Role-based filtering logic
-        if (roleFiltered === 'true' || roleFiltered === true) {
-            if (req.user.role === 'team_lead') {
-                // Return users in any team where current user is lead
-                const managedTeams = await Team.find({ leadId: req.user._id });
-                const managedTeamIds = managedTeams.map(t => t._id);
-
-                // Also include the team they belong to
-                if (req.user.teamId && !managedTeamIds.some(id => id.toString() === req.user.teamId.toString())) {
-                    managedTeamIds.push(req.user.teamId);
-                }
-
-                if (managedTeamIds.length > 0) {
-                    query.teamId = { $in: managedTeamIds };
-                } else {
-                    // Fallback to only themselves if no team found
-                    query._id = req.user._id;
-                }
-            } else if (req.user.role === 'team_member') {
-                // Team members only see themselves for assignment
-                query._id = req.user._id;
-            }
-        } else if (teamId) {
-            query.teamId = teamId;
-        }
-
-        if (status) query.status = status;
-        if (role) query.role = role;
+        let query = {}; // all users
+                if (status) query.status = status;
+                if (role) query.role = role;
 
         const users = await User.find(query)
             .select('-password')
@@ -65,7 +40,7 @@ const getUser = async (req, res) => {
             .select('-password')
             .populate('teamId', 'name');
 
-        if (!user || user.deletedAt !== null) {
+        if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
@@ -159,6 +134,24 @@ const updateUser = async (req, res) => {
         if (skills) user.skills = skills;
         if (status) user.status = status;
 
+        // Handle isActive status
+        if (req.body.isActive !== undefined) {
+            // Safety Check: A Team Lead cannot deactivate an Admin or another Team Lead
+            // (Assuming only admins can manage other high-level roles)
+            if (req.user.role === 'team_lead') {
+                if (user.role === 'admin' || user.role === 'team_lead') {
+                    if (req.body.isActive === false) {
+                        return res.status(403).json({
+                            success: false,
+                            message: 'As a Team Lead, you cannot deactivate other leaders or administrators'
+                        });
+                    }
+                }
+            }
+            
+            user.isActive = req.body.isActive;
+        }
+
         await user.save();
 
         // Log activity
@@ -190,16 +183,41 @@ const deleteUser = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
+        // Cleanup before hard delete
         // Remove from team
         if (user.teamId) {
             await Team.findByIdAndUpdate(user.teamId, {
                 $pull: { members: user._id }
             });
+
+            // Also remove from memberDetails if it exists in those teams
+            await Team.updateMany(
+                { 'memberDetails.userId': user._id },
+                { $pull: { memberDetails: { userId: user._id } } }
+            );
         }
 
-        // Soft delete - mark as deleted with timestamp
-        user.deletedAt = new Date();
-        await user.save();
+        // Reassign tasks to the person deleting (usually team lead)
+        await Task.updateMany(
+            { assignedTo: user._id },
+            { assignedTo: req.user._id }
+        );
+
+        // Clear subtasks assignments
+        await Task.updateMany(
+            { 'subtasks.assignedTo': user._id },
+            { $set: { 'subtasks.$.assignedTo': null } }
+        );
+
+        // Reassign leads
+        const Lead = mongoose.model('Lead');
+        await Lead.updateMany(
+            { assignedTo: user._id },
+            { assignedTo: null }
+        );
+
+        // Hard delete
+        await user.deleteOne();
 
         // Log activity after deletion
         await ActivityLog.create({

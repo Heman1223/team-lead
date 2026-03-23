@@ -98,7 +98,7 @@ const getSummary = async (req, res) => {
 
         // ── Team status (All-Time) ──────────────────────────
         const teamStats = await User.aggregate([
-            { $match: { _id: { $in: uniqueMemberIds }, deletedAt: null } },
+            { $match: { _id: { $in: uniqueMemberIds } } },
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
@@ -411,7 +411,7 @@ const exportReport = async (req, res) => {
                 .populate('createdBy', 'name email')
                 .lean();
         } else if (type === 'members') {
-            data = await User.find({ teamId: { $in: teamObjectIds }, deletedAt: null })
+            data = await User.find({ teamId: { $in: teamObjectIds } })
                 .select('-password')
                 .lean();
         } else {
@@ -464,7 +464,7 @@ const getLeadGenerationStats = async (req, res) => {
         let memberIds = new Set();
 
         if (req.user.role === 'admin') {
-            const allUsers = await User.find({ deletedAt: null });
+            const allUsers = await User.find();
             const uniqueMemberObjectIds = allUsers.map(u => u._id);
             matchQuery.createdBy = { $in: uniqueMemberObjectIds };
         } else {

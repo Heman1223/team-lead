@@ -263,7 +263,7 @@ const addMember = async (req, res) => {
         }
 
         const user = await User.findById(userId);
-        if (!user || user.deletedAt !== null) {
+        if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
@@ -307,7 +307,7 @@ const removeMember = async (req, res) => {
         }
 
         const user = await User.findById(req.params.userId);
-        if (!user || user.deletedAt !== null) {
+        if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 

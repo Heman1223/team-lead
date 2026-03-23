@@ -72,7 +72,7 @@ const SourceDistributionChart = () => {
                                 <div className="flex justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div className="text-[10px] text-gray-500 flex items-center gap-2">
                                         {(item?.wonCount || 0) > 0 && <span className="text-emerald-500 font-bold">{item.wonCount} Won</span>}
-                                        <span>${(item?.totalValue || 0).toLocaleString()} Pipeline</span>
+                                        <span>₹{(item?.totalValue || 0).toLocaleString()} Pipeline</span>
                                     </div>
                                 </div>
                             </div>

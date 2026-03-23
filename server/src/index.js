@@ -57,6 +57,10 @@ console.log("Middleware configured");
 
 // Request logger - MUST be before routes
 app.use((req, res, next) => {
+  const fs = require('fs');
+  const path = require('path');
+  const logFile = path.resolve(__dirname, '../request_debug.log');
+  fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${req.method} ${req.url} - Body: ${JSON.stringify(req.body)}\n`);
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });

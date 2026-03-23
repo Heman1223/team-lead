@@ -203,7 +203,7 @@ const LeadList = ({ onSelectLead }) => {
                                     <td className="px-8 py-6 text-right">
                                         <div className="flex flex-col items-end">
                                             <span className="text-2xl font-black text-white tracking-tighter">
-                                                ${(lead.estimatedValue || 0).toLocaleString()}
+                                                ₹{(lead.estimatedValue || 0).toLocaleString()}
                                             </span>
                                             <span className="text-[10px] text-[#3E2723]/50 font-black uppercase tracking-widest">Estimated Revenue</span>
                                         </div>

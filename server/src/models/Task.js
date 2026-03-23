@@ -320,14 +320,6 @@ const taskSchema = new mongoose.Schema({
         maxlength: [1000, 'Notes cannot be more than 1000 characters']
     },
     
-    // Soft Delete
-    isDeleted: {
-        type: Boolean,
-        default: false
-    },
-    deletedAt: {
-        type: Date
-    },
     
     // Legacy fields for backward compatibility
     recurrenceType: {
