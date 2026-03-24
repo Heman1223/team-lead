@@ -305,6 +305,15 @@ const LeadList = ({ onSelectLead }) => {
                                             </span>
                                         )}
 
+                                        {/* Balance Due — only for converted leads */}
+                                        {lead.status === 'converted' && (
+                                            <span className={`text-xs font-bold ${lead.onboardingPayment?.balanceDue > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                {lead.onboardingPayment?.balanceDue > 0
+                                                    ? `Balance: ₹${lead.onboardingPayment.balanceDue.toLocaleString()}`
+                                                    : 'Paid ✓'}
+                                            </span>
+                                        )}
+
                                         {/* Source */}
                                         <span className="text-xs text-gray-500 capitalize">
                                             {(lead.source || 'unknown').replace('_', ' ')}

@@ -83,7 +83,7 @@ meetingSchema.virtual('duration').get(function() {
 });
 
 // Pre-save hook to update color based on status
-meetingSchema.pre('save', function() {
+meetingSchema.pre('save', async function() {
     const statusColors = {
         upcoming: '#2563eb',   // Blue
         ongoing: '#9333ea',    // Purple

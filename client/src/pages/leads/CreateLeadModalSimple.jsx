@@ -9,14 +9,55 @@ import {
     User,
     DollarSign,
     Calendar,
-    Tag
+    Tag,
+    CreditCard
 } from 'lucide-react';
 import { leadsAPI, usersAPI, teamsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
+const defaultPayment = {
+    onboardingDate: '',
+    totalProjectValue: '',
+    advanceReceived: '',
+    advanceDate: '',
+    finalPayment: '',
+    finalPaymentDate: '',
+    totalCollected: 0,
+    balanceDue: 0
+};
+
+// Helper for ₹ prefixed currency inputs - Defined outside to prevent focus loss on re-render
+const CurrencyInput = ({ name, value, onChange, readOnly = false, className = '' }) => (
+    <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm pointer-events-none">₹</span>
+        <input
+            type="number"
+            name={name}
+            value={value}
+            onChange={onChange}
+            readOnly={readOnly}
+            min="0"
+            className={`w-full pl-7 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723] text-gray-900 ${readOnly ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'} ${className}`}
+            placeholder="0"
+        />
+    </div>
+);
+
 const CreateLeadModalSimple = ({ onClose, onSuccess, editLead }) => {
     const { isAdmin, isTeamLead, user } = useAuth();
     const isEditMode = !!editLead;
+
+    const parsePayment = (p) => ({
+        onboardingDate: p?.onboardingDate ? new Date(p.onboardingDate).toISOString().split('T')[0] : '',
+        totalProjectValue: p?.totalProjectValue ?? '',
+        advanceReceived: p?.advanceReceived ?? '',
+        advanceDate: p?.advanceDate ? new Date(p.advanceDate).toISOString().split('T')[0] : '',
+        finalPayment: p?.finalPayment ?? '',
+        finalPaymentDate: p?.finalPaymentDate ? new Date(p.finalPaymentDate).toISOString().split('T')[0] : '',
+        totalCollected: p?.totalCollected ?? 0,
+        balanceDue: p?.balanceDue ?? 0
+    });
+
     const [formData, setFormData] = useState({
         clientName: editLead?.clientName || '',
         email: editLead?.email || '',
@@ -30,19 +71,41 @@ const CreateLeadModalSimple = ({ onClose, onSuccess, editLead }) => {
         expectedCloseDate: editLead?.expectedCloseDate ? new Date(editLead.expectedCloseDate).toISOString().split('T')[0] : '',
         assignedTo: editLead?.assignedTo?._id || editLead?.assignedTo || '',
         assignedTeam: editLead?.assignedTeam?._id || editLead?.assignedTeam || '',
-        status: editLead?.status || 'new'
+        status: editLead?.status || 'new',
+        onboardingPayment: isEditMode ? parsePayment(editLead?.onboardingPayment) : { ...defaultPayment }
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [users, setUsers] = useState([]);
     const [teams, setTeams] = useState([]);
 
+    // Real-time calculation of totalCollected & balanceDue
+    useEffect(() => {
+        const advance = parseFloat(formData.onboardingPayment.advanceReceived) || 0;
+        const final = parseFloat(formData.onboardingPayment.finalPayment) || 0;
+        const project = parseFloat(formData.onboardingPayment.totalProjectValue) || 0;
+        const totalCollected = advance + final;
+        const balanceDue = project - totalCollected;
+
+        setFormData(prev => ({
+            ...prev,
+            onboardingPayment: {
+                ...prev.onboardingPayment,
+                totalCollected,
+                balanceDue
+            }
+        }));
+    }, [
+        formData.onboardingPayment.advanceReceived,
+        formData.onboardingPayment.finalPayment,
+        formData.onboardingPayment.totalProjectValue
+    ]);
+
     useEffect(() => {
         const fetchAssignmentOptions = async () => {
             if (!isAdmin && !isTeamLead) return;
-
             try {
-                const teamsRes = await teamsAPI.getAll(); 
+                const teamsRes = await teamsAPI.getAll();
                 let relevantTeams = teamsRes.data.data;
                 if (isTeamLead) {
                     relevantTeams = relevantTeams.filter(t => t.leadId?._id === user._id || t.leadId === user._id);
@@ -51,32 +114,71 @@ const CreateLeadModalSimple = ({ onClose, onSuccess, editLead }) => {
 
                 const usersRes = await usersAPI.getAll({ limit: 100 });
                 let relevantUsers = usersRes.data.data;
-                
                 if (isTeamLead && relevantTeams.length > 0) {
-                     const teamMemberIds = relevantTeams.flatMap(t => t.members.map(m => m._id || m));
-                     relevantUsers = relevantUsers.filter(u => teamMemberIds.includes(u._id));
+                    const teamMemberIds = relevantTeams.flatMap(t => t.members.map(m => m._id || m));
+                    relevantUsers = relevantUsers.filter(u => teamMemberIds.includes(u._id));
                 }
                 setUsers(relevantUsers);
-
             } catch (err) {
-                console.error("Error fetching assignment options", err);
+                console.error('Error fetching assignment options', err);
             }
         };
-
         fetchAssignmentOptions();
     }, [isAdmin, isTeamLead, user._id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        if (name.startsWith('onboardingPayment.')) {
+            const key = name.split('.')[1];
+            setFormData(prev => ({
+                ...prev,
+                onboardingPayment: {
+                    ...prev.onboardingPayment,
+                    [key]: value
+                }
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Date validation — only checked when status is converted
+        if (formData.status === 'converted') {
+            const { onboardingDate, advanceDate, finalPaymentDate } = formData.onboardingPayment;
+            if (onboardingDate && advanceDate && advanceDate < onboardingDate) {
+                alert('Advance Date cannot be before Onboarding Date.');
+                return;
+            }
+            if (advanceDate && finalPaymentDate && finalPaymentDate < advanceDate) {
+                alert('Final Payment Date cannot be before Advance Date.');
+                return;
+            }
+        }
+
         setLoading(true);
         setError(null);
         try {
-            const submitData = { ...formData };
+            const submitData = { 
+                ...formData,
+                estimatedValue: parseFloat(formData.estimatedValue) || 0
+            };
+            
+            if (submitData.onboardingPayment) {
+                const p = submitData.onboardingPayment;
+                submitData.onboardingPayment = {
+                    ...p,
+                    totalProjectValue: parseFloat(p.totalProjectValue) || 0,
+                    advanceReceived: parseFloat(p.advanceReceived) || 0,
+                    finalPayment: parseFloat(p.finalPayment) || 0,
+                    onboardingDate: p.onboardingDate || null,
+                    advanceDate: p.advanceDate || null,
+                    finalPaymentDate: p.finalPaymentDate || null
+                };
+            }
+
             if (!submitData.assignedTo) delete submitData.assignedTo;
             if (!submitData.assignedTeam) delete submitData.assignedTeam;
 
@@ -101,6 +203,9 @@ const CreateLeadModalSimple = ({ onClose, onSuccess, editLead }) => {
         }
     };
 
+    const isConverted = formData.status === 'converted';
+    const balanceDueValue = formData.onboardingPayment.balanceDue;
+
     return (
         <>
             {/* Overlay */}
@@ -120,7 +225,7 @@ const CreateLeadModalSimple = ({ onClose, onSuccess, editLead }) => {
                                 onClick={onClose}
                                 className="p-2 hover:bg-white/20 rounded-lg transition-colors"
                             >
-                                <X size={24} />
+                                <X size={24} className="text-white" />
                             </button>
                         </div>
                     </div>
@@ -274,6 +379,130 @@ const CreateLeadModalSimple = ({ onClose, onSuccess, editLead }) => {
                             </div>
                         </div>
 
+                        {/* Status — always visible (needed to trigger payment section) */}
+                        <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <Tag size={20} className="text-[#3E2723]" />
+                                Lead Status
+                            </h3>
+                            <select
+                                name="status"
+                                value={formData.status}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
+                            >
+                                <option value="new">New</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="interested">Interested</option>
+                                <option value="follow_up">Follow Up</option>
+                                <option value="converted">Converted</option>
+                                <option value="not_interested">Not Interested</option>
+                            </select>
+                        </div>
+
+                        {/* Onboarding & Payment Details — only when status === 'converted' */}
+                        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isConverted ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 space-y-4">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <CreditCard size={20} className="text-emerald-600" />
+                                    Onboarding &amp; Payment Details
+                                </h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Row 1: Onboarding Date | Total Project Value */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Onboarding Date</label>
+                                        <input
+                                            type="date"
+                                            name="onboardingPayment.onboardingDate"
+                                            value={formData.onboardingPayment.onboardingDate}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 bg-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Total Project Value (₹)</label>
+                                        <CurrencyInput
+                                            name="onboardingPayment.totalProjectValue"
+                                            value={formData.onboardingPayment.totalProjectValue}
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+
+                                    {/* Row 2: Advance Received | Advance Date */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Advance Received (₹)</label>
+                                        <CurrencyInput
+                                            name="onboardingPayment.advanceReceived"
+                                            value={formData.onboardingPayment.advanceReceived}
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Advance Date</label>
+                                        <input
+                                            type="date"
+                                            name="onboardingPayment.advanceDate"
+                                            value={formData.onboardingPayment.advanceDate}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 bg-white"
+                                        />
+                                    </div>
+
+                                    {/* Row 3: Final Payment | Final Payment Date */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Final Payment (₹)</label>
+                                        <CurrencyInput
+                                            name="onboardingPayment.finalPayment"
+                                            value={formData.onboardingPayment.finalPayment}
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Final Payment Date</label>
+                                        <input
+                                            type="date"
+                                            name="onboardingPayment.finalPaymentDate"
+                                            value={formData.onboardingPayment.finalPaymentDate}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 bg-white"
+                                        />
+                                    </div>
+
+                                    {/* Row 4: Total Collected (read-only) | Balance Due (read-only, color-coded) */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Total Collected (₹) <span className="text-xs font-normal text-gray-400">auto</span>
+                                        </label>
+                                        <CurrencyInput
+                                            name="onboardingPayment.totalCollected"
+                                            value={formData.onboardingPayment.totalCollected}
+                                            onChange={handleChange}
+                                            readOnly={true}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Balance Due (₹) <span className="text-xs font-normal text-gray-400">auto</span>
+                                        </label>
+                                        <div className="relative">
+                                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-semibold text-sm pointer-events-none ${balanceDueValue > 0 ? 'text-red-500' : 'text-green-600'}`}>₹</span>
+                                            <input
+                                                type="number"
+                                                readOnly
+                                                value={formData.onboardingPayment.balanceDue}
+                                                className={`w-full pl-7 pr-4 py-2 border-2 rounded-lg bg-gray-100 cursor-not-allowed font-bold ${
+                                                    balanceDueValue > 0
+                                                        ? 'border-red-400 text-red-600'
+                                                        : 'border-green-400 text-green-600'
+                                                }`}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Assignment (Admin/Team Lead Only) */}
                         {(isAdmin || isTeamLead) && (
                             <div className="bg-blue-50 rounded-xl p-6 space-y-4 border border-blue-200">
@@ -349,29 +578,6 @@ const CreateLeadModalSimple = ({ onClose, onSuccess, editLead }) => {
                                 />
                             </div>
                         </div>
-
-                        {/* Status (Edit Mode only) */}
-                        {isEditMode && (
-                            <div className="bg-gray-50 rounded-xl p-6 space-y-4">
-                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                    <Tag size={20} className="text-[#3E2723]" />
-                                    Lead Status
-                                </h3>
-                                <select
-                                    name="status"
-                                    value={formData.status}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3E2723]"
-                                >
-                                    <option value="new">New</option>
-                                    <option value="contacted">Contacted</option>
-                                    <option value="interested">Interested</option>
-                                    <option value="follow_up">Follow Up</option>
-                                    <option value="converted">Converted</option>
-                                    <option value="not_interested">Not Interested</option>
-                                </select>
-                            </div>
-                        )}
 
                         {/* Footer Actions */}
                         <div className="flex gap-3 pt-4 border-t border-gray-200">

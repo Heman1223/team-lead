@@ -10,6 +10,7 @@ const {
     importLeads,
     previewLeads,
     getLeadStats,
+    getPaymentSummary,
     deleteLead,
     restoreLead,
     escalateLead,
@@ -63,6 +64,9 @@ router.route('/')
 
 router.post('/preview', authorize('admin', 'team_lead', 'team_member'), upload.single('file'), previewLeads);
 router.post('/import', authorize('admin', 'team_lead', 'team_member'), importLeads);
+
+// Admin analytics — must be before /:id to prevent 'admin' matching as an ObjectId
+router.get('/admin/payment-summary', authorize('admin'), getPaymentSummary);
 
 router.route('/:id')
     .get(protect, getLeadById)

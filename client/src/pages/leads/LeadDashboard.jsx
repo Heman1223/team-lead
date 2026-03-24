@@ -8,7 +8,10 @@ import {
     Users,
     Clock,
     BarChart3,
-    RefreshCw
+    RefreshCw,
+    CreditCard,
+    Wallet,
+    IndianRupee
 } from 'lucide-react';
 import { leadsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -39,14 +42,29 @@ const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
 };
 
 const LeadDashboard = ({ refreshTrigger }) => {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     const { dateRange } = useFilters();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [paymentStats, setPaymentStats] = useState({
+        totalPipelineCollected: 0,
+        totalBalanceDue: 0,
+        totalProjectValue: 0
+    });
 
     useEffect(() => {
         fetchStats();
+        if (isAdmin) fetchPaymentStats();
     }, [refreshTrigger, dateRange]); // Re-fetch when refreshTrigger or global date range changes
+
+    const fetchPaymentStats = async () => {
+        try {
+            const response = await leadsAPI.getPaymentSummary();
+            setPaymentStats(response.data.data);
+        } catch (error) {
+            console.error('Error fetching payment stats:', error);
+        }
+    };
 
     const fetchStats = async () => {
         setLoading(true);
@@ -111,6 +129,33 @@ const LeadDashboard = ({ refreshTrigger }) => {
                     subtitle="Est. value"
                 />
             </div>
+
+            {/* Payment KPIs — Admins only */}
+            {isAdmin && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+                    <StatCard
+                        title="Total Collected (₹)"
+                        value={`₹${(paymentStats.totalPipelineCollected || 0).toLocaleString('en-IN')}`}
+                        icon={CreditCard}
+                        color="green"
+                        subtitle="From converted leads"
+                    />
+                    <StatCard
+                        title="Total Balance Due (₹)"
+                        value={`₹${(paymentStats.totalBalanceDue || 0).toLocaleString('en-IN')}`}
+                        icon={Wallet}
+                        color={paymentStats.totalBalanceDue > 0 ? 'red' : 'green'}
+                        subtitle={paymentStats.totalBalanceDue > 0 ? 'Outstanding balance' : 'All cleared!'}
+                    />
+                    <StatCard
+                        title="Total Project Value (₹)"
+                        value={`₹${(paymentStats.totalProjectValue || 0).toLocaleString('en-IN')}`}
+                        icon={IndianRupee}
+                        color="blue"
+                        subtitle="Across all converted leads"
+                    />
+                </div>
+            )}
 
             {/* Status Breakdown & Follow-Ups */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">

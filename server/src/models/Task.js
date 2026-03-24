@@ -364,7 +364,7 @@ taskSchema.methods.calculateProgress = function() {
 };
 
 // Auto-update overdue status
-taskSchema.pre('save', function() {
+taskSchema.pre('save', async function() {
     const now = new Date();
     
     // Check if task is overdue

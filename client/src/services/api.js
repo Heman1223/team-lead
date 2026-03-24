@@ -168,7 +168,8 @@ export const leadsAPI = {
     }),
     importLeads: (leads) => api.post('/leads/import', { leads }),
     getStats: (params) => api.get('/leads/stats', { params }),
-    getActivities: () => api.get('/leads/activities')
+    getActivities: () => api.get('/leads/activities'),
+    getPaymentSummary: () => api.get('/leads/admin/payment-summary')
 };
 
 // Follow-ups API

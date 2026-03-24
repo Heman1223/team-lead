@@ -240,6 +240,9 @@ const createLead = async (req, res) => {
         });
     } catch (error) {
         console.error('Create lead error:', error);
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return res.status(400).json({ success: false, message: error.message });
+        }
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };
@@ -279,6 +282,13 @@ const updateLead = async (req, res) => {
         if (newStatus === 'dialed') {
             updateData.$inc = { dialCount: 1 };
             updateData.lastDialedAt = new Date();
+        }
+
+        // Explicitly $set onboardingPayment to prevent field wiping on partial updates
+        if (req.body.onboardingPayment) {
+            if (!updateData.$set) updateData.$set = {};
+            updateData.$set.onboardingPayment = req.body.onboardingPayment;
+            delete updateData.onboardingPayment; // remove from spread to avoid duplication
         }
 
         lead = await Lead.findByIdAndUpdate(
@@ -328,6 +338,9 @@ const updateLead = async (req, res) => {
         });
     } catch (error) {
         console.error('Update lead error:', error);
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return res.status(400).json({ success: false, message: error.message });
+        }
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };
@@ -825,6 +838,41 @@ const getLeadStats = async (req, res) => {
     }
 };
 
+// @desc    Get payment summary for all converted leads (admin analytics)
+// @route   GET /api/leads/admin/payment-summary
+// @access  Private (Admin only)
+const getPaymentSummary = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required' });
+        }
+
+        const result = await Lead.aggregate([
+            { $match: { status: 'converted' } },
+            {
+                $group: {
+                    _id: null,
+                    totalPipelineCollected: { $sum: '$onboardingPayment.totalCollected' },
+                    totalBalanceDue: { $sum: '$onboardingPayment.balanceDue' },
+                    totalProjectValue: { $sum: '$onboardingPayment.totalProjectValue' }
+                }
+            }
+        ]);
+
+        const summary = result[0] || {
+            totalPipelineCollected: 0,
+            totalBalanceDue: 0,
+            totalProjectValue: 0
+        };
+        delete summary._id;
+
+        res.json({ success: true, data: summary });
+    } catch (error) {
+        console.error('Get payment summary error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
 // @desc    Hard delete lead
 // @route   DELETE /api/leads/:id
 // @access  Private (Admin only)
@@ -1083,6 +1131,7 @@ module.exports = {
     importLeads,
     previewLeads,
     getLeadStats,
+    getPaymentSummary,
     deleteLead,
     restoreLead,
     escalateLead,

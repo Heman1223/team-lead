@@ -40,7 +40,7 @@ const callLogSchema = new mongoose.Schema({
 });
 
 // Calculate duration before saving if endTime is set
-callLogSchema.pre('save', function () {
+callLogSchema.pre('save', async function () {
     if (this.endTime && this.startTime) {
         this.duration = Math.floor((this.endTime - this.startTime) / 1000);
     }

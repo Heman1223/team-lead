@@ -288,6 +288,18 @@ const leadSchema = new mongoose.Schema({
     lastDialedAt: {
         type: Date,
         default: null
+    },
+
+    // Onboarding & Payment tracking (only relevant when status === 'converted')
+    onboardingPayment: {
+        onboardingDate: { type: Date, default: null },
+        totalProjectValue: { type: Number, default: 0 },
+        advanceReceived: { type: Number, default: 0 },
+        advanceDate: { type: Date, default: null },
+        finalPayment: { type: Number, default: 0 },
+        finalPaymentDate: { type: Date, default: null },
+        totalCollected: { type: Number, default: 0 },   // auto-calculated
+        balanceDue: { type: Number, default: 0 }       // auto-calculated
     }
 }, {
     timestamps: true
@@ -373,5 +385,33 @@ leadSchema.methods.addAttachment = function (fileName, fileUrl, fileSize, fileTy
     });
     return this;
 };
+
+// Auto-calculate totalCollected and balanceDue on save
+leadSchema.pre('save', async function () {
+    if (this.onboardingPayment) {
+        this.onboardingPayment.totalCollected =
+            (this.onboardingPayment.advanceReceived || 0) +
+            (this.onboardingPayment.finalPayment || 0);
+        this.onboardingPayment.balanceDue =
+            (this.onboardingPayment.totalProjectValue || 0) -
+            this.onboardingPayment.totalCollected;
+    }
+});
+
+// Auto-calculate totalCollected and balanceDue on findByIdAndUpdate / findOneAndUpdate
+leadSchema.pre('findOneAndUpdate', async function () {
+    const update = this.getUpdate();
+    const op = update.$set || update;
+    const payment = op.onboardingPayment || (update.$set && update.$set.onboardingPayment);
+    if (payment) {
+        const totalCollected =
+            (payment.advanceReceived || 0) +
+            (payment.finalPayment || 0);
+        const balanceDue =
+            (payment.totalProjectValue || 0) - totalCollected;
+        payment.totalCollected = totalCollected;
+        payment.balanceDue = balanceDue;
+    }
+});
 
 module.exports = mongoose.model('Lead', leadSchema);
