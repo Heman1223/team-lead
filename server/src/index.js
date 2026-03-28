@@ -77,7 +77,8 @@ app.get("/health", (req, res) => {
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Backend is running successfully 🚀",
+    message: "Backend is running successfully - VERSION 2.0 (Payment Implementation) 🚀",
+    timestamp: new Date().toISOString(),
     availableRoutes: [
       "/health",
       "/api/auth",
@@ -186,26 +187,32 @@ const startServer = async () => {
 
     otherRoutes.forEach((route) => {
       try {
+        console.log(`Attempting to mount ${route.name} routes from ${route.file}...`);
         const routeModule = require(route.file);
         app.use(route.path, routeModule);
         console.log(`✓ ${route.name} routes mounted at ${route.path}`);
       } catch (err) {
-        console.log(`⚠ ${route.name} routes not found (skipping)`);
-        console.error(`   Error: ${err.message}`);
-        console.error(`   Stack: ${err.stack}`);
+        console.log(`✗ ERROR mounting ${route.name} routes:`, err.message);
+        console.error(err.stack);
       }
     });
 
     console.log("\n--- All Routes Loaded ---\n");
 
-    // Error handling middleware
+    // Global Error Handler
     app.use((err, req, res, next) => {
-      console.error("ERROR:", err.message);
-      console.error(err.stack);
-      res.status(err.status || 500).json({
+      const fs = require('fs'); // Ensure fs is available
+      const path = require('path'); // Ensure path is available
+      const errorLog = path.join(__dirname, "../error_debug.log");
+      const errorMsg = `[${new Date().toISOString()}] ${req.method} ${req.url} - Error: ${err.message}\nStack: ${err.stack}\n\n`;
+      fs.appendFileSync(errorLog, errorMsg);
+      
+      console.error(`Error: ${err.message}`);
+      // console.error(err.stack);
+      res.status(500).json({
         success: false,
-        message: err.message || "Internal Server Error",
-        error: process.env.NODE_ENV === "development" ? err.stack : undefined,
+        message: "Server Error",
+        error: err.message,
       });
     });
 

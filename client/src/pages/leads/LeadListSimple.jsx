@@ -305,13 +305,25 @@ const LeadList = ({ onSelectLead }) => {
                                             </span>
                                         )}
 
-                                        {/* Balance Due — only for converted leads */}
-                                        {lead.status === 'converted' && (
-                                            <span className={`text-xs font-bold ${lead.onboardingPayment?.balanceDue > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                {lead.onboardingPayment?.balanceDue > 0
-                                                    ? `Balance: ₹${lead.onboardingPayment.balanceDue.toLocaleString()}`
-                                                    : 'Paid ✓'}
-                                            </span>
+                                        {/* Payment Details — only for converted leads */}
+                                        {lead.status === 'converted' && lead.onboardingPayment && (
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-green-50/50 border border-green-100 rounded-lg px-3 py-2 mt-2 w-full">
+                                                <div className="flex items-center gap-1.5 text-[10px] font-medium text-gray-700">
+                                                    <Calendar className="w-3 h-3 text-emerald-600" />
+                                                    <span>Onboarded: {lead.onboardingPayment.onboardingDate ? new Date(lead.onboardingPayment.onboardingDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[10px] font-medium text-gray-700">
+                                                    <CreditCard className="w-3 h-3 text-emerald-600" />
+                                                    <span>Total: ₹{lead.onboardingPayment.totalProjectValue?.toLocaleString('en-IN') || 0}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[10px] font-medium text-gray-700">
+                                                    <DollarSign className="w-3 h-3 text-emerald-600" />
+                                                    <span>Paid: ₹{lead.onboardingPayment.totalCollected?.toLocaleString('en-IN') || 0}</span>
+                                                </div>
+                                                <div className={`flex items-center gap-1.5 text-[10px] font-bold ${lead.onboardingPayment.balanceDue > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                                                    <span>{lead.onboardingPayment.balanceDue > 0 ? `Due: ₹${lead.onboardingPayment.balanceDue.toLocaleString('en-IN')}` : 'CLEAR ✓'}</span>
+                                                </div>
+                                            </div>
                                         )}
 
                                         {/* Source */}

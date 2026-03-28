@@ -11,7 +11,9 @@ import {
     RefreshCw,
     CreditCard,
     Wallet,
-    IndianRupee
+    IndianRupee,
+    Search,
+    X
 } from 'lucide-react';
 import { leadsAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -51,18 +53,24 @@ const LeadDashboard = ({ refreshTrigger }) => {
         totalBalanceDue: 0,
         totalProjectValue: 0
     });
+    const [paymentTimeline, setPaymentTimeline] = useState([]);
+    const [paymentSearchDate, setPaymentSearchDate] = useState('');
 
     useEffect(() => {
         fetchStats();
-        if (isAdmin) fetchPaymentStats();
+        if (isAdmin) fetchPaymentData();
     }, [refreshTrigger, dateRange]); // Re-fetch when refreshTrigger or global date range changes
 
-    const fetchPaymentStats = async () => {
+    const fetchPaymentData = async () => {
         try {
-            const response = await leadsAPI.getPaymentSummary();
-            setPaymentStats(response.data.data);
+            const [summaryRes, timelineRes] = await Promise.all([
+                leadsAPI.getPaymentSummary(),
+                leadsAPI.getPaymentTimeline()
+            ]);
+            setPaymentStats(summaryRes.data.data);
+            setPaymentTimeline(timelineRes.data.data);
         } catch (error) {
-            console.error('Error fetching payment stats:', error);
+            console.error('Error fetching payment data:', error);
         }
     };
 
@@ -214,6 +222,89 @@ const LeadDashboard = ({ refreshTrigger }) => {
                     ))}
                 </div>
             </div>
+
+            {/* Payment Activity — Admins only */}
+            {isAdmin && (
+                <div className="bg-[#FDF8F3] rounded-xl border border-[#EBD9C1] p-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <Clock size={20} className="text-[#3E2723]" />
+                            Payment Activity
+                        </h3>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="relative flex-1 sm:flex-none">
+                                <input
+                                    type="date"
+                                    value={paymentSearchDate}
+                                    onChange={(e) => setPaymentSearchDate(e.target.value)}
+                                    className="w-full pl-9 pr-8 py-2 bg-white border border-[#EBD9C1] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#3E2723] focus:border-[#3E2723]"
+                                />
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                {paymentSearchDate && (
+                                    <button
+                                        onClick={() => setPaymentSearchDate('')}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full text-gray-400"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {paymentTimeline.filter(entry => !paymentSearchDate || new Date(entry.date).toISOString().split('T')[0] === paymentSearchDate).length === 0 ? (
+                        <p className="text-gray-400 text-sm text-center py-8">
+                            {paymentSearchDate ? 'No payments found for this date' : 'No payment activity yet'}
+                        </p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <div className="max-h-64 overflow-y-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="sticky top-0 bg-[#FDF8F3] z-10">
+                                        <tr className="text-left text-gray-500 border-b border-[#EBD9C1]">
+                                            <th className="pb-3 font-semibold uppercase tracking-wider">Date</th>
+                                            <th className="pb-3 font-semibold uppercase tracking-wider">Client Name</th>
+                                            <th className="pb-3 font-semibold uppercase tracking-wider">Type</th>
+                                            <th className="pb-3 font-semibold uppercase tracking-wider text-right">Amount (₹)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {paymentTimeline
+                                            .filter(entry => !paymentSearchDate || new Date(entry.date).toISOString().split('T')[0] === paymentSearchDate)
+                                            .map((entry, index) => {
+                                            const isToday = new Date(entry.date).toDateString() === new Date().toDateString();
+                                            return (
+                                                <tr key={index} className={`hover:bg-white/50 transition-colors ${isToday ? 'bg-yellow-50/50' : ''}`}>
+                                                    <td className="py-3 pr-4 whitespace-nowrap">
+                                                        <span className="font-medium text-gray-900">
+                                                            {new Date(entry.date).toLocaleDateString('en-IN', {
+                                                                day: '2-digit', month: 'short', year: 'numeric'
+                                                            })}
+                                                        </span>
+                                                        {isToday && <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold uppercase">Today</span>}
+                                                    </td>
+                                                    <td className="py-3 px-4 font-semibold text-gray-900">{entry.clientName}</td>
+                                                    <td className="py-3 px-4">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight ${
+                                                            entry.type === 'Advance'
+                                                                ? 'bg-blue-100 text-blue-700'
+                                                                : 'bg-emerald-100 text-emerald-700'
+                                                        }`}>
+                                                            {entry.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 pl-4 text-right font-black text-gray-900">
+                                                        ₹{entry.amount.toLocaleString('en-IN')}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Employee Performance (Admin & Team Lead only) */}
             {(user?.role === 'admin' || user?.role === 'team_lead') && stats?.employeePerformance?.length > 0 && (

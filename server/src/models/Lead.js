@@ -389,28 +389,32 @@ leadSchema.methods.addAttachment = function (fileName, fileUrl, fileSize, fileTy
 // Auto-calculate totalCollected and balanceDue on save
 leadSchema.pre('save', async function () {
     if (this.onboardingPayment) {
-        this.onboardingPayment.totalCollected =
-            (this.onboardingPayment.advanceReceived || 0) +
-            (this.onboardingPayment.finalPayment || 0);
-        this.onboardingPayment.balanceDue =
-            (this.onboardingPayment.totalProjectValue || 0) -
-            this.onboardingPayment.totalCollected;
+        const op = this.onboardingPayment;
+        const advance = Number(op.advanceReceived) || 0;
+        const final = Number(op.finalPayment) || 0;
+        const total = Number(op.totalProjectValue) || 0;
+        
+        this.onboardingPayment.totalCollected = advance + final;
+        this.onboardingPayment.balanceDue = total - this.onboardingPayment.totalCollected;
     }
 });
 
 // Auto-calculate totalCollected and balanceDue on findByIdAndUpdate / findOneAndUpdate
 leadSchema.pre('findOneAndUpdate', async function () {
     const update = this.getUpdate();
-    const op = update.$set || update;
-    const payment = op.onboardingPayment || (update.$set && update.$set.onboardingPayment);
-    if (payment) {
-        const totalCollected =
-            (payment.advanceReceived || 0) +
-            (payment.finalPayment || 0);
-        const balanceDue =
-            (payment.totalProjectValue || 0) - totalCollected;
-        payment.totalCollected = totalCollected;
-        payment.balanceDue = balanceDue;
+    if (update && update.$set && update.$set.onboardingPayment) {
+        const op = update.$set.onboardingPayment;
+        
+        // Coerce to Numbers to avoid string concatenation issues
+        const advance = Number(op.advanceReceived) || 0;
+        const final = Number(op.finalPayment) || 0;
+        const total = Number(op.totalProjectValue) || 0;
+        
+        const totalCollected = advance + final;
+        const balanceDue = total - totalCollected;
+        
+        update.$set.onboardingPayment.totalCollected = totalCollected;
+        update.$set.onboardingPayment.balanceDue = balanceDue;
     }
 });
 

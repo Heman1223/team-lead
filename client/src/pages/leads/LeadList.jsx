@@ -150,7 +150,8 @@ const LeadList = ({ onSelectLead }) => {
                                 <th className="px-8 py-6 text-xs font-black text-gray-500 uppercase tracking-widest">Client Profile</th>
                                 <th className="px-8 py-6 text-xs font-black text-gray-500 uppercase tracking-widest">Status / Journey</th>
                                 <th className="px-8 py-6 text-xs font-black text-gray-500 uppercase tracking-widest">Team Assignment</th>
-                                <th className="px-8 py-6 text-xs font-black text-gray-500 uppercase tracking-widest text-right">Potentail Value</th>
+                                <th className="px-8 py-6 text-xs font-black text-gray-500 uppercase tracking-widest text-right">Potential Value</th>
+                                <th className="px-8 py-6 text-xs font-black text-gray-500 uppercase tracking-widest text-right">Balance Due (₹)</th>
                                 <th className="px-8 py-6 text-xs font-black text-gray-500 uppercase tracking-widest"></th>
                             </tr>
                         </thead>
@@ -207,6 +208,27 @@ const LeadList = ({ onSelectLead }) => {
                                             </span>
                                             <span className="text-[10px] text-[#3E2723]/50 font-black uppercase tracking-widest">Estimated Revenue</span>
                                         </div>
+                                    </td>
+                                    <td className="px-8 py-6 text-right">
+                                        {lead.status === 'converted' ? (
+                                            lead.onboardingPayment?.balanceDue > 0 ? (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-xl font-black text-rose-500 tracking-tighter">
+                                                        ₹{lead.onboardingPayment.balanceDue.toLocaleString('en-IN')}
+                                                    </span>
+                                                    <span className="text-[10px] text-rose-500/50 font-black uppercase tracking-widest">Outstanding</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-xl font-black text-emerald-500 tracking-tighter">PAID</span>
+                                                    <span className="text-[10px] text-emerald-500/50 font-black uppercase tracking-widest">Cleared ✓</span>
+                                                </div>
+                                            )
+                                        ) : (
+                                            <div className="flex flex-col items-end opacity-20">
+                                                <span className="text-xl font-black text-gray-500">—</span>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-8 py-6 text-right">
                                         <button className="w-12 h-12 flex items-center justify-center text-gray-600 hover:text-white bg-gray-800/50 hover:bg-[#3E2723] rounded-2xl transition-all shadow-xl group-hover:scale-110">

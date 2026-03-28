@@ -12,7 +12,7 @@ const path = require('path');
 // @desc    Get all leads (with role-based filtering)
 // @route   GET /api/leads
 // @access  Private
-getLeads = async (req, res) => {
+const getLeads = async (req, res) => {
     try {
         // Initialize empty query for hard delete (no soft delete filtering needed)
         let query = {};
@@ -277,18 +277,22 @@ const updateLead = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Not Interested leads require a reason' });
         }
 
-        // Logic for dial tracking
-        let updateData = { ...req.body, lastUpdatedBy: req.user._id };
+        // Refactored update logic to avoid mixing top-level fields with atomic operators
+        let updateData = {
+            $set: {
+                ...req.body,
+                lastUpdatedBy: req.user._id
+            }
+        };
+
         if (newStatus === 'dialed') {
             updateData.$inc = { dialCount: 1 };
-            updateData.lastDialedAt = new Date();
+            updateData.$set.lastDialedAt = new Date();
         }
 
-        // Explicitly $set onboardingPayment to prevent field wiping on partial updates
+        // Handle onboardingPayment explicitly
         if (req.body.onboardingPayment) {
-            if (!updateData.$set) updateData.$set = {};
             updateData.$set.onboardingPayment = req.body.onboardingPayment;
-            delete updateData.onboardingPayment; // remove from spread to avoid duplication
         }
 
         lead = await Lead.findByIdAndUpdate(
@@ -873,10 +877,59 @@ const getPaymentSummary = async (req, res) => {
     }
 };
 
+// @desc    Get payment timeline for all converted leads (admin analytics)
+// @route   GET /api/leads/admin/payment-timeline
+// @access  Private (Admin only)
+const getPaymentTimeline = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required' });
+        }
+
+        const leads = await Lead.find(
+            { status: 'converted' },
+            { clientName: 1, onboardingPayment: 1 }
+        );
+
+        const timeline = [];
+
+        leads.forEach(lead => {
+            const op = lead.onboardingPayment;
+            if (!op) return;
+
+            if (op.advanceDate && op.advanceReceived > 0) {
+                timeline.push({
+                    date: op.advanceDate,
+                    amount: op.advanceReceived,
+                    type: 'Advance',
+                    clientName: lead.clientName,
+                });
+            }
+
+            if (op.finalPaymentDate && op.finalPayment > 0) {
+                timeline.push({
+                    date: op.finalPaymentDate,
+                    amount: op.finalPayment,
+                    type: 'Final Payment',
+                    clientName: lead.clientName,
+                });
+            }
+        });
+
+        // Sort by date (descending)
+        timeline.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        res.status(200).json({ success: true, data: timeline });
+    } catch (error) {
+        console.error('Get payment timeline error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
 // @desc    Hard delete lead
 // @route   DELETE /api/leads/:id
 // @access  Private (Admin only)
-deleteLead = async (req, res) => {
+const deleteLead = async (req, res) => {
     try {
         // Only admins can delete leads
         if (req.user.role !== 'admin') {
@@ -1038,50 +1091,7 @@ const getLeadActivities = async (req, res) => {
     }
 };
 
-// @desc    Add note to lead
-// @route   POST /api/leads/:id/notes
-// @access  Private
-const addLeadNote = async (req, res) => {
-    try {
-        const { content, type } = req.body;
 
-        if (!content || content.trim() === '') {
-            return res.status(400).json({ success: false, message: 'Note content is required' });
-        }
-
-        const lead = await Lead.findById(req.params.id);
-        if (!lead) {
-            return res.status(404).json({ success: false, message: 'Lead not found' });
-        }
-
-        // Check permissions
-        const canAccess = await checkLeadPermission(lead, req.user);
-        if (!canAccess && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized to add notes to this lead' });
-        }
-
-        // Add note using model method
-        lead.addNote(content, req.user._id, type || 'note');
-        await lead.save();
-
-        // Log activity
-        await ActivityLog.create({
-            action: 'lead_note_added',
-            userId: req.user._id,
-            leadId: lead._id,
-            details: `Note added: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
-        });
-
-        res.json({
-            success: true,
-            message: 'Note added successfully',
-            data: lead
-        });
-    } catch (error) {
-        console.error('Add lead note error:', error);
-        res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
-};
 
 
 
@@ -1132,6 +1142,7 @@ module.exports = {
     previewLeads,
     getLeadStats,
     getPaymentSummary,
+    getPaymentTimeline,
     deleteLead,
     restoreLead,
     escalateLead,
